@@ -20,6 +20,17 @@ import { FiUsers } from "react-icons/fi";
 import { TfiBarChartAlt } from "react-icons/tfi";
 import { FaRegFileLines } from "react-icons/fa6";
 import { IoSettingsOutline } from "react-icons/io5";
+import { MdStorefront } from "react-icons/md";
+import { MdOutlineDashboard } from "react-icons/md";
+import { LiaFileInvoiceSolid } from "react-icons/lia";
+import { MdPayment } from "react-icons/md";
+import { LuTable } from "react-icons/lu";
+import { RiFileList3Line } from "react-icons/ri";
+import { IoConstructOutline } from "react-icons/io5";
+import { TbUsersPlus } from "react-icons/tb";
+
+
+
 
 import Logo from "../../assets/images/logo.svg";
 
@@ -30,18 +41,30 @@ const menuSections = [
     title: "App",
     items: [
       { text: "Dashboard", to: "/dashboard", icon: <AiOutlineHome /> },
-      { text: "Profile", to: "/profile", icon: <FiUsers /> },
     ],
   },
   {
     title: "Dashboard",
     items: [
       {
-        text: "Reports",
-        icon: <TfiBarChartAlt />,
+        text: "Vendors",
+        icon: <MdStorefront/>,
         children: [
-          { text: "Monthly", to: "/reports/monthly", icon: <FaRegFileLines /> },
-          { text: "Yearly", to: "/reports/yearly", icon: <FaRegFileLines /> },
+          { text: "Dashboard", to: "/vendor/dashboard", icon: <MdOutlineDashboard/> },
+          { text: "Purchase Order", to: "/vendor/purchase-order", icon: <RiFileList3Line /> },
+          { text: "Vendor Invoice", to: "/vendor/invoice", icon: <LiaFileInvoiceSolid /> },
+          { text: "Vendor Payment", to: "/vendor/payment", icon: <MdPayment /> },
+          { text: "Vendor Ledger", to: "/vendor/ledger", icon: <LuTable /> },
+          { text: "Create Vendor", to: "/vendor/create-vendor", icon: <MdStorefront /> },
+        ],
+      },
+      {
+        text: "Users",
+        icon: <FiUsers />,
+        children: [
+          { text: "Users", to: "/users", icon: <FiUsers /> },
+          { text: "Customers", to: "/customers", icon: <TbUsersPlus /> },
+          { text: "Labours", to: "/labours", icon: <IoConstructOutline /> },
         ],
       },
       { text: "Settings", to: "/settings", icon: <IoSettingsOutline /> },
@@ -148,6 +171,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                           sx={{
                             pl: 4,
                             mx: 1,
+                             mb: 0.25,
                             borderRadius: 1,
                             color: "text.primary",
                             "& .MuiListItemIcon-root": {

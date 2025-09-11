@@ -3,7 +3,8 @@ const palette = {
         main: "#1E88E5",
     },
     secondary: {
-        main: "#E53935",
+        main: "#f49239",
+        contrastText: "#fff"
     },
     theme: {
         main: "#9C27B0",

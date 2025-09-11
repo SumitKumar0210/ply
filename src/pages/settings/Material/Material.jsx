@@ -525,7 +525,6 @@ const validationSchema = Yup.object({
                 </Grid>
               </Grid>
             </DialogContent>
-
             <DialogActions sx={{ gap: 1, mb: 1 }}>
               <Button variant="outlined" color="error" onClick={handleClose}>
                 Close

@@ -2,7 +2,7 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
-  background-color: #f7f7f7;
+  background-color: #eff1f9;
   font-family: "Open Sans", sans-serif !important;
 }
 
@@ -39,10 +39,24 @@ strong {
   width: stretch;
 }
 
+.MuiListItemIcon-root {
+  min-width: 22px !important;
+}
+
 .MuiTableContainer-root {
   margin-top: 8px !important;
 }
 
 .MuiInputLabel-root.Mui-error {
   color: inherit !important;
+}
+
+.MuiCard-root {
+  border: none !important;
+  box-shadow: none !important; /* if you also want no shadow */
+}
+
+.MuiTypography-p {
+  font-size: 14px;
+  line-height: 18px !important;
 }/*# sourceMappingURL=style.css.map */

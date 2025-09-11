@@ -30,7 +30,7 @@ const MainLayout = ({ children }) => {
           flexDirection: "column",
           width: "100%",          // ✅ ensure it never overflows
           overflowX: "hidden", 
-          background: "#f5f5f5"
+          background: "#eff1f9"
         }}
       >
         {/* Push content below AppBar */}

@@ -7,7 +7,7 @@ const Footer = ({ mobileOpen }) => {
     <Box
       sx={{
         py: 2,
-        bgcolor: "grey.200",
+        bgcolor: "#fff",
         mt: "auto",
         // pl: { sm: mobileOpen ? `${drawerWidth}px` : 0 },
         transition: "all 0.3s ease",
