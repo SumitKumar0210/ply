@@ -1,5 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Typography, Grid, Paper, Box, Button, IconButton, TextField, Tooltip,
 } from "@mui/material";
@@ -22,7 +21,8 @@ import { BsCloudDownload } from "react-icons/bs";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
-
+import { useDispatch, useSelector } from "react-redux";
+import { fetchUserTypes, addUserType, updateUserType, deleteUserType, statusUpdate } from "../../../features/userTypeSlice";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": { padding: theme.spacing(2) },
@@ -50,41 +50,96 @@ const UserType = () => {
   });
 
   const tableContainerRef = useRef(null);
-  const [open, setOpen] = useState(false);
-  const [tableData, setTableData] = useState(seed); // ✅ controlled data
-
-    const [input, setInput] = useState(false);
+  // const [open, setOpen] = useState(false);
+  // const [tableData, setTableData] = useState(seed); // ✅ controlled data
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
+  const handleClickEditOpen = () => setEditOpen(true);
 
-  const columns = useMemo(
+  const dispatch = useDispatch();
+  const { data: tableData, loading, error } = useSelector((state) => state.userType);
+
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchUserTypes());
+  }, [dispatch]);
+  
+
+  // Add
+  const handleAdd = async (values, resetForm) => {
+    try {
+      const res =  await dispatch(addUserType({ name: values.userType, status: 1 }));
+       if (res.error) {
+         console.log("Add failed:", res.payload);
+         alert("Add failed:", res.payload);
+          return;
+        }
+
+      // Success
+      resetForm();
+      setOpen(false);
+    } catch (err) {
+     
+    }
+  };
+
+
+  // Update
+  // const handleUpdate = (row) => {
+  //   dispatch(updateUserType({ id: row.id, name: "New Name", status: row.status }));
+  // };
+
+  // Delete
+  const handleDelete = (id) => {
+    dispatch(deleteUserType(id));
+  };
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
+
+  // open modal with row data
+const handleUpdate = (row) => {
+  setEditData(row);   // save selected row
+  setEditOpen(true);  // open modal
+};
+
+// close modal
+const handleEditClose = () => {
+  setEditOpen(false);
+  setEditData(null);
+};
+
+// update dispatch
+const handleEditSubmit = async (values, resetForm) => {
+  try {
+    await dispatch(updateUserType({ id: editData.id, name: values.userType }));
+    resetForm();
+    handleEditClose();
+  } catch (err) {
+    console.error("Update failed:", err);
+  }
+};
+
+ const columns = useMemo(
     () => [
       { accessorKey: "name", header: "User Type" },
-
-      // ✅ Stable toggle by id (works with sorting/filtering/pagination)
       {
         accessorKey: "status",
         header: "Status",
         enableSorting: false,
         enableColumnFilter: false,
-        muiTableBodyCellProps: { onClick: (e) => e.stopPropagation() }, // optional: keep row clicks from interfering
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
             onChange={(e) => {
-              const newStatus = e.target.checked;
-              const rowId = row.original.id; // stable id from your data
-              setTableData((prev) =>
-                prev.map((item) =>
-                  item.id === rowId ? { ...item, status: newStatus } : item
-                )
-              );
+              const newStatus = e.target.checked ? 1 : 0;
+              dispatch(statusUpdate({ ...row.original, status: newStatus }));
             }}
           />
         ),
       },
-
       {
         id: "actions",
         header: "Actions",
@@ -95,18 +150,12 @@ const UserType = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => alert(`Edit ${row.original.id}`)}
-              >
+              <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
                 <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() => alert(`Delete ${row.original.id}`)}
-              >
+              <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
                 <RiDeleteBinLine size={16} />
               </IconButton>
             </Tooltip>
@@ -114,9 +163,8 @@ const UserType = () => {
         ),
       },
     ],
-    []
+    [dispatch]
   );
-
   // ✅ Tell MRT which field is the unique row id
   const getRowId = (originalRow) => originalRow.id;
 
@@ -237,46 +285,7 @@ const UserType = () => {
             // };
             // setTableData((prev) => [newRow, ...prev]);
             // handleClose();
-
-              try {
-                // 🔑 Get token from localStorage
-                const token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL3BseWFwaS50ZWNoaWVzcXVhZC5pbi9wdWJsaWMvYXBpL2xvZ2luIiwiaWF0IjoxNzU3NTY3OTAwLCJleHAiOjE3ODkxMDM5MDAsIm5iZiI6MTc1NzU2NzkwMCwianRpIjoiRWNxSmZoNURyTzdYaW9WRSIsInN1YiI6IjEiLCJwcnYiOiIyM2JkNWM4OTQ5ZjYwMGFkYjM5ZTcwMWM0MDA4NzJkYjdhNTk3NmY3In0.WCqoW-pFmxGjMMXQ9DsswSLegHWAfigb0fByyA6zAHg";
-
-                const response = await axios.post(
-                  "https://plyapi.techiesquad.in/public/api/admin/userType/store",
-                  {
-                    name: values.userType,
-                    status: true,
-                  },
-                  {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                    },
-                  }
-                );
-
-                // ✅ Update UI with returned data
-                setTableData((prev) => [response.data, ...prev]);
-
-                resetForm();
-                handleClose();
-              } catch (error) {
-                console.error("Error adding user type:", error);
-                var errorMessage = error.response.data[0]?? error.response.data.error;
-                if (error.response?.status === 401) {
-                  alert("Unauthorized! Please log in again.");
-                } else if (error.response?.data?.errors) {
-                  // Laravel validation errors
-                  alert(Object.values(error.response.data.errors).join("\n"));
-                } else if (error.response?.status === 500) {
-                  // Laravel validation errors
-                  
-                  alert(errorMessage);
-                } else {
-                  alert(error.response.data.errors);
-                }
-              }
-            
+            await handleAdd(values, resetForm);
           }}
         >
           {({ values, errors, touched, handleChange }) => (
@@ -308,6 +317,58 @@ const UserType = () => {
         </Formik>
       </BootstrapDialog>
       {/* Modal user type end */}
+      {/* Edit Modal user type start */}
+      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit User Type</DialogTitle>
+        <IconButton
+          aria-label="close"
+          onClick={handleEditClose}
+          sx={(theme) => ({
+            position: "absolute",
+            right: 8,
+            top: 8,
+            color: theme.palette.grey[500],
+          })}
+        >
+          <CloseIcon />
+        </IconButton>
+
+        <Formik
+          enableReinitialize // ✅ makes sure form updates when editData changes
+          initialValues={{ userType: editData?.name || "" }}
+          validationSchema={validationSchema}
+          onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
+        >
+          {({ values, errors, touched, handleChange }) => (
+            <Form>
+              <DialogContent dividers>
+                <TextField
+                  fullWidth
+                  id="userType"
+                  name="userType"
+                  label="User Type"
+                  variant="standard"
+                  value={values.userType}
+                  onChange={handleChange}
+                  error={touched.userType && Boolean(errors.userType)}
+                  helperText={touched.userType && errors.userType}
+                  sx={{ mb: 3 }}
+                />
+              </DialogContent>
+              <DialogActions sx={{ gap: 1, mb: 1 }}>
+                <Button variant="outlined" color="error" onClick={handleEditClose}>
+                  Close
+                </Button>
+                <Button type="submit" variant="contained">
+                  Save Changes
+                </Button>
+              </DialogActions>
+            </Form>
+          )}
+        </Formik>
+      </BootstrapDialog>
+
+      {/* Edit Modal user type end */}
     </>
   );
 };
