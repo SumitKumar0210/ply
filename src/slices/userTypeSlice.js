@@ -2,15 +2,13 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
 let token = localStorage.getItem('token');
-if(!token){
-  const token ='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL3BseWFwaS50ZWNoaWVzcXVhZC5pbi9wdWJsaWMvYXBpL2xvZ2luIiwiaWF0IjoxNzU3NTY3OTAwLCJleHAiOjE3ODkxMDM5MDAsIm5iZiI6MTc1NzU2NzkwMCwianRpIjoiRWNxSmZoNURyTzdYaW9WRSIsInN1YiI6IjEiLCJwcnYiOiIyM2JkNWM4OTQ5ZjYwMGFkYjM5ZTcwMWM0MDA4NzJkYjdhNTk3NmY3In0.WCqoW-pFmxGjMMXQ9DsswSLegHWAfigb0fByyA6zAHg'
-  localStorage.setItem('token',token)
-}
+
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 // ✅ Thunks
 export const fetchUserTypes = createAsyncThunk('userType/fetchAll', async () => {
   const res = await axios.get(
-    'https://plyapi.techiesquad.in/public/api/admin/userType/get-data',
+    `${BASE_URL}admin/userType/get-data`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
  
@@ -23,7 +21,7 @@ export const addUserType = createAsyncThunk(
   async (newData, { rejectWithValue }) => {
     try {
       const res = await axios.post(
-        'https://plyapi.techiesquad.in/public/api/admin/userType/store',
+        `${BASE_URL}admin/userType/store`,
         newData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -41,18 +39,28 @@ export const addUserType = createAsyncThunk(
 );
 
 
-export const updateUserType = createAsyncThunk('userType/update', async (updated) => {
-  const res = await axios.post(
-    `https://plyapi.techiesquad.in/public/api/admin/userType/update/${updated.id}`,
-    updated,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  return res;
+export const updateUserType = createAsyncThunk('userType/update', async (updated, {rejectWithValue}) => {
+  try{
+    const res = await axios.post(
+      `${BASE_URL}admin/userType/update/${updated.id}`,
+      updated,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return updated;
+  } catch (error) {
+      if (error.response && error.response.data) {
+        // return only the message (serializable)
+        return rejectWithValue(
+          error.response.data[0] ?? error.response.data.error ?? "Request failed"
+        );
+      }
+      return rejectWithValue("Something went wrong");
+    }
 });
 
 export const statusUpdate = createAsyncThunk('userType/update', async (updated) => {
   const res = await axios.post(
-    `https://plyapi.techiesquad.in/public/api/admin/userType/status-update`,
+    `${BASE_URL}admin/userType/status-update`,
     { id: updated.id, status: updated.status },
     { headers: { Authorization: `Bearer ${token}` } }
   );
@@ -61,7 +69,7 @@ export const statusUpdate = createAsyncThunk('userType/update', async (updated) 
 
 export const deleteUserType = createAsyncThunk('userType/delete', async (id) => {
   await axios.post(
-    `https://plyapi.techiesquad.in/public/api/admin/userType/delete/${id}`,
+    `${BASE_URL}admin/userType/delete/${id}`,
     id,
     { headers: { Authorization: `Bearer ${token}` } }
   );
