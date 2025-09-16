@@ -10,16 +10,34 @@ import {
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import Logo from "../../assets/images/aarish-logo.png";
 import { useAuth } from "../../context/AuthContext";
+import { authLogin } from "./authSlice";
+import { useState } from "react";
+import { useDispatch } from "react-redux";
+
 
 const Login = () => {
   const paperStyle = { padding: "20px 30px", height: "380px", width: 350 };
   const navigate = useNavigate();
   const { login } = useAuth();
+  const dispatch = useDispatch();
 
-  const handleSubmit = (e) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    login();
+    // login();
+    
+    const credentials= {'email':email, 'password':password}
+    const res = await(dispatch(authLogin(credentials)))
+    if(res.error)
+    {
+      console.log(res.payload)
+      return;
+    }
+
     navigate("/dashboard");
+
   };
 
   return (
@@ -42,6 +60,7 @@ const Login = () => {
           variant="standard"
           fullWidth
           required
+          onChange={(e) => setEmail(e.target.value)}
           sx={{ mb: 2 }}
         />
         <TextField
@@ -49,6 +68,7 @@ const Login = () => {
           type="password"
           placeholder="Enter password"
           variant="standard"
+          onChange={(e) => setPassword(e.target.value)}
           fullWidth
           required
           sx={{ mb: 2 }}

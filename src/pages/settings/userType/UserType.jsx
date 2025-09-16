@@ -22,7 +22,8 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchUserTypes, addUserType, updateUserType, deleteUserType, statusUpdate } from "../../../slices/userTypeSlice";
+import { fetchUserTypes, addUserType, updateUserType, deleteUserType, statusUpdate } from "../slices/userTypeSlice";
+// import { fetchUserTypes } from "../slices/userTypeSlice";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": { padding: theme.spacing(2) },
