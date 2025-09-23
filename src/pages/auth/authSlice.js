@@ -14,10 +14,9 @@ export const authLogin = createAsyncThunk(
       if (res.data?.access_token) {
         localStorage.setItem("token", res.data.access_token);
       }
-      console.log(res.data.access_token)
+
       return res.data; // return API response (user + token)
     } catch (error) {
-        // console.log(error)
       if (error.response?.data) {
         return rejectWithValue(
           error.response.data[0] ??
@@ -26,6 +25,28 @@ export const authLogin = createAsyncThunk(
         );
       }
       return rejectWithValue("Something went wrong");
+    }
+  }
+);
+
+// ✅ Logout Thunk
+export const authLogout = createAsyncThunk(
+  "auth/logout",
+  async (_, { rejectWithValue }) => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.post(
+        `${BASE_URL}auth/logout`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      localStorage.removeItem("token");
+      return res.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error ?? "Logout failed"
+      );
     }
   }
 );
@@ -54,6 +75,7 @@ export const forgotPassword = createAsyncThunk(
 const authSlice = createSlice({
   name: "auth",
   initialState: {
+    isAuthenticated: !!localStorage.getItem("token"), // ✅ auto-login if token exists
     user: null,
     token: localStorage.getItem("token") || null,
     loading: false,
@@ -62,6 +84,7 @@ const authSlice = createSlice({
   },
   reducers: {
     logout: (state) => {
+      state.isAuthenticated = false;
       state.user = null;
       state.token = null;
       localStorage.removeItem("token");
@@ -77,7 +100,11 @@ const authSlice = createSlice({
       .addCase(authLogin.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user ?? null;
-        state.token = action.payload.token ?? null;
+        state.token = action.payload.access_token ?? action.payload.token ?? null;
+
+        if (state.token) {
+          state.isAuthenticated = true; // ✅ user is logged in
+        }
       })
       .addCase(authLogin.rejected, (state, action) => {
         state.loading = false;
