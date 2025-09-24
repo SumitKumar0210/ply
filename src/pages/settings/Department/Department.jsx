@@ -29,7 +29,7 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 
-import { addDepartment, fetchDepartments, statusUpdate, deleteDepartment } from "../slices/departmentSlice";
+import { addDepartment, fetchDepartments, statusUpdate, deleteDepartment, updateDepartment } from "../slices/departmentSlice";
 import { useDispatch, useSelector } from "react-redux";
 
 // ✅ Error Boundary
@@ -95,6 +95,37 @@ const Department = () => {
   useEffect(() => {
     dispatch(fetchDepartments());
   }, [dispatch]);
+
+    const [editOpen, setEditOpen] = useState(false);
+    const [editData, setEditData] = useState(null);
+  
+    // open modal with row data
+  const handleUpdate = (row) => {
+    setEditData(row);   // save selected row
+    setEditOpen(true);  // open modal
+  };
+  
+  // close modal
+  const handleEditClose = () => {
+    setEditOpen(false);
+    setEditData(null);
+  };
+  
+  // update dispatch
+  const handleEditSubmit = async (values, resetForm) => {
+  try {
+    const res = await dispatch(updateDepartment({ id: editData.id, name: values.department }));
+    if (res.error) {
+      console.log("Update failed:", res.payload);
+      alert("Update failed: " + res.payload);
+      return;
+    }
+    resetForm();
+    handleEditClose();
+  } catch (err) {
+    console.error("Update failed:", err);
+  }
+};
 
   const columns = useMemo(
     () => [
@@ -296,6 +327,57 @@ const Department = () => {
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
                   Submit
+                </Button>
+              </DialogActions>
+            </Form>
+          )}
+        </Formik>
+      </BootstrapDialog>
+
+
+      {/* Edit Modal */}
+      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit Department</DialogTitle>
+        <IconButton
+          aria-label="close"
+          onClick={handleEditClose}
+          sx={(theme) => ({
+            position: "absolute",
+            right: 8,
+            top: 8,
+            color: theme.palette.grey[500],
+          })}
+        >
+          <CloseIcon />
+        </IconButton>
+
+        <Formik
+          initialValues={{ name: editData?.name || "" }}
+          validationSchema={validationSchema}
+          onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
+        >
+          {({ values, errors, touched, handleChange }) => (
+            <Form>
+              <DialogContent dividers>
+                <TextField
+                  fullWidth
+                  id="edit_department"
+                  name="name"
+                  label="Department"
+                  variant="standard"
+                  value={values.name}
+                  onChange={handleChange}
+                  error={touched.name && Boolean(errors.name)}
+                  helperText={touched.name && errors.name}
+                  sx={{ mb: 3 }}
+                />
+              </DialogContent>
+              <DialogActions sx={{ gap: 1, mb: 1 }}>
+                <Button variant="outlined" color="error" onClick={handleEditClose}>
+                  Close
+                </Button>
+                <Button type="submit" variant="contained">
+                  Save Changes
                 </Button>
               </DialogActions>
             </Form>

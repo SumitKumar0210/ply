@@ -72,6 +72,7 @@ const UserType = () => {
   const handleAdd = async (values, resetForm) => {
     try {
       const res =  await dispatch(addUserType({ name: values.userType, status: 1 }));
+      console.log(res)
        if (res.error) {
          console.log("Add failed:", res.payload);
          alert("Add failed:", res.payload);

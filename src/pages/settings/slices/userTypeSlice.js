@@ -19,7 +19,7 @@ export const addUserType = createAsyncThunk(
       "admin/userType/store",
         newData,
       );
-      return newData;
+      return res.data.data;
     } catch (error) {
       if (error.response && error.response.data) {
         // return only the message (serializable)

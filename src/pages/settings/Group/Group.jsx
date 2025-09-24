@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState  } from "react";
 import {
   Typography,
   Grid,
@@ -30,49 +30,124 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
+import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
+
+import { addGroup, fetchGroups, statusUpdate, deleteGroup, updateGroup } from "../slices/groupSlice";
+import { useDispatch, useSelector } from "react-redux";
+
+// ✅ Error Boundary
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Box sx={{ p: 3, textAlign: "center", color: "red" }}>
+          <Typography variant="h6">Something went wrong.</Typography>
+          <Typography variant="body2">{this.state.error?.message}</Typography>
+        </Box>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
-  '& .MuiDialogContent-root': {
-    padding: theme.spacing(2),
-  },
-  '& .MuiDialogActions-root': {
-    padding: theme.spacing(1),
-  },
+  "& .MuiDialogContent-root": { padding: theme.spacing(2) },
+  "& .MuiDialogActions-root": { padding: theme.spacing(1) },
 }));
 
-const data = [
-  { name: "Group1" },
-  { name: "Group2" },
-  { name: "Group3" },
-  { name: "Group4" },
-  { name: "Group1" },
-  { name: "Group2" },
-  { name: "Group3" },
-  { name: "Group4" },
-  { name: "Group1" },
-  { name: "Group2" },
-  { name: "Group3" },
-  { name: "Group4" },
-
-];
-
 const Group = () => {
-   // ✅ Validation Schema
-  const validationSchema = Yup.object({
-    group: Yup.string().required("Group is required"),
-  });
-  const tableContainerRef = useRef(null);
-  const [open, setOpen] = React.useState(false);
+  const dispatch = useDispatch();
 
-  const handleClickOpen = () => {
-    setOpen(true);
+  // ✅ Validation Schema
+  const validationSchema = Yup.object({
+    name: Yup.string().required("Group is required"),
+  });
+
+  const tableContainerRef = useRef(null);
+  const [open, setOpen] = useState(false);
+
+  const handleClickOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  const handleAdd = async (value, resetForm) => {
+    await dispatch(addGroup(value));
+    resetForm();
+    handleClose();
   };
-  const handleClose = () => {
-    setOpen(false);
+
+  // Delete
+    const handleDelete = (id) => {
+      dispatch(deleteGroup(id));
+    };
+  
+
+    const { data: groupData = [], loading, error } = useSelector(
+      (state) => state.group
+    );
+    
+    useEffect(() => {
+      dispatch(fetchGroups());
+    }, [dispatch]);
+    
+    const [editOpen, setEditOpen] = useState(false);
+    const [editData, setEditData] = useState(null);
+  
+    // open modal with row data
+  const handleUpdate = (row) => {
+    setEditData(row);   // save selected row
+    setEditOpen(true);  // open modal
   };
+  
+  // close modal
+  const handleEditClose = () => {
+    setEditOpen(false);
+    setEditData(null);
+  };
+  
+  // update dispatch
+  const handleEditSubmit = async (values, resetForm) => {
+  try {
+    const res = await dispatch(updateGroup({ id: editData.id, name: values.name }));
+    if (res.error) {
+      console.log("Update failed:", res.payload);
+      alert("Update failed: " + res.payload);
+      return;
+    }
+    resetForm();
+    handleEditClose();
+  } catch (err) {
+    console.error("Update failed:", err);
+  }
+};
+
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "Group" },
+      {
+        accessorKey: "status",
+        header: "Status",
+        enableSorting: false,
+        enableColumnFilter: false,
+        Cell: ({ row }) => (
+          <CustomSwitch
+            checked={!!row.original.status}
+            onChange={(e) => {
+              const newStatus = e.target.checked ? 1 : 0;
+              dispatch(statusUpdate({ ...row.original, status: newStatus }));
+            }}
+          />
+        ),
+      },
       {
         id: "actions",
         header: "Actions",
@@ -83,18 +158,12 @@ const Group = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => alert(`Edit ${row.original.name}`)}
-              >
+              <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
                 <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() => alert(`Delete ${row.original.name}`)}
-              >
+              <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
                 <RiDeleteBinLine size={16} />
               </IconButton>
             </Tooltip>
@@ -102,8 +171,11 @@ const Group = () => {
         ),
       },
     ],
-    []
+    [dispatch]
   );
+  // ✅ Tell MRT which field is the unique row id
+  const getRowId = (originalRow) => originalRow.id;
+
 
   // Function to download CSV from data
   const downloadCSV = () => {
@@ -112,7 +184,7 @@ const Group = () => {
       .filter((col) => col.accessorKey)
       .map((col) => col.header);
     // Prepare csv rows
-    const rows = data.map((row) =>
+    const rows = groupData.map((row) =>
       columns
         .filter((col) => col.accessorKey)
         .map((col) => `"${row[col.accessorKey] ?? ""}"`)
@@ -144,95 +216,87 @@ const Group = () => {
   };
 
   return (
-    <>
-    <Grid container spacing={2}>
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
-          ref={tableContainerRef}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={data}
-            enableTopToolbar={true}
-            enableColumnFilters={true}
-            enableSorting={true}
-            enablePagination={true}
-            enableBottomToolbar={true}
-            enableGlobalFilter={true}
-            enableDensityToggle={false} // Remove density toggle
-            enableColumnActions={false} // Remove column actions
-            enableColumnVisibilityToggle={false}
+    <ErrorBoundary>
+     <Grid container spacing={2}>
+        <Grid size={12}>
+          <Paper
+            elevation={0}
+            sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
+            ref={tableContainerRef}
+          >
+            <MaterialReactTable
+              columns={columns}
+              data={groupData}   // ✅ direct array
+              getRowId={(row) => row.id}
+              enableTopToolbar
+              enableColumnFilters
+              enableSorting
+              enablePagination
+              enableBottomToolbar
+              enableGlobalFilter
+              enableDensityToggle={false}
+              enableColumnActions={false}
+              enableColumnVisibilityToggle={false}
+              initialState={{ density: "compact" }}
+              muiTableContainerProps={{
+                sx: { width: "100%", backgroundColor: "#fff" },
+              }}
+              muiTablePaperProps={{
+                sx: { backgroundColor: "#fff" },
+              }}
+              renderTopToolbar={({ table }) => (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="h6" fontWeight={400}>
+                    Group
+                  </Typography>
 
-            initialState={{
-              density: "compact",
-            }}
-            muiTableContainerProps={{
-              sx: { width: "100%", backgroundColor: "#fff" },
-            }}
-            muiTablePaperProps={{
-              sx: { backgroundColor: "#fff" },
-            }}
-            renderTopToolbar={({ table }) => (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  p: 1,
-                }}
-              >
-                <Typography variant="h6" fontWeight={400}>
-                  Groups
-                </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
 
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
+                    <Tooltip title="Print">
+                      <IconButton color="default" onClick={handlePrint}>
+                        <FiPrinter size={20} />
+                      </IconButton>
+                    </Tooltip>
 
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print">
-                    <IconButton color="light" onClick={handlePrint}>
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
+                    <Tooltip title="Download CSV">
+                      <IconButton color="default" onClick={downloadCSV}>
+                        <BsCloudDownload size={20} />
+                      </IconButton>
+                    </Tooltip>
 
-                  <Tooltip title="Download CSV">
-                    <IconButton color="light" onClick={downloadCSV}>
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                     onClick={handleClickOpen}
-                  >
-                    Add Group
-                  </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={handleClickOpen}
+                    >
+                      Add Group
+                    </Button>
+                  </Box>
                 </Box>
-              </Box>
-            )}
-          />
-        </Paper>
+              )}
+            />
+          </Paper>
+        </Grid>
       </Grid>
-    </Grid>
-     {/* Modal user type start */}
-      <BootstrapDialog
-        onClose={handleClose}
-        aria-labelledby="customized-dialog-title"
-        open={open}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle sx={{ m: 0, p: 1.5 }} id="customized-dialog-title">
-         Add Group
-        </DialogTitle>
+
+      {/* Modal */}
+      <BootstrapDialog onClose={handleClose} open={open} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ m: 0, p: 1.5 }}>Add Group</DialogTitle>
         <IconButton
           aria-label="close"
           onClick={handleClose}
           sx={(theme) => ({
-            position: 'absolute',
+            position: "absolute",
             right: 8,
             top: 8,
             color: theme.palette.grey[500],
@@ -240,40 +304,95 @@ const Group = () => {
         >
           <CloseIcon />
         </IconButton>
+
         <Formik
-          initialValues={{ group: "" }}
+          initialValues={{ name: "" }}
           validationSchema={validationSchema}
-          onSubmit={(values) => {
-            console.log("Form Submitted:", values);
-            handleClose();
+          onSubmit={async (values, { resetForm }) => {
+            await handleAdd(values, resetForm);
           }}
         >
           {({ values, errors, touched, handleChange }) => (
             <Form>
-              <DialogContent dividers >
+              <DialogContent dividers>
                 <TextField
                   fullWidth
                   id="group"
-                  name="group"
+                  name="name"
                   label="Group"
                   variant="standard"
-                  value={values.group}
+                  value={values.name}
                   onChange={handleChange}
-                  error={touched.group && Boolean(errors.group)}
-                  helperText={touched.group && errors.group}
+                  error={touched.name && Boolean(errors.name)}
+                  helperText={touched.name && errors.name}
                   sx={{ mb: 3 }}
                 />
               </DialogContent>
-              <DialogActions  sx={{ gap: 1, mb:1 }}>
-                <Button variant="outlined" color="error" onClick={handleClose}>Close</Button>
-                <Button type="submit" variant="contained" color="primary">Submit</Button>
+              <DialogActions sx={{ gap: 1, mb: 1 }}>
+                <Button variant="outlined" color="error" onClick={handleClose}>
+                  Close
+                </Button>
+                <Button type="submit" variant="contained" color="primary">
+                  Submit
+                </Button>
               </DialogActions>
             </Form>
           )}
         </Formik>
-    </BootstrapDialog>
-    {/* Modal user type end */}
-</>
+      </BootstrapDialog>
+
+
+      {/* Edit Modal */}
+      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit Group</DialogTitle>
+        <IconButton
+          aria-label="close"
+          onClick={handleEditClose}
+          sx={(theme) => ({
+            position: "absolute",
+            right: 8,
+            top: 8,
+            color: theme.palette.grey[500],
+          })}
+        >
+          <CloseIcon />
+        </IconButton>
+
+        <Formik
+          initialValues={{ name: editData?.name || "" }}
+          validationSchema={validationSchema}
+          enableReinitialize
+          onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
+        >
+          {({ values, errors, touched, handleChange }) => (
+            <Form>
+              <DialogContent dividers>
+                <TextField
+                  fullWidth
+                  id="edit_group"
+                  name="name"
+                  label="Group"
+                  variant="standard"
+                  value={values.name}
+                  onChange={handleChange}
+                  error={touched.name && Boolean(errors.name)}
+                  helperText={touched.name && errors.name}
+                  sx={{ mb: 3 }}
+                />
+              </DialogContent>
+              <DialogActions sx={{ gap: 1, mb: 1 }}>
+                <Button variant="outlined" color="error" onClick={handleEditClose}>
+                  Close
+                </Button>
+                <Button type="submit" variant="contained">
+                  Save Changes
+                </Button>
+              </DialogActions>
+            </Form>
+          )}
+        </Formik>
+      </BootstrapDialog>
+    </ErrorBoundary>
   );
 };
 

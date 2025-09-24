@@ -2,16 +2,16 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
 
 // ✅ Thunks
-export const fetchDepartments = createAsyncThunk('department/fetchAll', async () => {
-  const res = await api.get("admin/department/get-data");
+export const fetchCategories = createAsyncThunk('group/fetchAll', async () => {
+  const res = await api.get("admin/category/get-data");
   return res.data.data;
 });
 
-export const addDepartment = createAsyncThunk(
-  'department/add',
+export const addCategory = createAsyncThunk(
+  'category/add',
   async (newData, { rejectWithValue }) => {
     try {
-      const res = await api.post("admin/department/store", newData);
+      const res = await api.post("admin/category/store", newData);
       return res.data.data;
     } catch (error) {
       if (error.response && error.response.data) {
@@ -24,11 +24,11 @@ export const addDepartment = createAsyncThunk(
   }
 );
 
-export const updateDepartment = createAsyncThunk(
-  'department/update',
+export const updateCategory = createAsyncThunk(
+  'category/update',
   async (updated, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/department/update/${updated.id}`, updated);
+      const res = await api.post(`admin/category/update/${updated.id}`, updated);
       return updated;
     } catch (error) {
       if (error.response && error.response.data) {
@@ -42,9 +42,9 @@ export const updateDepartment = createAsyncThunk(
 );
 
 export const statusUpdate = createAsyncThunk(
-  'department/update',
+  'category/update',
   async (updated) => {
-    const res = await api.post("admin/department/status-update", {
+    const res = await api.post("admin/category/status-update", {
       id: updated.id,
       status: updated.status,
     });
@@ -53,17 +53,17 @@ export const statusUpdate = createAsyncThunk(
 );
 
 
-export const deleteDepartment = createAsyncThunk(
-  'department/delete',
+export const deleteCategory = createAsyncThunk(
+  'category/delete',
   async (id) => {
-    await api.post(`admin/department/delete/${id}`, id);
+    await api.post(`admin/category/delete/${id}`, id);
     return id;
   }
 );
 
 // ✅ Slice
-const departmentSlice = createSlice({
-  name: "department",
+const categorySlice = createSlice({
+  name: "category",
   initialState: {
     data: [],
     loading: false,
@@ -73,25 +73,25 @@ const departmentSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Fetch
-      .addCase(fetchDepartments.pending, (state) => {
+      .addCase(fetchCategories.pending, (state) => {
         state.loading = true;
       })
-      .addCase(fetchDepartments.fulfilled, (state, action) => {
+      .addCase(fetchCategories.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload;
       })
-      .addCase(fetchDepartments.rejected, (state, action) => {
+      .addCase(fetchCategories.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
       })
 
       // Add
-      .addCase(addDepartment.fulfilled, (state, action) => {
+      .addCase(addCategory.fulfilled, (state, action) => {
         state.data.unshift(action.payload);
       })
 
       // Update
-      .addCase(updateDepartment.fulfilled, (state, action) => {
+      .addCase(updateCategory.fulfilled, (state, action) => {
         const index = state.data.findIndex((d) => d.id === action.payload.id);
         if (index !== -1) {
           state.data[index] = action.payload;
@@ -99,10 +99,10 @@ const departmentSlice = createSlice({
       })
 
       // Delete
-      .addCase(deleteDepartment.fulfilled, (state, action) => {
+      .addCase(deleteCategory.fulfilled, (state, action) => {
         state.data = state.data.filter((d) => d.id !== action.payload);
       });
   },
 });
 
-export default departmentSlice.reducer;
+export default categorySlice.reducer;
