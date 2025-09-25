@@ -4,6 +4,7 @@ import api from '../../../api';
 // ✅ Thunks
 export const fetchGroups = createAsyncThunk('group/fetchAll', async () => {
   const res = await api.get("admin/group/get-data");
+  // console.log(res.data.data)
   return res.data.data;
 });
 

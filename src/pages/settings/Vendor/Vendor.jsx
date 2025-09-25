@@ -1,23 +1,21 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Typography,
   Grid,
   Paper,
   Box,
-  Modal,
   Button,
   IconButton,
   TextField,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   MenuItem,
-  FormLabel 
 } from "@mui/material";
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import CloseIcon from '@mui/icons-material/Close';
-import { styled } from '@mui/material/styles';
+import CloseIcon from "@mui/icons-material/Close";
+import { styled } from "@mui/material/styles";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -30,69 +28,127 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
+import { useDispatch, useSelector } from "react-redux";
+
+import {
+  addVendor,
+  fetchVendors,
+  deleteVendor,
+  updateVendor,
+} from "../slices/vendorSlice"; // ✅ new slice
+
+import { fetchCategories } from "../slices/categorySlice";
+
+// ✅ Error Boundary
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Box sx={{ p: 3, textAlign: "center", color: "red" }}>
+          <Typography variant="h6">Something went wrong.</Typography>
+          <Typography variant="body2">{this.state.error?.message}</Typography>
+        </Box>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
-  '& .MuiDialogContent-root': {
-    padding: theme.spacing(2),
-  },
-  '& .MuiDialogActions-root': {
-    padding: theme.spacing(1),
-  },
+  "& .MuiDialogContent-root": { padding: theme.spacing(2) },
+  "& .MuiDialogActions-root": { padding: theme.spacing(1) },
 }));
 
-const data = [
-  { name: "Vendor1", mobile: "9876543210", address: "Delhi", gst:"10AABCC3929J1ZZ" },
-  { name: "Vendor2", mobile: "9876500000", address: "Mumbai", gst:"10AABCC3929J1ZZ" },
-  { name: "Vendor3", mobile: "9988776655", address: "Chennai", gst:"10AABCC3929J1ZZ" },
-];
-
 const Vendor = () => {
-
-const validationSchema = Yup.object({
-  name: Yup.string().required("Vendor Name is required"),
-  mobile: Yup.string()
-    .matches(/^[0-9]{10}$/, "Enter valid 10 digit mobile number")
-    .required("Mobile Number is required"),
-  address: Yup.string().required("Address is required"),
-  gst: Yup.string().required("GST is required"),
-});
+  const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
-  const [open, setOpen] = React.useState(false);
 
-  const handleClickOpen = () => {
-    setOpen(true);
+  const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
+
+  const { data: vendorData = [] } = useSelector((state) => state.vendor);
+  const { data: categories = [] } = useSelector((state) => state.category);
+
+  // ✅ Validation Schema
+  const validationSchema = Yup.object({
+    name: Yup.string().required("Vendor Name is required"),
+    mobile: Yup.string()
+      .matches(/^[0-9]{10}$/, "Enter valid 10-digit mobile number")
+      .required("Mobile is required"),
+    email: Yup.string().required("Email is required"),
+    category_id: Yup.string().required("Category is required"),
+    gst: Yup.string()
+      .matches(/^([0-9A-Z]{15})$/, "Enter valid GST number")
+      .required("GST is required"),
+  });
+
+  useEffect(() => {
+    dispatch(fetchVendors());
+  }, [dispatch]);
+
+
+  useEffect(() => {
+    dispatch(fetchCategories());
+  }, [open, editOpen]);
+
+  const handleClickOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  const handleAdd = async (values, resetForm) => {
+    await dispatch(addVendor(values));
+    resetForm();
+    handleClose();
   };
-  const handleClose = () => {
-    setOpen(false);
+
+  const handleDelete = (id) => {
+    dispatch(deleteVendor(id));
   };
+
+  const handleUpdate = (row) => {
+    setEditData(row);
+    setEditOpen(true);
+  };
+  const handleEditClose = () => {
+    setEditOpen(false);
+    setEditData(null);
+  };
+  const handleEditSubmit = async (values, resetForm) => {
+    await dispatch(updateVendor({ id: editData.id, ...values }));
+    resetForm();
+    handleEditClose();
+  };
+
+  // ✅ Table columns
   const columns = useMemo(
     () => [
-      { accessorKey: "name", header: "Name" },
+      { accessorKey: "name", header: "Vendor Name" },
       { accessorKey: "mobile", header: "Mobile" },
-      { accessorKey: "address", header: "Address" },
+      { accessorKey: "email", header: "Email" },
+      { accessorKey: "address", header: "Cateogry", Cell: ({ row }) => row.original.category?.name || "—", },
       { accessorKey: "gst", header: "GST" },
       {
         id: "actions",
         header: "Actions",
-        enableSorting: false,
-        enableColumnFilter: false,
-        muiTableHeadCellProps: { align: "right" },
-        muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => alert(`Edit ${row.original.name}`)}
-              >
+              <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
                 <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() => alert(`Delete ${row.original.name}`)}
-              >
+              <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
                 <RiDeleteBinLine size={16} />
               </IconButton>
             </Tooltip>
@@ -103,38 +159,31 @@ const validationSchema = Yup.object({
     []
   );
 
-  // Function to download CSV from data
+  // ✅ CSV download
   const downloadCSV = () => {
-    // Prepare csv header
-    const headers = columns
-      .filter((col) => col.accessorKey)
-      .map((col) => col.header);
-    // Prepare csv rows
-    const rows = data.map((row) =>
+    const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
+    const rows = vendorData.map((row) =>
       columns
-        .filter((col) => col.accessorKey)
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
+        .filter((c) => c.accessorKey)
+        .map((c) => `"${row[c.accessorKey] ?? ""}"`)
         .join(",")
     );
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-
-    // Create link and trigger download
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "Vendor_data.csv");
+    link.setAttribute("download", "vendor.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Print handler
+  // ✅ Print
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
     const originalContents = document.body.innerHTML;
-
     document.body.innerHTML = printContents;
     window.print();
     document.body.innerHTML = originalContents;
@@ -142,118 +191,89 @@ const validationSchema = Yup.object({
   };
 
   return (
-    <>
-    <Grid container spacing={2}>
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
-          ref={tableContainerRef}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={data}
-            enableTopToolbar={true}
-            enableColumnFilters={true}
-            enableSorting={true}
-            enablePagination={true}
-            enableBottomToolbar={true}
-            enableGlobalFilter={true}
-            enableDensityToggle={false} // Remove density toggle
-            enableColumnActions={false} // Remove column actions
-            enableColumnVisibilityToggle={false}
-
-            initialState={{
-              density: "compact",
-            }}
-            muiTableContainerProps={{
-              sx: { width: "100%", backgroundColor: "#fff" },
-            }}
-            muiTablePaperProps={{
-              sx: { backgroundColor: "#fff" },
-            }}
-            renderTopToolbar={({ table }) => (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  p: 1,
-                }}
-              >
-                <Typography variant="h6" fontWeight={400}>
-                 Vendor
-                </Typography>
-
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
-
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print">
-                    <IconButton color="light" onClick={handlePrint}>
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
-
-                  <Tooltip title="Download CSV">
-                    <IconButton color="light" onClick={downloadCSV}>
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                     onClick={handleClickOpen}
-                  >
-                    Add Vendor
-                  </Button>
+    <ErrorBoundary>
+      <Grid container spacing={2}>
+        <Grid size={12}>
+          <Paper
+            elevation={0}
+            sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
+            ref={tableContainerRef}
+          >
+            <MaterialReactTable
+              columns={columns}
+              data={vendorData}
+              getRowId={(row) => row.id}
+              enableTopToolbar
+              enableColumnFilters
+              enableSorting
+              enablePagination
+              enableBottomToolbar
+              enableGlobalFilter
+              enableDensityToggle={false}
+              enableColumnActions={false}
+              enableColumnVisibilityToggle={false}
+              initialState={{ density: "compact" }}
+              renderTopToolbar={({ table }) => (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="h6">Vendor</Typography>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
+                    <Tooltip title="Print">
+                      <IconButton onClick={handlePrint}>
+                        <FiPrinter size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download CSV">
+                      <IconButton onClick={downloadCSV}>
+                        <BsCloudDownload size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={handleClickOpen}
+                    >
+                      Add Vendor
+                    </Button>
+                  </Box>
                 </Box>
-              </Box>
-            )}
-          />
-        </Paper>
+              )}
+            />
+          </Paper>
+        </Grid>
       </Grid>
-    </Grid>
-     {/* Modal user type start */}
-      <BootstrapDialog
-        onClose={handleClose}
-        aria-labelledby="customized-dialog-title"
-        open={open}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle sx={{ m: 0, p: 1.5 }} id="customized-dialog-title">
-         Add Vendor
-        </DialogTitle>
+
+      {/* Add Modal */}
+      <BootstrapDialog onClose={handleClose} open={open} fullWidth maxWidth="xs">
+        <DialogTitle>Add Vendor</DialogTitle>
         <IconButton
           aria-label="close"
           onClick={handleClose}
-          sx={(theme) => ({
-            position: 'absolute',
-            right: 8,
-            top: 8,
-            color: theme.palette.grey[500],
-          })}
+          sx={{ position: "absolute", right: 8, top: 8 }}
         >
           <CloseIcon />
         </IconButton>
         <Formik
-           initialValues={{ name: "", mobile: "", address: "", gst:"" }}
+          initialValues={{ name: "", mobile: "", address: "", gst: "" }}
           validationSchema={validationSchema}
-          onSubmit={(values) => {
-            console.log("Form Submitted:", values);
-            handleClose();
-          }}
+          onSubmit={(values, { resetForm }) => handleAdd(values, resetForm)}
         >
           {({ values, errors, touched, handleChange }) => (
             <Form>
-              <DialogContent dividers >
+              <DialogContent dividers>
                 <TextField
                   fullWidth
                   id="name"
                   name="name"
-                  label="Name"
+                  label="Vendor Name"
                   variant="standard"
                   value={values.name}
                   onChange={handleChange}
@@ -261,7 +281,6 @@ const validationSchema = Yup.object({
                   helperText={touched.name && errors.name}
                   sx={{ mb: 3 }}
                 />
-
                 <TextField
                   fullWidth
                   id="mobile"
@@ -272,6 +291,18 @@ const validationSchema = Yup.object({
                   onChange={handleChange}
                   error={touched.mobile && Boolean(errors.mobile)}
                   helperText={touched.mobile && errors.mobile}
+                  sx={{ mb: 3 }}
+                />
+                <TextField
+                  fullWidth
+                  id="email"
+                  name="email"
+                  label="Vendor email"
+                  variant="standard"
+                  value={values.email}
+                  onChange={handleChange}
+                  error={touched.email && Boolean(errors.email)}
+                  helperText={touched.email && errors.email}
                   sx={{ mb: 3 }}
                 />
                 <TextField
@@ -287,6 +318,24 @@ const validationSchema = Yup.object({
                   sx={{ mb: 3 }}
                 />
                 <TextField
+                  select
+                  fullWidth
+                  name="category_id"
+                  label="Category"
+                  variant="standard"
+                  value={values.category_id}
+                  onChange={handleChange}
+                  error={touched.category_id && Boolean(errors.category_id)}
+                  helperText={touched.category_id && errors.category_id}
+                  sx={{ mb: 3 }}
+                >
+                  {categories.map((category) => (
+                    <MenuItem key={category.id} value={String(category.id)}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
                   fullWidth
                   id="gst"
                   name="gst"
@@ -296,19 +345,125 @@ const validationSchema = Yup.object({
                   onChange={handleChange}
                   error={touched.gst && Boolean(errors.gst)}
                   helperText={touched.gst && errors.gst}
-                  sx={{ mb: 3 }}
                 />
               </DialogContent>
-              <DialogActions  sx={{ gap: 1, mb:1 }}>
-                <Button variant="outlined" color="error" onClick={handleClose}>Close</Button>
-                <Button type="submit" variant="contained" color="primary">Submit</Button>
+              <DialogActions>
+                <Button onClick={handleClose} color="error" variant="outlined">
+                  Close
+                </Button>
+                <Button type="submit" variant="contained">
+                  Submit
+                </Button>
               </DialogActions>
             </Form>
           )}
         </Formik>
-    </BootstrapDialog>
-    {/* Modal user type end */}
-</>
+      </BootstrapDialog>
+
+      {/* Edit Modal */}
+      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
+        <DialogTitle>Edit Vendor</DialogTitle>
+        <IconButton
+          aria-label="close"
+          onClick={handleEditClose}
+          sx={{ position: "absolute", right: 8, top: 8 }}
+        >
+          <CloseIcon />
+        </IconButton>
+        <Formik
+          initialValues={{
+            name: editData?.name || "",
+            mobile: editData?.mobile || "",
+            email: editData?.email || "",
+            category_id: editData?.category_id || "",
+            gst: editData?.gst || "",
+          }}
+          validationSchema={validationSchema}
+          enableReinitialize
+          onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
+        >
+          {({ values, errors, touched, handleChange }) => (
+            <Form>
+              <DialogContent dividers>
+                <TextField
+                  fullWidth
+                  id="edit_name"
+                  name="name"
+                  label="Vendor Name"
+                  variant="standard"
+                  value={values.name}
+                  onChange={handleChange}
+                  error={touched.name && Boolean(errors.name)}
+                  helperText={touched.name && errors.name}
+                  sx={{ mb: 3 }}
+                />
+                <TextField
+                  fullWidth
+                  id="edit_mobile"
+                  name="mobile"
+                  label="Mobile"
+                  variant="standard"
+                  value={values.mobile}
+                  onChange={handleChange}
+                  error={touched.mobile && Boolean(errors.mobile)}
+                  helperText={touched.mobile && errors.mobile}
+                  sx={{ mb: 3 }}
+                />
+                <TextField
+                  fullWidth
+                  id="edit_email"
+                  name="email"
+                  label="Vendor Email"
+                  variant="standard"
+                  value={values.email}
+                  onChange={handleChange}
+                  error={touched.email && Boolean(errors.email)}
+                  helperText={touched.email && errors.email}
+                  sx={{ mb: 3 }}
+                />
+                <TextField
+                  select
+                  fullWidth
+                  name="category_id"
+                  label="Category"
+                  variant="standard"
+                  value={values.category_id}
+                  onChange={handleChange}
+                  error={touched.category_id && Boolean(errors.category_id)}
+                  helperText={touched.category_id && errors.category_id}
+                  sx={{ mb: 3 }}
+                >
+                  {categories.map((category) => (
+                    <MenuItem key={category.id} value={String(category.id)}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  fullWidth
+                  id="edit_gst"
+                  name="gst"
+                  label="GST"
+                  variant="standard"
+                  value={values.gst}
+                  onChange={handleChange}
+                  error={touched.gst && Boolean(errors.gst)}
+                  helperText={touched.gst && errors.gst}
+                />
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={handleEditClose} color="error" variant="outlined">
+                  Close
+                </Button>
+                <Button type="submit" variant="contained">
+                  Save Changes
+                </Button>
+              </DialogActions>
+            </Form>
+          )}
+        </Formik>
+      </BootstrapDialog>
+    </ErrorBoundary>
   );
 };
 

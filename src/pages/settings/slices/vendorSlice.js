@@ -1,18 +1,20 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../../api';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import api from "../../../api"; // adjust your API path
 
 // ✅ Thunks
-export const fetchCategories = createAsyncThunk('group/fetchAll', async () => {
-  const res = await api.get("admin/category/get-data");
-  // console.log(res.data.data)
+
+// Fetch all vendors
+export const fetchVendors = createAsyncThunk("vendor/fetchAll", async () => {
+  const res = await api.get("admin/vendor/get-data");
   return res.data.data;
 });
 
-export const addCategory = createAsyncThunk(
-  'category/add',
+// Add vendor
+export const addVendor = createAsyncThunk(
+  "vendor/add",
   async (newData, { rejectWithValue }) => {
     try {
-      const res = await api.post("admin/category/store", newData);
+      const res = await api.post("admin/vendor/store", newData);
       return res.data.data;
     } catch (error) {
       if (error.response && error.response.data) {
@@ -25,12 +27,13 @@ export const addCategory = createAsyncThunk(
   }
 );
 
-export const updateCategory = createAsyncThunk(
-  'category/update',
+// Update vendor
+export const updateVendor = createAsyncThunk(
+  "vendor/update",
   async (updated, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/category/update/${updated.id}`, updated);
-      return updated;
+      const res = await api.post(`admin/vendor/update/${updated.id}`, updated);
+      return res.data.data;
     } catch (error) {
       if (error.response && error.response.data) {
         return rejectWithValue(
@@ -42,29 +45,18 @@ export const updateCategory = createAsyncThunk(
   }
 );
 
-export const statusUpdate = createAsyncThunk(
-  'category/update',
-  async (updated) => {
-    const res = await api.post("admin/category/status-update", {
-      id: updated.id,
-      status: updated.status,
-    });
-    return updated;
-  }
-);
-
-
-export const deleteCategory = createAsyncThunk(
-  'category/delete',
+// Delete vendor
+export const deleteVendor = createAsyncThunk(
+  "vendor/delete",
   async (id) => {
-    await api.post(`admin/category/delete/${id}`, id);
+    await api.post(`admin/vendor/delete/${id}`, id);
     return id;
   }
 );
 
-// ✅ Slice
-const categorySlice = createSlice({
-  name: "category",
+// Slice
+const vendorSlice = createSlice({
+  name: "vendor",
   initialState: {
     data: [],
     loading: false,
@@ -74,25 +66,25 @@ const categorySlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Fetch
-      .addCase(fetchCategories.pending, (state) => {
+      .addCase(fetchVendors.pending, (state) => {
         state.loading = true;
       })
-      .addCase(fetchCategories.fulfilled, (state, action) => {
+      .addCase(fetchVendors.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload;
       })
-      .addCase(fetchCategories.rejected, (state, action) => {
+      .addCase(fetchVendors.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
       })
 
       // Add
-      .addCase(addCategory.fulfilled, (state, action) => {
+      .addCase(addVendor.fulfilled, (state, action) => {
         state.data.unshift(action.payload);
       })
 
       // Update
-      .addCase(updateCategory.fulfilled, (state, action) => {
+      .addCase(updateVendor.fulfilled, (state, action) => {
         const index = state.data.findIndex((d) => d.id === action.payload.id);
         if (index !== -1) {
           state.data[index] = action.payload;
@@ -100,10 +92,10 @@ const categorySlice = createSlice({
       })
 
       // Delete
-      .addCase(deleteCategory.fulfilled, (state, action) => {
+      .addCase(deleteVendor.fulfilled, (state, action) => {
         state.data = state.data.filter((d) => d.id !== action.payload);
       });
   },
 });
 
-export default categorySlice.reducer;
+export default vendorSlice.reducer;

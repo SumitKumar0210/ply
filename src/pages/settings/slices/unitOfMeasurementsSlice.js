@@ -2,17 +2,19 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
 
 // ✅ Thunks
-export const fetchCategories = createAsyncThunk('group/fetchAll', async () => {
-  const res = await api.get("admin/category/get-data");
-  // console.log(res.data.data)
-  return res.data.data;
-});
+export const fetchUnitOfMeasurements = createAsyncThunk(
+  'unitOfMeasurement/fetchAll',
+  async () => {
+    const res = await api.get("admin/unit/get-data");
+    return res.data.data;
+  }
+);
 
-export const addCategory = createAsyncThunk(
-  'category/add',
+export const addUnitOfMeasurement = createAsyncThunk(
+  'unitOfMeasurement/add',
   async (newData, { rejectWithValue }) => {
     try {
-      const res = await api.post("admin/category/store", newData);
+      const res = await api.post("admin/unit/store", newData);
       return res.data.data;
     } catch (error) {
       if (error.response && error.response.data) {
@@ -25,11 +27,11 @@ export const addCategory = createAsyncThunk(
   }
 );
 
-export const updateCategory = createAsyncThunk(
-  'category/update',
+export const updateUnitOfMeasurement = createAsyncThunk(
+  'unitOfMeasurement/update',
   async (updated, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/category/update/${updated.id}`, updated);
+      await api.post(`admin/unit/update/${updated.id}`, updated);
       return updated;
     } catch (error) {
       if (error.response && error.response.data) {
@@ -43,9 +45,9 @@ export const updateCategory = createAsyncThunk(
 );
 
 export const statusUpdate = createAsyncThunk(
-  'category/update',
+  'unitOfMeasurement/update',
   async (updated) => {
-    const res = await api.post("admin/category/status-update", {
+    await api.post("admin/unit/status-update", {
       id: updated.id,
       status: updated.status,
     });
@@ -53,18 +55,17 @@ export const statusUpdate = createAsyncThunk(
   }
 );
 
-
-export const deleteCategory = createAsyncThunk(
-  'category/delete',
+export const deleteUnitOfMeasurement = createAsyncThunk(
+  'unitOfMeasurement/delete',
   async (id) => {
-    await api.post(`admin/category/delete/${id}`, id);
+    await api.post(`admin/unit/delete/${id}`, id);
     return id;
   }
 );
 
 // ✅ Slice
-const categorySlice = createSlice({
-  name: "category",
+const unitOfMeasurementsSlice = createSlice({
+  name: "unitOfMeasurement",
   initialState: {
     data: [],
     loading: false,
@@ -74,25 +75,25 @@ const categorySlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Fetch
-      .addCase(fetchCategories.pending, (state) => {
+      .addCase(fetchUnitOfMeasurements.pending, (state) => {
         state.loading = true;
       })
-      .addCase(fetchCategories.fulfilled, (state, action) => {
+      .addCase(fetchUnitOfMeasurements.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload;
       })
-      .addCase(fetchCategories.rejected, (state, action) => {
+      .addCase(fetchUnitOfMeasurements.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
       })
 
       // Add
-      .addCase(addCategory.fulfilled, (state, action) => {
+      .addCase(addUnitOfMeasurement.fulfilled, (state, action) => {
         state.data.unshift(action.payload);
       })
 
       // Update
-      .addCase(updateCategory.fulfilled, (state, action) => {
+      .addCase(updateUnitOfMeasurement.fulfilled, (state, action) => {
         const index = state.data.findIndex((d) => d.id === action.payload.id);
         if (index !== -1) {
           state.data[index] = action.payload;
@@ -100,10 +101,10 @@ const categorySlice = createSlice({
       })
 
       // Delete
-      .addCase(deleteCategory.fulfilled, (state, action) => {
+      .addCase(deleteUnitOfMeasurement.fulfilled, (state, action) => {
         state.data = state.data.filter((d) => d.id !== action.payload);
       });
   },
 });
 
-export default categorySlice.reducer;
+export default unitOfMeasurementsSlice.reducer;

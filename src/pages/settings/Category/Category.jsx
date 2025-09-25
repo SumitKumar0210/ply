@@ -1,23 +1,21 @@
-import React, { useEffect, useMemo, useRef, useState  } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Typography,
   Grid,
   Paper,
   Box,
-  Modal,
   Button,
   IconButton,
   TextField,
   Tooltip,
   MenuItem,
-  FormLabel 
 } from "@mui/material";
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import CloseIcon from '@mui/icons-material/Close';
-import { styled } from '@mui/material/styles';
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import CloseIcon from "@mui/icons-material/Close";
+import { styled } from "@mui/material/styles";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -32,34 +30,17 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 
-import { fetchGroups } from "../slices/groupSlice"; 
-import { addCategory, fetchCategories, statusUpdate, deleteCategory, updateCategory } from "../slices/categorySlice";
+import {
+  fetchGroups,
+} from "../slices/groupSlice";
+import {
+  addCategory,
+  fetchCategories,
+  statusUpdate,
+  deleteCategory,
+  updateCategory,
+} from "../slices/categorySlice";
 import { useDispatch, useSelector } from "react-redux";
-
-// ✅ Error Boundary
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught:", error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <Box sx={{ p: 3, textAlign: "center", color: "red" }}>
-          <Typography variant="h6">Something went wrong.</Typography>
-          <Typography variant="body2">{this.state.error?.message}</Typography>
-        </Box>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": { padding: theme.spacing(2) },
@@ -68,267 +49,221 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 
 const Category = () => {
   const dispatch = useDispatch();
-
-  // ✅ Validation Schema
-  const validationSchema = Yup.object({
-    name: Yup.string().required("Category is required"),
-  });
-
   const tableContainerRef = useRef(null);
-  const [open, setOpen] = useState(false);
 
-  const handleClickOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  // redux state
+  const { data: data = [], loading } = useSelector((state) => state.category);
+  const { data: groups = [] } = useSelector((state) => state.group);
 
-  const handleAdd = async (value, resetForm) => {
-    await dispatch(addCategory(value));
-    resetForm();
-    handleClose();
+  // modal states
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [editData, setEditData] = useState(null);
+
+  // fetch initial data
+  useEffect(() => {
+    dispatch(fetchCategories());
+  }, [dispatch]);
+
+  // fetch initial data
+  useEffect(() => {
+    dispatch(fetchGroups());
+  }, [openAdd, openEdit, groups]);
+
+  // open modals
+  const handleOpenAdd = () => setOpenAdd(true);
+  const handleCloseAdd = () => setOpenAdd(false);
+
+  const handleOpenEdit = (row) => {
+    setEditData(row);
+    setOpenEdit(true);
+  };
+  const handleCloseEdit = () => {
+    setEditData(null);
+    setOpenEdit(false);
   };
 
-  // Delete
+  // add
+  const handleAddSubmit = async (values, { resetForm }) => {
+    const payload = {
+      name: values.name,
+      group_id: Number(values.group_id),
+    };
+    await dispatch(addCategory(payload));
+    resetForm();
+    handleCloseAdd();
+  };
+
+  // update
+  const handleEditSubmit = async (values, { resetForm }) => {
+    const payload = {
+      id: editData.id,
+      name: values.name,
+      group_id: Number(values.group_id),
+    };
+    await dispatch(updateCategory(payload));
+    resetForm();
+    handleCloseEdit();
+  };
+
+  // delete
   const handleDelete = (id) => {
     dispatch(deleteCategory(id));
   };
 
+  // columns
+  const columns = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Category Name",
+      },
+      {
+        accessorKey: "group",
+        header: "Group",
+        Cell: ({ row }) => row.original.group?.name || "—",
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        Cell: ({ row }) => (
+          <CustomSwitch
+            checked={!!row.original.status}
+            onChange={(e) => {
+              const newStatus = e.target.checked ? 1 : 0;
+              dispatch(statusUpdate({ ...row.original, status: newStatus }));
+            }}
+          />
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        Cell: ({ row }) => (
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Tooltip title="Edit">
+              <IconButton onClick={() => handleOpenEdit(row.original)}>
+                <BiSolidEditAlt size={16} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete">
+              <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
+                <RiDeleteBinLine size={16} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    [dispatch]
+  );
 
-  const { data: data = [], loading, error } = useSelector((state) => state.category);
-  const { data: groups = [], loading: groupsLoading } = useSelector((state) => state.group);
-
-  useEffect(() => {
-    dispatch(fetchGroups()); // fetch groups for dropdown
-    dispatch(fetchCategories());
-  }, [dispatch]);
-    
-  const [editOpen, setEditOpen] = useState(false);
-  const [editData, setEditData] = useState(null);
-  
-    // open modal with row data
-  const handleUpdate = (row) => {
-    setEditData(row);   // save selected row
-    setEditOpen(true);  // open modal
-  };
-  
-  // close modal
-  const handleEditClose = () => {
-    setEditOpen(false);
-    setEditData(null);
-  };
-  
-  // update dispatch
-  const handleEditSubmit = async (values, resetForm) => {
-  try {
-    const payload = {
-      id: editData.id,
-      name: values.name,
-      group_id: values.group_id !== "" ? Number(values.group_id) : null,
-    };
-
-    const res = await dispatch(updateCategory(payload));
-    if (res.error) {
-      alert("Update failed: " + res.payload);
-      return;
-    }
-    resetForm();
-    handleEditClose();
-  } catch (err) {
-    console.error("Update failed:", err);
-  }
-};
-
-  const columns = useMemo(() => [
-  {
-    accessorKey: "name",
-    header: "Category Name",
-  },
-  {
-    accessorKey: "group_name", // or group.name if nested
-    header: "Group",
-      Cell: ({ row }) => row.original.group?.name || "—",
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    Cell: ({ row }) => (
-      <CustomSwitch
-        checked={!!row.original.status}
-        onChange={(e) => {
-          const newStatus = e.target.checked ? 1 : 0;
-          dispatch(statusUpdate({ ...row.original, status: newStatus }));
-        }}
-      />
-    ),
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    Cell: ({ row }) => (
-      <Box sx={{ display: "flex", gap: 1 }}>
-        <Tooltip title="Edit">
-          <IconButton onClick={() => handleUpdate(row.original)}>
-            <BiSolidEditAlt size={16} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Delete">
-          <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
-            <RiDeleteBinLine size={16} />
-          </IconButton>
-        </Tooltip>
-      </Box>
-    ),
-  },
-], [groups, dispatch]);
-  // ✅ Tell MRT which field is the unique row id
-  const getRowId = (originalRow) => originalRow.id;
-
-
-  // Function to download CSV from data
+  // CSV export
   const downloadCSV = () => {
-    // Prepare csv header
-    const headers = columns
-      .filter((col) => col.accessorKey)
-      .map((col) => col.header);
-    // Prepare csv rows
+    const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
     const rows = data.map((row) =>
       columns
-        .filter((col) => col.accessorKey)
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
+        .filter((c) => c.accessorKey)
+        .map((c) => {
+          const val = c.accessorKey.includes(".")
+            ? c.accessorKey.split(".").reduce((acc, k) => acc?.[k], row)
+            : row[c.accessorKey];
+          return `"${val ?? ""}"`;
+        })
         .join(",")
     );
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
 
-    // Create link and trigger download
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "user_type_data.csv");
+    link.setAttribute("download", "categories.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Print handler
-  const handlePrint = () => {
-    if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
-  };
-
   return (
-    <ErrorBoundary>
-     <Grid container spacing={2}>
-        <Grid size={12}>
-          <Paper
-            elevation={0}
-            sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
-            ref={tableContainerRef}
-          >
-            <MaterialReactTable
-              columns={columns}
-              data={data}   // ✅ direct array
-              getRowId={(row) => row.id}
-              enableTopToolbar
-              enableColumnFilters
-              enableSorting
-              enablePagination
-              enableBottomToolbar
-              enableGlobalFilter
-              enableDensityToggle={false}
-              enableColumnActions={false}
-              enableColumnVisibilityToggle={false}
-              initialState={{ density: "compact" }}
-              muiTableContainerProps={{
-                sx: { width: "100%", backgroundColor: "#fff" },
-              }}
-              muiTablePaperProps={{
-                sx: { backgroundColor: "#fff" },
-              }}
-              renderTopToolbar={({ table }) => (
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    width: "100%",
-                    p: 1,
-                  }}
-                >
-                  <Typography variant="h6" fontWeight={400}>
-                    Category
-                  </Typography>
-
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <MRT_GlobalFilterTextField table={table} />
-                    <MRT_ToolbarInternalButtons table={table} />
-
-                    <Tooltip title="Print">
-                      <IconButton color="default" onClick={handlePrint}>
-                        <FiPrinter size={20} />
-                      </IconButton>
-                    </Tooltip>
-
-                    <Tooltip title="Download CSV">
-                      <IconButton color="default" onClick={downloadCSV}>
-                        <BsCloudDownload size={20} />
-                      </IconButton>
-                    </Tooltip>
-
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleClickOpen}
-                    >
-                      Add Category
-                    </Button>
-                  </Box>
+    <Grid container spacing={2}>
+      <Grid size={12}>
+        <Paper
+          elevation={0}
+          sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
+          ref={tableContainerRef}
+        >
+          <MaterialReactTable
+            columns={columns}
+            data={data}
+            getRowId={(row) => row.id}
+            enableTopToolbar
+            enableGlobalFilter
+            enableColumnFilters
+            enablePagination
+            enableBottomToolbar
+            enableDensityToggle={false}
+            enableColumnActions={false}
+            enableColumnVisibilityToggle={false}
+            initialState={{ density: "compact" }}
+            muiTableContainerProps={{ sx: { backgroundColor: "#fff" } }}
+            renderTopToolbar={({ table }) => (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  p: 1,
+                }}
+              >
+                <Typography variant="h6">Category</Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <MRT_GlobalFilterTextField table={table} />
+                  <MRT_ToolbarInternalButtons table={table} />
+                  <Tooltip title="Download CSV">
+                    <IconButton onClick={downloadCSV}>
+                      <BsCloudDownload size={20} />
+                    </IconButton>
+                  </Tooltip>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={handleOpenAdd}
+                  >
+                    Add Category
+                  </Button>
                 </Box>
-              )}
-            />
-          </Paper>
-        </Grid>
+              </Box>
+            )}
+          />
+        </Paper>
       </Grid>
 
-      {/* Modal */}
-      <BootstrapDialog onClose={handleClose} open={open} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ m: 0, p: 1.5 }}>Add Category</DialogTitle>
+      {/* Add Modal */}
+      <BootstrapDialog open={openAdd} onClose={handleCloseAdd} fullWidth maxWidth="xs">
+        <DialogTitle>
+          Add Category
           <IconButton
             aria-label="close"
-            onClick={handleClose}
-            sx={(theme) => ({
-              position: "absolute",
-              right: 8,
-              top: 8,
-              color: theme.palette.grey[500],
-            })}
+            onClick={handleCloseAdd}
+            sx={{ position: "absolute", right: 8, top: 8 }}
           >
             <CloseIcon />
           </IconButton>
-
+        </DialogTitle>
         <Formik
-          enableReinitialize
-          initialValues={{
-            name: editData?.name ?? "",
-            // normalize to string for the Select
-            group_id: editData?.group_id != null ? String(editData.group_id) : "",
-          }}
+          initialValues={{ name: "", group_id: "" }}
           validationSchema={Yup.object({
             name: Yup.string().required("Category is required"),
             group_id: Yup.string().required("Group is required"),
           })}
-          onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
+          onSubmit={handleAddSubmit}
         >
           {({ values, errors, touched, handleChange }) => (
             <Form>
               <DialogContent dividers>
                 <TextField
                   fullWidth
-                  id="category"
                   name="name"
                   label="Category"
                   variant="standard"
@@ -338,12 +273,9 @@ const Category = () => {
                   helperText={touched.name && errors.name}
                   sx={{ mb: 3 }}
                 />
-
-                {/* Group Select */}
                 <TextField
                   select
                   fullWidth
-                  id="group_id"
                   name="group_id"
                   label="Group"
                   variant="standard"
@@ -351,20 +283,19 @@ const Category = () => {
                   onChange={handleChange}
                   error={touched.group_id && Boolean(errors.group_id)}
                   helperText={touched.group_id && errors.group_id}
-                  sx={{ mb: 3 }}
                 >
                   {groups.map((group) => (
-                    <MenuItem key={group.id} value={group.id}>
+                    <MenuItem key={group.id} value={String(group.id)}>
                       {group.name}
                     </MenuItem>
                   ))}
                 </TextField>
               </DialogContent>
-              <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleClose}>
-                  Close
+              <DialogActions>
+                <Button onClick={handleCloseAdd} color="error">
+                  Cancel
                 </Button>
-                <Button type="submit" variant="contained" color="primary">
+                <Button type="submit" variant="contained">
                   Submit
                 </Button>
               </DialogActions>
@@ -373,23 +304,18 @@ const Category = () => {
         </Formik>
       </BootstrapDialog>
 
-
       {/* Edit Modal */}
-      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit Category</DialogTitle>
-        <IconButton
-          aria-label="close"
-          onClick={handleEditClose}
-          sx={(theme) => ({
-            position: "absolute",
-            right: 8,
-            top: 8,
-            color: theme.palette.grey[500],
-          })}
-        >
-          <CloseIcon />
-        </IconButton>
-
+      <BootstrapDialog open={openEdit} onClose={handleCloseEdit} fullWidth maxWidth="xs">
+        <DialogTitle>
+          Edit Category
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseEdit}
+            sx={{ position: "absolute", right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
         <Formik
           initialValues={{
             name: editData?.name || "",
@@ -400,14 +326,13 @@ const Category = () => {
             group_id: Yup.string().required("Group is required"),
           })}
           enableReinitialize
-          onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
+          onSubmit={handleEditSubmit}
         >
           {({ values, errors, touched, handleChange }) => (
             <Form>
               <DialogContent dividers>
                 <TextField
                   fullWidth
-                  id="edit_category"
                   name="name"
                   label="Category"
                   variant="standard"
@@ -417,32 +342,27 @@ const Category = () => {
                   helperText={touched.name && errors.name}
                   sx={{ mb: 3 }}
                 />
-
-                {/* Group Select */}
                 <TextField
                   select
                   fullWidth
-                  id="edit_group_id"
                   name="group_id"
                   label="Group"
                   variant="standard"
-                  value={values.group_id ?? ""}
+                  value={values.group_id}
                   onChange={handleChange}
                   error={touched.group_id && Boolean(errors.group_id)}
                   helperText={touched.group_id && errors.group_id}
-                  sx={{ mb: 3 }}
                 >
                   {groups.map((group) => (
-                    // MenuItem values must also be strings
                     <MenuItem key={group.id} value={String(group.id)}>
                       {group.name}
                     </MenuItem>
                   ))}
                 </TextField>
               </DialogContent>
-              <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleEditClose}>
-                  Close
+              <DialogActions>
+                <Button onClick={handleCloseEdit} color="error">
+                  Cancel
                 </Button>
                 <Button type="submit" variant="contained">
                   Save Changes
@@ -452,7 +372,7 @@ const Category = () => {
           )}
         </Formik>
       </BootstrapDialog>
-    </ErrorBoundary>
+    </Grid>
   );
 };
 

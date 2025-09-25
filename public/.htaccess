@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Redirect /login to /
+  RewriteRule ^login$ / [R=301,L]
+
+  # Don’t rewrite files or directories that actually exist
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+
+  # Redirect everything else to index.html (for React Router)
+  RewriteRule ^ index.html [L]
+</IfModule>
