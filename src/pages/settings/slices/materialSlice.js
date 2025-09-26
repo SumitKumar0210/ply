@@ -14,14 +14,10 @@ export const fetchMaterials = createAsyncThunk(
 export const addMaterial = createAsyncThunk(
   "material/add",
   async (newData, { rejectWithValue }) => {
+    // console.log("sendData:", JSON.stringify(newData, null, 2));
+
     try {
-      const formData = new FormData();
-      Object.keys(newData).forEach((key) => {
-        formData.append(key, newData[key]);
-      });
-      const res = await api.post("admin/material/store", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await api.post("admin/material/store", newData, );
       return res.data.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || "Add failed");
@@ -29,16 +25,14 @@ export const addMaterial = createAsyncThunk(
   }
 );
 
+
 // Update material
 export const updateMaterial = createAsyncThunk(
   "material/update",
-  async ({ id, ...updated }, { rejectWithValue }) => {
+  async ({ updated }, { rejectWithValue }) => {
     try {
-      const formData = new FormData();
-      Object.keys(updated).forEach((key) => formData.append(key, updated[key]));
-      const res = await api.post(`admin/material/update/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      
+      const res = await api.post(`admin/material/update/${updated.id}`, updated,);
       return res.data.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || "Update failed");
@@ -48,9 +42,9 @@ export const updateMaterial = createAsyncThunk(
 
 // ✅ Status update
 export const statusUpdate = createAsyncThunk(
-  "branch/statusUpdate",
+  "material/update",
   async (updated) => {
-    const res = await api.post("admin/branch/status-update", {
+    const res = await api.post("admin/material/status-update", {
       id: updated.id,
       status: updated.status,
     });

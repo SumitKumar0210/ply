@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
 
 // ✅ Thunks
-export const fetchCategories = createAsyncThunk('group/fetchAll', async () => {
+export const fetchCategories = createAsyncThunk('category/fetchAll', async () => {
   const res = await api.get("admin/category/get-data");
   // console.log(res.data.data)
   return res.data.data;

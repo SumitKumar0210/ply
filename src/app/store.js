@@ -9,6 +9,7 @@ import gradeReducer from '../pages/settings/slices/gradeSlice';
 import branchReducer from '../pages/settings/slices/branchSlice';
 import vendorReducer from '../pages/settings/slices/vendorSlice';
 import materialReducer from '../pages/settings/slices/materialSlice';
+import machineReducer from '../pages/settings/slices/machineSlice';
 
 export const store = configureStore({
     reducer : {
@@ -22,5 +23,6 @@ export const store = configureStore({
          branch: branchReducer,
          vendor: vendorReducer,
          material: materialReducer,
+         machine: machineReducer,
     }
 })
