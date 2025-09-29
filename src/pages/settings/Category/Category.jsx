@@ -52,7 +52,7 @@ const Category = () => {
   const tableContainerRef = useRef(null);
 
   // redux state
-  const { data: data = [], loading } = useSelector((state) => state.category);
+  const { data: data = []} = useSelector((state) => state.category);
   const { data: groups = [] } = useSelector((state) => state.group);
 
   // modal states
@@ -68,7 +68,7 @@ const Category = () => {
   // fetch initial data
   useEffect(() => {
     dispatch(fetchGroups());
-  }, [openAdd, openEdit, groups]);
+  }, [openAdd, openEdit]);
 
   // open modals
   const handleOpenAdd = () => setOpenAdd(true);

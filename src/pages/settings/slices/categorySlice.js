@@ -30,7 +30,7 @@ export const updateCategory = createAsyncThunk(
   async (updated, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/category/update/${updated.id}`, updated);
-      return updated;
+      return  res.data.data;
     } catch (error) {
       if (error.response && error.response.data) {
         return rejectWithValue(

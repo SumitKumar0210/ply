@@ -10,7 +10,7 @@ import branchReducer from '../pages/settings/slices/branchSlice';
 import vendorReducer from '../pages/settings/slices/vendorSlice';
 import materialReducer from '../pages/settings/slices/materialSlice';
 import machineReducer from '../pages/settings/slices/machineSlice';
-
+import productReducer from '../pages/settings/slices/productSlice';
 export const store = configureStore({
     reducer : {
          userType: userTypeReducer,
@@ -24,5 +24,6 @@ export const store = configureStore({
          vendor: vendorReducer,
          material: materialReducer,
          machine: machineReducer,
+         product: productReducer,
     }
 })

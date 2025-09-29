@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Typography,
   Grid,
@@ -31,9 +31,6 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 
-import { useDispatch, useSelector } from "react-redux";
-import { fetchProducts, addProduct, deleteProduct, updateProduct, statusUpdate } from "../slices/productSlice";
-import { fetchGroups } from "../slices/groupSlice";
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -44,32 +41,32 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 // Dummy Product Data
-// const data = [
-//   {
-//     name: "Product A",
-//     model: "MD-100",
-//     size: "20 x 20",
-//     color: "Red",
-//     hsn: "123456",
-//     rrp: "5000",
-//     type: "Electronics",
-//     dealer: "Dealer1",
-//     grade: "A",
-//     image: "https://placehold.co/400", // sample
-//   },
-//   {
-//     name: "Product B",
-//     model: "MD-200",
-//     size: "10 x 10",
-//     color: "Blue",
-//     hsn: "789012",
-//     rrp: "3000",
-//     type: "Hardware",
-//     dealer: "Dealer2",
-//     grade: "B",
-//     image: "https://placehold.co/400", // sample
-//   },
-// ];
+const data = [
+  {
+    name: "Product A",
+    model: "MD-100",
+    size: "20 x 20",
+    color: "Red",
+    hsn: "123456",
+    rrp: "5000",
+    type: "Electronics",
+    dealer: "Dealer1",
+    grade: "A",
+    image: "https://placehold.co/400", // sample
+  },
+  {
+    name: "Product B",
+    model: "MD-200",
+    size: "10 x 10",
+    color: "Blue",
+    hsn: "789012",
+    rrp: "3000",
+    type: "Hardware",
+    dealer: "Dealer2",
+    grade: "B",
+    image: "https://placehold.co/400", // sample
+  },
+];
 
 const Product = () => {
   // Validation Schema
@@ -83,7 +80,8 @@ const Product = () => {
       .typeError("RRP must be a number")
       .required("RRP is required"),
     type: Yup.string().required("Product Type is required"),
-    group: Yup.string().required("Group is required"),
+    dealer: Yup.string().required("Dealer is required"),
+    grade: Yup.string().required("Grade is required"),
     image: Yup.mixed()
       .required("Image is required")
       .test("fileType", "Only images are allowed", (value) =>
@@ -92,79 +90,13 @@ const Product = () => {
           : false
       ),
   });
- 
- const mediaUrl = import.meta.env.VITE_MEDIA_URL;
-   const dispatch = useDispatch();
-   const { data: data = [] } = useSelector((state) => state.product);
-   const { data: groups = [] } = useSelector((state) => state.group);
- 
-   const tableContainerRef = useRef(null);
-   const [open, setOpen] = useState(false);
-   const [editOpen, setEditOpen] = useState(false);
-   const [editData, setEditData] = useState(null);
-   const [file, setFile] = useState(null);
- 
- 
-   useEffect(() => {
-     dispatch(fetchProducts());
-   }, [dispatch]);
- 
-   useEffect(() => {
-     setFile(null);
-     dispatch(fetchGroups());
-   }, [open, editOpen]);
- 
-   const handleClickOpen = () => setOpen(true);
-   const handleClose = () => setOpen(false);
- 
-   
-   const handleFileChange = (e) => {
-     setFile(e.target.files[0]); 
-   };
-   
-   const handleAdd = async (values, resetForm) => {
-    console.log("form submitted")
-     try {
-       const formData = new FormData();
-       
-       // append other values
-       Object.keys(values).forEach((key) => {
-         if (values[key] !== null && values[key] !== undefined) {
-           formData.append(key, values[key]);
-         }
-       });
-       
-       // append file separately
-       if (file) {
-         formData.append("image", file);
-       }
-       
-       await dispatch(addProduct(formData)).unwrap();
-       
-       resetForm();
-       handleClose();
-     } catch (error) {
-       console.error("Error adding product:", error);
-     }
-   };
-   const handleEditOpen = (row) => {
-     setEditData(row);
-     setEditOpen(true);
-   };
-   
-   const handleEditClose = () => {
-     setEditOpen(false);
-     setEditData(null);
-   };
-   const handleEditSubmit = async (values, resetForm) => {
-     await dispatch(updateMaterial({ id: editData.id, ...values }));
-     resetForm();
-     handleEditClose();
-   };
- 
-   const handleDelete = (id) => {
-     dispatch(deleteMaterial(id));
-   };
+
+  const tableContainerRef = useRef(null);
+  const [open, setOpen] = useState(false);
+
+  const handleClickOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
   const columns = useMemo(
     () => [
         {
@@ -173,7 +105,7 @@ const Product = () => {
             size: 80,
             Cell: ({ row }) => (
                 <img
-                src={mediaUrl + row.original.image}
+                src={row.original.image}
                 alt={row.original.name}
                 style={{
                     width: "40px",
@@ -189,10 +121,11 @@ const Product = () => {
         { accessorKey: "model", header: "Model", size: 120 },
         { accessorKey: "size", header: "Size", size: 100 },
         { accessorKey: "color", header: "Color", size: 100 },
-        { accessorKey: "hsn_code", header: "HSN Code", size: 120 },
+        { accessorKey: "hsn", header: "HSN Code", size: 120 },
         { accessorKey: "rrp", header: "RRP", size: 100 },
-        { accessorKey: "product_type", header: "Product Type", size: 150 },
-        { accessorKey: "group_id", header: "Group", size: 100 },
+        { accessorKey: "type", header: "Product Type", size: 150 },
+        { accessorKey: "dealer", header: "Dealer", size: 150 },
+        { accessorKey: "grade", header: "Grade", size: 100 },
         {
             id: "actions",
             header: "Actions",
@@ -368,20 +301,21 @@ const Product = () => {
             model: "",
             size: "",
             color: "",
-            hsn_code: "",
+            hsn: "",
             rrp: "",
-            product_type: "",
-            group_id: "",
-            image: null,
+            type: "",
+            dealer: "",
+            grade: "",
+            image: "",
           }}
           validationSchema={validationSchema}
-            onSubmit={async (values, { resetForm, setSubmitting }) => {
-              await handleAdd(values); 
-              resetForm();             
-              setSubmitting(false);    
-            }}
+          onSubmit={(values, { setSubmitting }) => {
+            console.log("Form Submitted:", values);
+            setSubmitting(false);
+            handleClose();
+          }}
         >
-          {({ values, errors, touched, handleChange, setFieldValue  }) => (
+          {({ values, errors, touched, handleChange, setFieldValue }) => (
             <Form>
               <DialogContent dividers>
                 <Grid container spacing={2}>
@@ -449,14 +383,14 @@ const Product = () => {
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       fullWidth
-                      id="hsn_code"
-                      name="hsn_code"
+                      id="hsn"
+                      name="hsn"
                       label="HSN Code"
                       variant="standard"
-                      value={values.hsn_code}
+                      value={values.hsn}
                       onChange={handleChange}
-                      error={touched.hsn_code && Boolean(errors.hsn_code)}
-                      helperText={touched.hsn_code && errors.hsn_code}
+                      error={touched.hsn && Boolean(errors.hsn)}
+                      helperText={touched.hsn && errors.hsn}
                     />
                   </Grid>
 
@@ -481,41 +415,53 @@ const Product = () => {
                     <TextField
                       select
                       fullWidth
-                      id="product_type"
-                      name="product_type"
+                      id="type"
+                      name="type"
                       label="Product Type"
                       variant="standard"
-                      value={values.product_type}
+                      value={values.type}
                       onChange={handleChange}
-                      error={touched.product_type && Boolean(errors.product_type)}
-                      helperText={touched.product_type && errors.product_type}
+                      error={touched.type && Boolean(errors.type)}
+                      helperText={touched.type && errors.type}
                     >
                       <MenuItem value="Electronics">Electronics</MenuItem>
                       <MenuItem value="Hardware">Hardware</MenuItem>
                       <MenuItem value="Software">Software</MenuItem>
                     </TextField>
                   </Grid>
-                  
 
-                  {/* Group */}
+                  {/* Dealer */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      id="dealer"
+                      name="dealer"
+                      label="Dealer"
+                      variant="standard"
+                      value={values.dealer}
+                      onChange={handleChange}
+                      error={touched.dealer && Boolean(errors.dealer)}
+                      helperText={touched.dealer && errors.dealer}
+                    />
+                  </Grid>
+
+                  {/* Grade */}
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       select
                       fullWidth
-                      id="group"
-                      name="group_id"
-                      label="Group"
+                      id="grade"
+                      name="grade"
+                      label="Grade"
                       variant="standard"
-                      value={values.group_id}
+                      value={values.grade}
                       onChange={handleChange}
-                      error={touched.group_id && Boolean(errors.group_id)}
-                      helperText={touched.group_id && errors.group_id}
+                      error={touched.grade && Boolean(errors.grade)}
+                      helperText={touched.grade && errors.grade}
                     >
-                      {groups.map((group) => (
-                        <MenuItem key={group.id} value={group.id}>
-                          {group.name}
-                        </MenuItem>
-                      ))}
+                      <MenuItem value="A">A</MenuItem>
+                      <MenuItem value="B">B</MenuItem>
+                      <MenuItem value="C">C</MenuItem>
                     </TextField>
                   </Grid>
 
@@ -539,7 +485,6 @@ const Product = () => {
                             onChange={(event) => {
                               const file = event.currentTarget.files[0];
                               setFieldValue("image", file);
-                              handleFileChange && handleFileChange(file);
                             }}
                           />
                         </Button>

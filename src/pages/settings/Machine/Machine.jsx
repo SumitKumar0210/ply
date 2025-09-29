@@ -9,6 +9,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
+import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -38,6 +39,7 @@ import {
   fetchMachines,
   deleteMachine,
   updateMachine,
+  statusUpdate
 } from "../slices/machineSlice";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -47,12 +49,28 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 
 const validationSchema = Yup.object({
   name: Yup.string().required("Machine Name is required"),
-  runHours: Yup.number()
+
+  run_hours_at_service: Yup.number()
     .typeError("Enter valid number of hours")
-    .required("Run Hours are required"),
-  lastMaintenance: Yup.date().required("Last Maintenance Date is required"),
+    .required("Run Hours at Service are required"),
+
+  last_maintenance_date: Yup.date()
+    .typeError("Enter a valid date")
+    .required("Last Maintenance Date is required"),
+
+  cycle_days: Yup.number()
+    .typeError("Enter valid number of days")
+    .required("Cycle Days are required"),
+
+  cycle_month: Yup.number()
+    .typeError("Enter valid number of months")
+    .required("Cycle Month is required"),
+
   remarks: Yup.string().required("Remarks are required"),
+
+  message: Yup.string().required("Message is required"),
 });
+
 
 const Machine = () => {
   const dispatch = useDispatch();
@@ -103,9 +121,25 @@ const Machine = () => {
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "Name" },
-      { accessorKey: "runHours", header: "Run sdfs" },
-      { accessorKey: "lastMaintenance", header: "Last Maintenance Date" },
+      { accessorKey: "run_hours_at_service", header: "Run Hours at Service" },
+      { accessorKey: "last_maintenance_date", header: "Last Maintenance Date" },
+      { accessorKey: "cycle_days", header: "Cycle Days" },
+      { accessorKey: "cycle_month", header: "Cycle Month" },
       { accessorKey: "remarks", header: "Remarks" },
+      { accessorKey: "message", header: "Message" },
+      {
+        accessorKey: "status",
+        header: "Status",
+        Cell: ({ row }) => (
+          <CustomSwitch
+            checked={!!row.original.status}
+            onChange={(e) => {
+              const newStatus = e.target.checked ? 1 : 0;
+              dispatch(statusUpdate({ ...row.original, status: newStatus }));
+            }}
+          />
+        ),
+      },
       {
         id: "actions",
         header: "Actions",
@@ -266,66 +300,128 @@ const Machine = () => {
           {({ values, errors, touched, handleChange }) => (
             <Form>
               <DialogContent dividers>
-                <TextField
-                  fullWidth
-                  id="name"
-                  name="name"
-                  label="Name"
-                  variant="standard"
-                  value={values.name}
-                  onChange={handleChange}
-                  error={touched.name && Boolean(errors.name)}
-                  helperText={touched.name && errors.name}
-                  sx={{ mb: 3 }}
-                />
-                <TextField
-                  fullWidth
-                  id="runHours"
-                  name="runHours"
-                  label="Run Hours"
-                  variant="standard"
-                  value={values.runHours}
-                  onChange={handleChange}
-                  error={touched.runHours && Boolean(errors.runHours)}
-                  helperText={touched.runHours && errors.runHours}
-                  sx={{ mb: 3 }}
-                />
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="Last Maintenance Date"
-                    value={values.lastMaintenance ? dayjs(values.lastMaintenance) : null}
-                    onChange={(newValue) =>
-                      handleChange({
-                        target: {
-                          name: "lastMaintenance",
-                          value: newValue ? newValue.format("YYYY-MM-DD") : "",
-                        },
-                      })
-                    }
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        variant: "standard",
-                        error: touched.lastMaintenance && Boolean(errors.lastMaintenance),
-                        helperText: touched.lastMaintenance && errors.lastMaintenance,
-                        sx: { mb: 3 },
-                      },
-                    }}
-                  />
-                </LocalizationProvider>
-                <TextField
-                  fullWidth
-                  id="remarks"
-                  name="remarks"
-                  label="Remarks"
-                  variant="standard"
-                  value={values.remarks}
-                  onChange={handleChange}
-                  error={touched.remarks && Boolean(errors.remarks)}
-                  helperText={touched.remarks && errors.remarks}
-                  sx={{ mb: 3 }}
-                />
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    {/* Name */}
+                    <TextField
+                      fullWidth
+                      id="name"
+                      name="name"
+                      label="Name"
+                      variant="standard"
+                      value={values.name}
+                      onChange={handleChange}
+                      error={touched.name && Boolean(errors.name)}
+                      helperText={touched.name && errors.name}
+                      sx={{ mb: 3 }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    {/* Run Hours at Service */}
+                    <TextField
+                      fullWidth
+                      id="run_hours_at_service"
+                      name="run_hours_at_service"
+                      label="Run Hours at Service"
+                      variant="standard"
+                      value={values.run_hours_at_service}
+                      onChange={handleChange}
+                      error={touched.run_hours_at_service && Boolean(errors.run_hours_at_service)}
+                      helperText={touched.run_hours_at_service && errors.run_hours_at_service}
+                      sx={{ mb: 3 }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    {/* Last Maintenance Date */}
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker
+                        label="Last Maintenance Date"
+                        value={values.last_maintenance_date ? dayjs(values.last_maintenance_date) : null}
+                        onChange={(newValue) =>
+                          handleChange({
+                            target: {
+                              name: "last_maintenance_date",
+                              value: newValue ? newValue.format("YYYY-MM-DD") : "",
+                            },
+                          })
+                        }
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            variant: "standard",
+                            error: touched.last_maintenance_date && Boolean(errors.last_maintenance_date),
+                            helperText: touched.last_maintenance_date && errors.last_maintenance_date,
+                            sx: { mb: 3 },
+                          },
+                        }}
+                      />
+                    </LocalizationProvider>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    {/* Cycle Days */}
+                    <TextField
+                      fullWidth
+                      id="cycle_days"
+                      name="cycle_days"
+                      label="Cycle Days"
+                      variant="standard"
+                      value={values.cycle_days}
+                      onChange={handleChange}
+                      error={touched.cycle_days && Boolean(errors.cycle_days)}
+                      helperText={touched.cycle_days && errors.cycle_days}
+                      sx={{ mb: 3 }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    {/* Cycle Month */}
+                    <TextField
+                      fullWidth
+                      id="cycle_month"
+                      name="cycle_month"
+                      label="Cycle Month"
+                      variant="standard"
+                      value={values.cycle_month}
+                      onChange={handleChange}
+                      error={touched.cycle_month && Boolean(errors.cycle_month)}
+                      helperText={touched.cycle_month && errors.cycle_month}
+                      sx={{ mb: 3 }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    {/* Remarks */}
+                    <TextField
+                      fullWidth
+                      id="remarks"
+                      name="remarks"
+                      label="Remarks"
+                      variant="standard"
+                      multiline
+                      minRows={3}
+                      value={values.remarks}
+                      onChange={handleChange}
+                      error={touched.remarks && Boolean(errors.remarks)}
+                      helperText={touched.remarks && errors.remarks}
+                      sx={{ mb: 3 }}
+                    />
+                  </Grid>
+                    {/* Message */}
+                    <TextField
+                      fullWidth
+                      id="message"
+                      name="message"
+                      label="Message"
+                      variant="standard"
+                      multiline
+                      minRows={2}
+                      value={values.message}
+                      onChange={handleChange}
+                      error={touched.message && Boolean(errors.message)}
+                      helperText={touched.message && errors.message}
+                      sx={{ mb: 3 }}
+                    />
+                </Grid>
               </DialogContent>
+
               <DialogActions sx={{ gap: 1, mb: 1 }}>
                 <Button variant="outlined" color="error" onClick={handleClose}>
                   Close
@@ -335,6 +431,7 @@ const Machine = () => {
                 </Button>
               </DialogActions>
             </Form>
+
           )}
         </Formik>
       </BootstrapDialog>
@@ -357,81 +454,155 @@ const Machine = () => {
         {editData && (
           <Formik
             initialValues={{
-              name: editData.name || "",
-              runHours: editData.runHours || "",
-              lastMaintenance: editData.lastMaintenance || "",
-              remarks: editData.remarks || "",
+              name: editData?.name || "",
+              run_hours_at_service: editData?.run_hours_at_service || "",
+              last_maintenance_date: editData?.last_maintenance_date || "",
+              cycle_days: editData?.cycle_days || "",
+              cycle_month: editData?.cycle_month || "",
+              remarks: editData?.remarks || "",
+              message: editData?.message || "",
             }}
             validationSchema={validationSchema}
             onSubmit={handleEditSubmit}
           >
-            {({ values, errors, touched, handleChange }) => (
+            {({ values, errors, touched, handleChange, resetForm  }) => (
               <Form>
                 <DialogContent dividers>
-                  <TextField
-                    fullWidth
-                    id="name"
-                    name="name"
-                    label="Name"
-                    variant="standard"
-                    value={values.name}
-                    onChange={handleChange}
-                    error={touched.name && Boolean(errors.name)}
-                    helperText={touched.name && errors.name}
-                    sx={{ mb: 3 }}
-                  />
-                  <TextField
-                    fullWidth
-                    id="runHours"
-                    name="runHours"
-                    label="Run Hours"
-                    variant="standard"
-                    value={values.runHours}
-                    onChange={handleChange}
-                    error={touched.runHours && Boolean(errors.runHours)}
-                    helperText={touched.runHours && errors.runHours}
-                    sx={{ mb: 3 }}
-                  />
-                  <LocalizationProvider dateAdapter={AdapterDayjs}>
-                    <DatePicker
-                      label="Last Maintenance Date"
-                      value={values.lastMaintenance ? dayjs(values.lastMaintenance) : null}
-                      onChange={(newValue) =>
-                        handleChange({
-                          target: {
-                            name: "lastMaintenance",
-                            value: newValue ? newValue.format("YYYY-MM-DD") : "",
-                          },
-                        })
-                      }
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          variant: "standard",
-                          error: touched.lastMaintenance && Boolean(errors.lastMaintenance),
-                          helperText: touched.lastMaintenance && errors.lastMaintenance,
-                          sx: { mb: 3 },
-                        },
-                      }}
+                  <Grid container spacing={2}>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      {/* Name */}
+                      <TextField
+                        fullWidth
+                        id="name"
+                        name="name"
+                        label="Name"
+                        variant="standard"
+                        value={values.name}
+                        onChange={handleChange}
+                        error={touched.name && Boolean(errors.name)}
+                        helperText={touched.name && errors.name}
+                        sx={{ mb: 3 }}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      {/* Run Hours at Service */}
+                      <TextField
+                        fullWidth
+                        id="run_hours_at_service"
+                        name="run_hours_at_service"
+                        label="Run Hours at Service"
+                        variant="standard"
+                        value={values.run_hours_at_service}
+                        onChange={handleChange}
+                        error={touched.run_hours_at_service && Boolean(errors.run_hours_at_service)}
+                        helperText={touched.run_hours_at_service && errors.run_hours_at_service}
+                        sx={{ mb: 3 }}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      {/* Last Maintenance Date */}
+                      <LocalizationProvider dateAdapter={AdapterDayjs}>
+                        <DatePicker
+                          label="Last Maintenance Date"
+                          value={
+                            values.last_maintenance_date
+                              ? dayjs(values.last_maintenance_date)
+                              : null
+                          }
+                          onChange={(newValue) =>
+                            handleChange({
+                              target: {
+                                name: "last_maintenance_date",
+                                value: newValue ? newValue.format("YYYY-MM-DD") : "",
+                              },
+                            })
+                          }
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              variant: "standard",
+                              error:
+                                touched.last_maintenance_date &&
+                                Boolean(errors.last_maintenance_date),
+                              helperText:
+                                touched.last_maintenance_date && errors.last_maintenance_date,
+                              sx: { mb: 3 },
+                            },
+                          }}
+                        />
+                      </LocalizationProvider>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      {/* Cycle Days */}
+                      <TextField
+                        fullWidth
+                        id="cycle_days"
+                        name="cycle_days"
+                        label="Cycle Days"
+                        variant="standard"
+                        value={values.cycle_days}
+                        onChange={handleChange}
+                        error={touched.cycle_days && Boolean(errors.cycle_days)}
+                        helperText={touched.cycle_days && errors.cycle_days}
+                        sx={{ mb: 3 }}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      {/* Cycle Month */}
+                      <TextField
+                        fullWidth
+                        id="cycle_month"
+                        name="cycle_month"
+                        label="Cycle Month"
+                        variant="standard"
+                        value={values.cycle_month}
+                        onChange={handleChange}
+                        error={touched.cycle_month && Boolean(errors.cycle_month)}
+                        helperText={touched.cycle_month && errors.cycle_month}
+                        sx={{ mb: 3 }}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      {/* Remarks */}
+                      <TextField
+                        fullWidth
+                        id="remarks"
+                        name="remarks"
+                        label="Remarks"
+                        variant="standard"
+                        multiline
+                        minRows={2}
+                        value={values.remarks}
+                        onChange={handleChange}
+                        error={touched.remarks && Boolean(errors.remarks)}
+                        helperText={touched.remarks && errors.remarks}
+                        sx={{ mb: 3 }}
+                      />
+                    </Grid>
+                    {/* Message */}
+                    <TextField
+                      fullWidth
+                      id="message"
+                      name="message"
+                      label="Message"
+                      variant="standard"
+                      multiline
+                      minRows={2}
+                      value={values.message}
+                      onChange={handleChange}
+                      error={touched.message && Boolean(errors.message)}
+                      helperText={touched.message && errors.message}
+                      sx={{ mb: 3 }}
                     />
-                  </LocalizationProvider>
-                  <TextField
-                    fullWidth
-                    id="remarks"
-                    name="remarks"
-                    label="Remarks"
-                    variant="standard"
-                    value={values.remarks}
-                    onChange={handleChange}
-                    error={touched.remarks && Boolean(errors.remarks)}
-                    helperText={touched.remarks && errors.remarks}
-                    sx={{ mb: 3 }}
-                  />
+                  </Grid>
                 </DialogContent>
+
+                {/* Actions */}
                 <DialogActions sx={{ gap: 1, mb: 1 }}>
                   <Button variant="outlined" color="error" onClick={handleEditClose}>
                     Close
                   </Button>
+                  
                   <Button type="submit" variant="contained" color="primary">
                     Update
                   </Button>
