@@ -31,7 +31,8 @@ export const updateProduct = createAsyncThunk(
   "product/update",
   async ({ updated }, { rejectWithValue }) => {
     try {
-      
+      console.log('kya')
+      console.log(JSON.stringify(updated))
       const res = await api.post(`admin/product/update/${updated.id}`, updated,);
       return res.data.data;
     } catch (error) {

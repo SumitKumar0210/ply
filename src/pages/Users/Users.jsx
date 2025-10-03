@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -33,6 +33,9 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import Profile from "../../assets/images/profile.jpg";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
+
+import { useDispatch, useSelector } from "react-redux";
+import { addUser, fetchUsers, updateUser, statusUpdate, deleteUser } from "./slices/userSlice";
 
 // ✅ Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -122,10 +125,82 @@ const users = [
 ];
 
 const Users = () => {
-  const [openAdd, setOpenAdd] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
-  const [tableData, setTableData] = useState(users);
+  const [open, setOpen] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    id: null,
+    name: "",
+    loading: false,
+  });
+  const [tableData, setTableData] = useState(customersList);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
   const tableContainerRef = useRef(null);
+
+
+  const { data: userData = [], loading, error } = useSelector((state) => state.user);
+  const { data: states = []} = useSelector((state) => state.state);
+
+  const dispatch = useDispatch();
+  
+  
+  useEffect(() => {
+    dispatch(fetchCustomers());
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchStates());
+  }, [open, editOpen]);
+
+  const handleAdd = async (values, resetForm) => {
+    try {
+      await dispatch(addCustomer(values));
+      resetForm();
+      setOpen(false);
+    } catch (error) {
+      console.error("Add customer failed:", error);
+    }
+  };
+
+  const handleDeleteClick = (row) => {
+    setDeleteDialog({
+      open: true,
+      id: row.id,
+      name: row.name, // 👈 Pass customer name here
+      loading: false,
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog.id) return;
+
+    setDeleteDialog((prev) => ({ ...prev, loading: true }));
+
+    try {
+      await dispatch(deleteCustomer(deleteDialog.id)).unwrap(); 
+      // ✅ If API returns success, close modal
+    } catch (error) {
+      console.error("Delete failed:", error);
+      // show snackbar/toast error
+    } finally {
+      setDeleteDialog({ open: false, id: null, name: "", loading: false });
+    }
+  };
+  
+  const handleUpdate = (row) => {
+    setEditData(row);
+    setEditOpen(true);
+  };
+  const handleEditClose = () => {
+    setEditOpen(false);
+    setEditData(null);
+  };
+  const handleEditSubmit = async (values, resetForm) => {
+    
+    await dispatch(updateCustomer({updated :{ id: editData.id, ...values }}));
+    resetForm();
+    handleEditClose();
+  };
 
   // ✅ Table columns
   const columns = useMemo(

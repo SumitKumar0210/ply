@@ -11,6 +11,9 @@ import vendorReducer from '../pages/settings/slices/vendorSlice';
 import materialReducer from '../pages/settings/slices/materialSlice';
 import machineReducer from '../pages/settings/slices/machineSlice';
 import productReducer from '../pages/settings/slices/productSlice';
+import stateReducer from '../pages/settings/slices/stateSlice';
+import customerReducer from '../pages/users/slices/customerSlice';
+import userReducer from '../pages/users/slices/userSlice';
 export const store = configureStore({
     reducer : {
          userType: userTypeReducer,
@@ -25,5 +28,8 @@ export const store = configureStore({
          material: materialReducer,
          machine: machineReducer,
          product: productReducer,
+         customer: customerReducer,
+         state: stateReducer,
+         user: userReducer,
     }
 })

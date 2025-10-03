@@ -11,6 +11,7 @@ import {
   Tooltip,
   MenuItem,
 } from "@mui/material";
+import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -78,18 +79,37 @@ const Product = () => {
     model: Yup.string().required("Model is required"),
     size: Yup.string().required("Size is required"),
     color: Yup.string().required("Color is required"),
-    hsn: Yup.string().required("HSN Code is required"),
+    hsn_code: Yup.string().required("HSN Code is required"),
     rrp: Yup.number()
       .typeError("RRP must be a number")
       .required("RRP is required"),
-    type: Yup.string().required("Product Type is required"),
-    group: Yup.string().required("Group is required"),
+    product_type: Yup.string().required("Product Type is required"),
+    group_id: Yup.string().required("Group is required"),
     image: Yup.mixed()
       .required("Image is required")
       .test("fileType", "Only images are allowed", (value) =>
         value
           ? ["image/jpeg", "image/png", "image/jpg"].includes(value.type)
           : false
+      ),
+  });
+
+  // Validation Schema (for Edit → image optional)
+  const editValidationSchema = Yup.object({
+    name: Yup.string().required("Name is required"),
+    model: Yup.string().required("Model is required"),
+    size: Yup.string().required("Size is required"),
+    color: Yup.string().required("Color is required"),
+    hsn_code: Yup.string().required("HSN Code is required"),
+    rrp: Yup.number()
+      .typeError("RRP must be a number")
+      .required("RRP is required"),
+    product_type: Yup.string().required("Product Type is required"),
+    group_id: Yup.string().required("Group is required"),
+    image: Yup.mixed()
+      .nullable() // 👈 allows null or undefined
+      .test("fileType", "Only images are allowed", (value) =>
+        !value || ["image/jpeg", "image/png", "image/jpg"].includes(value.type)
       ),
   });
  
@@ -103,6 +123,8 @@ const Product = () => {
    const [editOpen, setEditOpen] = useState(false);
    const [editData, setEditData] = useState(null);
    const [file, setFile] = useState(null);
+   const [previewUrl, setPreviewUrl] = useState(null);
+
  
  
    useEffect(() => {
@@ -147,9 +169,19 @@ const Product = () => {
        console.error("Error adding product:", error);
      }
    };
+
+   
    const handleEditOpen = (row) => {
      setEditData(row);
+     setPreviewUrl('');
+     if (row.image instanceof File) {
+      const objectUrl = URL.createObjectURL(row.image);
+        setPreviewUrl(objectUrl);
+      } else if (row.image) {
+        setPreviewUrl(mediaUrl + row.image);
+      }
      setEditOpen(true);
+     
    };
    
    const handleEditClose = () => {
@@ -157,13 +189,14 @@ const Product = () => {
      setEditData(null);
    };
    const handleEditSubmit = async (values, resetForm) => {
-     await dispatch(updateMaterial({ id: editData.id, ...values }));
+    console.log('pass')
+     await dispatch(updateProduct({updated :{ id: editData.id, ...values }}));
      resetForm();
      handleEditClose();
    };
  
    const handleDelete = (id) => {
-     dispatch(deleteMaterial(id));
+     dispatch(deleteProduct(id));
    };
   const columns = useMemo(
     () => [
@@ -192,7 +225,22 @@ const Product = () => {
         { accessorKey: "hsn_code", header: "HSN Code", size: 120 },
         { accessorKey: "rrp", header: "RRP", size: 100 },
         { accessorKey: "product_type", header: "Product Type", size: 150 },
-        { accessorKey: "group_id", header: "Group", size: 100 },
+        { accessorKey: "group_id", header: "Group", size: 100,  Cell: ({ row }) => row.original.group?.name || row.original.group_id, },
+        {
+                accessorKey: "status",
+                header: "Status",
+                enableSorting: false,
+                enableColumnFilter: false,
+                Cell: ({ row }) => (
+                  <CustomSwitch
+                    checked={!!row.original.status}
+                    onChange={(e) => {
+                      const newStatus = e.target.checked ? 1 : 0;
+                      dispatch(statusUpdate({ ...row.original, status: newStatus }));
+                    }}
+                  />
+                ),
+              },
         {
             id: "actions",
             header: "Actions",
@@ -205,7 +253,7 @@ const Product = () => {
                 <Tooltip title="Edit">
                 <IconButton
                     color="primary"
-                    onClick={() => alert(`Edit ${row.original.name}`)}
+                    onClick={() => handleEditOpen(row.original)}
                 >
                     <BiSolidEditAlt size={16} />
                 </IconButton>
@@ -213,7 +261,7 @@ const Product = () => {
                 <Tooltip title="Delete">
                 <IconButton
                     color="error"
-                    onClick={() => alert(`Delete ${row.original.name}`)}
+                    onClick={() => handleDelete(row.original.id)}
                 >
                     <RiDeleteBinLine size={16} />
                 </IconButton>
@@ -372,13 +420,10 @@ const Product = () => {
             rrp: "",
             product_type: "",
             group_id: "",
-            image: null,
           }}
           validationSchema={validationSchema}
-            onSubmit={async (values, { resetForm, setSubmitting }) => {
-              await handleAdd(values); 
-              resetForm();             
-              setSubmitting(false);    
+            onSubmit={ (values) => {
+               handleAdd(values)   
             }}
         >
           {({ values, errors, touched, handleChange, setFieldValue  }) => (
@@ -502,7 +547,7 @@ const Product = () => {
                     <TextField
                       select
                       fullWidth
-                      id="group"
+                      id="group_id"
                       name="group_id"
                       label="Group"
                       variant="standard"
@@ -520,7 +565,7 @@ const Product = () => {
                   </Grid>
 
                   {/* Image Upload */}
-                  <Grid size={{ xs: 12, md: 6 }} sx={{mb:3}}>
+                 <Grid size={{ xs: 12, md: 6 }} sx={{mb:3}}>
                     <Grid container spacing={1} alignItems="center">
                       <Grid size={{ xs: 8 }}>
                         <Button
@@ -574,6 +619,243 @@ const Product = () => {
 
               <DialogActions sx={{ gap: 1, mb: 1 }}>
                 <Button variant="outlined" color="error" onClick={handleClose}>
+                  Close
+                </Button>
+                <Button type="submit" variant="contained" color="primary">
+                  Submit
+                </Button>
+              </DialogActions>
+            </Form>
+          )}
+        </Formik>
+      </BootstrapDialog>
+
+      {/* Edit  Dialog */}
+      <BootstrapDialog open={editOpen} onClose={handleEditClose} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit Product</DialogTitle>
+        <IconButton
+          aria-label="close"
+          onClick={handleEditClose}
+          sx={(theme) => ({
+            position: "absolute",
+            right: 8,
+            top: 8,
+            color: theme.palette.grey[500],
+          })}
+        >
+          <CloseIcon />
+        </IconButton>
+
+        <Formik
+          initialValues={{
+            name: editData?.name || "",
+            model: editData?.model || "",
+            size: editData?.size || "",
+            color: editData?.color || "",
+            hsn_code: editData?.hsn_code || "",
+            rrp: editData?.rrp || "",
+            product_type: editData?.product_type || "",
+            group_id: editData?.group_id || "",
+          }}
+          validationSchema={editValidationSchema}
+            onSubmit={ (values, { resetForm }) => {
+               handleEditSubmit(values, resetForm)
+                  
+            }}
+        >
+          {({ values, errors, touched, handleChange, setFieldValue  }) => (
+            <Form>
+              <DialogContent dividers>
+                <Grid container spacing={2}>
+                  {/* Name */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      id="name"
+                      name="name"
+                      label="Name"
+                      variant="standard"
+                      value={values.name}
+                      onChange={handleChange}
+                      error={touched.name && Boolean(errors.name)}
+                      helperText={touched.name && errors.name}
+                    />
+                  </Grid>
+
+                  {/* Model */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      id="model"
+                      name="model"
+                      label="Model"
+                      variant="standard"
+                      value={values.model}
+                      onChange={handleChange}
+                      error={touched.model && Boolean(errors.model)}
+                      helperText={touched.model && errors.model}
+                    />
+                  </Grid>
+
+                  {/* Size */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      id="size"
+                      name="size"
+                      label="Size"
+                      variant="standard"
+                      value={values.size}
+                      onChange={handleChange}
+                      error={touched.size && Boolean(errors.size)}
+                      helperText={touched.size && errors.size}
+                    />
+                  </Grid>
+
+                  {/* Color */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      id="color"
+                      name="color"
+                      label="Color"
+                      variant="standard"
+                      value={values.color}
+                      onChange={handleChange}
+                      error={touched.color && Boolean(errors.color)}
+                      helperText={touched.color && errors.color}
+                    />
+                  </Grid>
+
+                  {/* HSN Code */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      id="hsn_code"
+                      name="hsn_code"
+                      label="HSN Code"
+                      variant="standard"
+                      value={values.hsn_code}
+                      onChange={handleChange}
+                      error={touched.hsn_code && Boolean(errors.hsn_code)}
+                      helperText={touched.hsn_code && errors.hsn_code}
+                    />
+                  </Grid>
+
+                  {/* RRP */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      id="rrp"
+                      name="rrp"
+                      label="RRP"
+                      type="number"
+                      variant="standard"
+                      value={values.rrp}
+                      onChange={handleChange}
+                      error={touched.rrp && Boolean(errors.rrp)}
+                      helperText={touched.rrp && errors.rrp}
+                    />
+                  </Grid>
+
+                  {/* Product Type */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      select
+                      fullWidth
+                      id="product_type"
+                      name="product_type"
+                      label="Product Type"
+                      variant="standard"
+                      value={values?.product_type}
+                      onChange={handleChange}
+                      error={touched.product_type && Boolean(errors.product_type)}
+                      helperText={touched.product_type && errors.product_type}
+                    >
+                      <MenuItem value="Electronics">Electronics</MenuItem>
+                      <MenuItem value="Hardware">Hardware</MenuItem>
+                      <MenuItem value="Software">Software</MenuItem>
+                    </TextField>
+                  </Grid>
+                  
+
+                  {/* Group */}
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      select
+                      fullWidth
+                      id="group_id"
+                      name="group_id"
+                      label="Group"
+                      variant="standard"
+                      value={values?.group_id}
+                      onChange={handleChange}
+                      error={touched.group_id && Boolean(errors.group_id)}
+                      helperText={touched.group_id && errors.group_id}
+                    >
+                      {groups.map((group) => (
+                        <MenuItem key={group.id} value={group.id}>
+                          {group.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+
+                  {/* Image Upload */}
+                 <Grid size={{ xs: 12, md: 6 }} sx={{mb:3}}>
+                    <Grid container spacing={1} alignItems="center">
+                      <Grid size={{ xs: 8 }}>
+                        <Button
+                          variant="contained"
+                          component="label"
+                          startIcon={<UploadFileIcon />}
+                          fullWidth
+                        >
+                          Upload Image
+                          <input
+                            hidden
+                            accept="image/*"
+                            type="file"
+                            id="image"
+                            name="image"
+                            onChange={(event) => {
+                              const file = event.currentTarget.files[0];
+                              setFieldValue("image", file);
+                              handleFileChange && handleFileChange(file);
+                            }}
+                          />
+                        </Button>
+                        {touched.image && errors.image && (
+                          <div
+                            style={{ color: "red", fontSize: "0.8rem" }}
+                          >
+                            {errors.image}
+                          </div>
+                        )}
+                      </Grid>
+                      <Grid size={{ xs: 4 }}>
+                        {previewUrl && (
+                          <img
+                            src={previewUrl}
+                            alt="Preview"
+                            onLoad={() => URL.revokeObjectURL(previewUrl)}
+                            style={{
+                              width: "45px",
+                              height: "45px",
+                              objectFit: "cover",
+                              borderRadius: "4px",
+                              border: "1px solid #ddd",
+                            }}
+                          />
+                        )}
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                </Grid>
+              </DialogContent>
+
+              <DialogActions sx={{ gap: 1, mb: 1 }}>
+                <Button variant="outlined" color="error" onClick={handleEditClose}>
                   Close
                 </Button>
                 <Button type="submit" variant="contained" color="primary">

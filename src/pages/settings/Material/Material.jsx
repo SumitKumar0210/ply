@@ -710,7 +710,7 @@ const Material = () => {
               image: null, 
             }}
             validationSchema={validationSchema}
-            onSubmit={(values) => handleEditSubmit(values)}
+            onSubmit={(values, { resetForm }) => handleEditSubmit(values,resetForm)}
           >
             {({ values, errors, touched, handleChange, setFieldValue }) => (
               <Form>
