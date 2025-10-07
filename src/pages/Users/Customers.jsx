@@ -32,7 +32,7 @@ import { BsCloudDownload } from "react-icons/bs";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 
 import { useDispatch, useSelector } from "react-redux";
-import { addCustomer, fetchCustomers, statusUpdate, updateCustomer, deleteCustomer } from "../users/slices/customerSlice";
+import { addCustomer, fetchCustomers, statusUpdate, updateCustomer, deleteCustomer } from "../Users/slices/customerSlice";
 import { fetchStates } from "../settings/slices/stateSlice";
 
 // ✅ Styled Dialog

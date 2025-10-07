@@ -8,6 +8,12 @@ export const fetchCategories = createAsyncThunk('category/fetchAll', async () =>
   return res.data.data;
 });
 
+
+export const fetchActiveCategories = createAsyncThunk('category/fetchAll', async () => {
+  const res = await api.get("admin/category/get-data?status=1");
+  return res.data.data;
+});
+
 export const addCategory = createAsyncThunk(
   'category/add',
   async (newData, { rejectWithValue }) => {

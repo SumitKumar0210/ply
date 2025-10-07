@@ -34,7 +34,7 @@ import * as Yup from "yup";
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProducts, addProduct, deleteProduct, updateProduct, statusUpdate } from "../slices/productSlice";
-import { fetchGroups } from "../slices/groupSlice";
+import { fetchActiveGroup } from "../slices/groupSlice";
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -122,8 +122,6 @@ const Product = () => {
    const [open, setOpen] = useState(false);
    const [editOpen, setEditOpen] = useState(false);
    const [editData, setEditData] = useState(null);
-   const [file, setFile] = useState(null);
-   const [previewUrl, setPreviewUrl] = useState(null);
 
  
  
@@ -132,36 +130,17 @@ const Product = () => {
    }, [dispatch]);
  
    useEffect(() => {
-     setFile(null);
-     dispatch(fetchGroups());
+     dispatch(fetchActiveGroup());
    }, [open, editOpen]);
  
    const handleClickOpen = () => setOpen(true);
    const handleClose = () => setOpen(false);
  
    
-   const handleFileChange = (e) => {
-     setFile(e.target.files[0]); 
-   };
-   
    const handleAdd = async (values, resetForm) => {
-    console.log("form submitted")
      try {
-       const formData = new FormData();
        
-       // append other values
-       Object.keys(values).forEach((key) => {
-         if (values[key] !== null && values[key] !== undefined) {
-           formData.append(key, values[key]);
-         }
-       });
-       
-       // append file separately
-       if (file) {
-         formData.append("image", file);
-       }
-       
-       await dispatch(addProduct(formData)).unwrap();
+       await dispatch(addProduct(values));
        
        resetForm();
        handleClose();
@@ -173,13 +152,6 @@ const Product = () => {
    
    const handleEditOpen = (row) => {
      setEditData(row);
-     setPreviewUrl('');
-     if (row.image instanceof File) {
-      const objectUrl = URL.createObjectURL(row.image);
-        setPreviewUrl(objectUrl);
-      } else if (row.image) {
-        setPreviewUrl(mediaUrl + row.image);
-      }
      setEditOpen(true);
      
    };
@@ -189,7 +161,6 @@ const Product = () => {
      setEditData(null);
    };
    const handleEditSubmit = async (values, resetForm) => {
-    console.log('pass')
      await dispatch(updateProduct({updated :{ id: editData.id, ...values }}));
      resetForm();
      handleEditClose();
@@ -584,7 +555,6 @@ const Product = () => {
                             onChange={(event) => {
                               const file = event.currentTarget.files[0];
                               setFieldValue("image", file);
-                              handleFileChange && handleFileChange(file);
                             }}
                           />
                         </Button>
@@ -821,7 +791,6 @@ const Product = () => {
                             onChange={(event) => {
                               const file = event.currentTarget.files[0];
                               setFieldValue("image", file);
-                              handleFileChange && handleFileChange(file);
                             }}
                           />
                         </Button>
@@ -833,21 +802,25 @@ const Product = () => {
                           </div>
                         )}
                       </Grid>
-                      <Grid size={{ xs: 4 }}>
-                        {previewUrl && (
-                          <img
-                            src={previewUrl}
-                            alt="Preview"
-                            onLoad={() => URL.revokeObjectURL(previewUrl)}
-                            style={{
-                              width: "45px",
-                              height: "45px",
-                              objectFit: "cover",
-                              borderRadius: "4px",
-                              border: "1px solid #ddd",
-                            }}
-                          />
-                        )}
+                      <Grid size={4}>
+                        <img
+                          src={ 
+                            values.image
+                              ? URL.createObjectURL(values.image)
+                              : `${mediaUrl}${editData?.image || ""}`
+                          }
+                          alt="Preview"
+                          style={{
+                            width: "45px",
+                            height: "45px",
+                            objectFit: "cover",
+                            borderRadius: "4px",
+                            border: "1px solid #ddd",
+                          }}
+                          onError={(e) => {
+                            e.target.src = Profile; // fallback
+                          }}
+                        />
                       </Grid>
                     </Grid>
                   </Grid>

@@ -31,7 +31,7 @@ import * as Yup from "yup";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 
 import {
-  fetchGroups,
+  fetchActiveGroup,
 } from "../slices/groupSlice";
 import {
   addCategory,
@@ -67,7 +67,7 @@ const Category = () => {
 
   // fetch initial data
   useEffect(() => {
-    dispatch(fetchGroups());
+    dispatch(fetchActiveGroup());
   }, [openAdd, openEdit]);
 
   // open modals

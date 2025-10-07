@@ -7,6 +7,8 @@ import { ThemeProvider, CssBaseline } from "@mui/material";
 import theme from "./theme";
 import { store } from './app/store.js';
 import { Provider } from 'react-redux';
+import { ToastContainer, toast, Bounce } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 createRoot(document.getElementById('root')).render(
   <Provider store={store}>
@@ -14,6 +16,7 @@ createRoot(document.getElementById('root')).render(
       <BrowserRouter>
           <CssBaseline />
           <App />
+          <ToastContainer />
       </BrowserRouter>
     </ThemeProvider>
   </Provider>

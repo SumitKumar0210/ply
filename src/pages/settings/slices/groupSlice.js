@@ -8,6 +8,12 @@ export const fetchGroups = createAsyncThunk('group/fetchAll', async () => {
   return res.data.data;
 });
 
+export const fetchActiveGroup = createAsyncThunk('group/fetchAll', async () => {
+  const res = await api.get("admin/group/get-data?status=1");
+  // console.log(res.data.data)
+  return res.data.data;
+});
+
 export const addGroup = createAsyncThunk(
   'group/add',
   async (newData, { rejectWithValue }) => {

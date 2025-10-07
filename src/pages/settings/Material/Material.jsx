@@ -36,9 +36,9 @@ import * as Yup from "yup";
 
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMaterials, addMaterial, deleteMaterial, updateMaterial, statusUpdate } from "../slices/materialSlice";
-import { fetchCategories } from "../slices/categorySlice";
-import { fetchGroups } from "../slices/groupSlice";
-import { fetchUnitOfMeasurements } from "../slices/unitOfMeasurementsSlice";
+import { fetchActiveCategories } from "../slices/categorySlice";
+import { fetchActiveGroup } from "../slices/groupSlice";
+import { fetchActiveUnitOfMeasurements } from "../slices/unitOfMeasurementsSlice";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialogContent-root': {
@@ -123,9 +123,9 @@ const Material = () => {
 
   useEffect(() => {
     setFile(null);
-    dispatch(fetchCategories());
-    dispatch(fetchGroups());
-    dispatch(fetchUnitOfMeasurements());
+    dispatch(fetchActiveCategories());
+    dispatch(fetchActiveGroup());
+    dispatch(fetchActiveUnitOfMeasurements());
   }, [open, editOpen]);
 
   const handleClickOpen = () => setOpen(true);
@@ -170,7 +170,8 @@ const Material = () => {
     setEditData(null);
   };
   const handleEditSubmit = async (values, resetForm) => {
-    await dispatch(updateMaterial({ id: editData.id, ...values }));
+    // console.log("sendData:", JSON.stringify(values, null, 2));
+    await dispatch(updateMaterial( { updated : { id: editData.id, ...values }} ));
     resetForm();
     handleEditClose();
   };
@@ -458,9 +459,9 @@ const Material = () => {
                             {uom.name}
                           </MenuItem>
                         ))}
-                        <MenuItem value="kg">Kg</MenuItem>
+                        {/* <MenuItem value="kg">Kg</MenuItem>
                         <MenuItem value="ltr">Litre</MenuItem>
-                        <MenuItem value="pcs">Pieces</MenuItem>
+                        <MenuItem value="pcs">Pieces</MenuItem> */}
                       </TextField>
                     </Grid>
 
@@ -514,8 +515,8 @@ const Material = () => {
                             {category.name}
                           </MenuItem>
                         ))}
-                        <MenuItem value="raw">Raw Material</MenuItem>
-                        <MenuItem value="finished">Finished Goods</MenuItem>
+                        {/* <MenuItem value="raw">Raw Material</MenuItem>
+                        <MenuItem value="finished">Finished Goods</MenuItem> */}
                       </TextField>
                     </Grid>
 
@@ -537,8 +538,8 @@ const Material = () => {
                             {group.name}
                           </MenuItem>
                         ))}
-                        <MenuItem value="group1">Group 1</MenuItem>
-                        <MenuItem value="group2">Group 2</MenuItem>
+                        {/* <MenuItem value="group1">Group 1</MenuItem>
+                        <MenuItem value="group2">Group 2</MenuItem> */}
                       </TextField>
                     </Grid>
 
@@ -750,9 +751,9 @@ const Material = () => {
                             {uom.name}
                           </MenuItem>
                         ))}
-                        <MenuItem value="kg">Kg</MenuItem>
+                        {/* <MenuItem value="kg">Kg</MenuItem>
                         <MenuItem value="ltr">Litre</MenuItem>
-                        <MenuItem value="pcs">Pieces</MenuItem>
+                        <MenuItem value="pcs">Pieces</MenuItem> */}
                       </TextField>
                     </Grid>
 

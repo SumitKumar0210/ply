@@ -10,6 +10,15 @@ export const fetchUnitOfMeasurements = createAsyncThunk(
   }
 );
 
+
+export const fetchActiveUnitOfMeasurements = createAsyncThunk(
+  'unitOfMeasurement/fetchAll',
+  async () => {
+    const res = await api.get("admin/unit/get-data?status=1");
+    return res.data.data;
+  }
+);
+
 export const addUnitOfMeasurement = createAsyncThunk(
   'unitOfMeasurement/add',
   async (newData, { rejectWithValue }) => {

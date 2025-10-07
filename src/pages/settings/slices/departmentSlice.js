@@ -7,6 +7,11 @@ export const fetchDepartments = createAsyncThunk('department/fetchAll', async ()
   return res.data.data;
 });
 
+export const fetchActiveDepartments = createAsyncThunk('department/fetchAll', async () => {
+  const res = await api.get("admin/department/get-data?status=1");
+  return res.data.data;
+});
+
 export const addDepartment = createAsyncThunk(
   'department/add',
   async (newData, { rejectWithValue }) => {

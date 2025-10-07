@@ -12,8 +12,9 @@ import materialReducer from '../pages/settings/slices/materialSlice';
 import machineReducer from '../pages/settings/slices/machineSlice';
 import productReducer from '../pages/settings/slices/productSlice';
 import stateReducer from '../pages/settings/slices/stateSlice';
-import customerReducer from '../pages/users/slices/customerSlice';
-import userReducer from '../pages/users/slices/userSlice';
+import customerReducer from '../pages/Users/slices/customerSlice';
+import userReducer from '../pages/Users/slices/userSlice';
+import labourReducer from '../pages/Users/slices/labourSlice';
 export const store = configureStore({
     reducer : {
          userType: userTypeReducer,
@@ -31,5 +32,6 @@ export const store = configureStore({
          customer: customerReducer,
          state: stateReducer,
          user: userReducer,
+         labour: labourReducer,
     }
 })

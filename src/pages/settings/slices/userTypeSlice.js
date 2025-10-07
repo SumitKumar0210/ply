@@ -11,6 +11,15 @@ export const fetchUserTypes = createAsyncThunk('userType/fetchAll', async () => 
   // return false;
 });
 
+
+export const fetchActiveUserTypes = createAsyncThunk('userType/fetchAll', async () => {
+
+  const res = await api.get("admin/userType/get-data?status=1");
+ 
+  return res.data.data;
+  // return false;
+});
+
 export const addUserType = createAsyncThunk(
   'userType/add',
   async (newData, { rejectWithValue }) => {

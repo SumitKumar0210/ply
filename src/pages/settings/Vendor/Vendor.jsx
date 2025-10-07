@@ -37,7 +37,7 @@ import {
   updateVendor,
 } from "../slices/vendorSlice"; // ✅ new slice
 
-import { fetchCategories } from "../slices/categorySlice";
+import { fetchActiveCategories } from "../slices/categorySlice";
 
 // ✅ Error Boundary
 class ErrorBoundary extends React.Component {
@@ -99,7 +99,7 @@ const Vendor = () => {
 
 
   useEffect(() => {
-    dispatch(fetchCategories());
+    dispatch(fetchActiveCategories());
   }, [open, editOpen]);
 
   const handleClickOpen = () => setOpen(true);

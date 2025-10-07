@@ -36,7 +36,8 @@ import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 
 import { useDispatch, useSelector } from "react-redux";
 import { addUser, fetchUsers, updateUser, statusUpdate, deleteUser } from "./slices/userSlice";
-
+import {fetchStates} from "../settings/slices/stateSlice";
+import { fetchActiveUserTypes } from "../settings/slices/userTypeSlice";
 // ✅ Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -91,11 +92,24 @@ const department = [{ value: "Polish", label: "Polish" }];
 const validationSchema = Yup.object({
   name: Yup.string().required("Name is required"),
   email: Yup.string().email("Invalid email format").required("E-mail is required"),
-  phone: Yup.string().matches(/^[0-9]{10}$/, "Phone must be 10 digits").required("Phone is required"),
+  mobile: Yup.string().matches(/^[0-9]{10}$/, "Mobile must be 10 digits").required("Mobile is required"),
+  state_id: Yup.string().required("State is required"),
+  city: Yup.string().required("City is required"),
   address: Yup.string().required("Address is required"),
-  usertype: Yup.string().required("Please select a user type"),
-  department: Yup.string().required("Please select a department"),
+  user_type_id: Yup.string().required("Please select a user type"),
   image: Yup.mixed().required("Image is required"),
+});
+
+// ✅ Validation schema
+const editValidationSchema = Yup.object({
+  name: Yup.string().required("Name is required"),
+  email: Yup.string().email("Invalid email format").required("E-mail is required"),
+  mobile: Yup.string().matches(/^[0-9]{10}$/, "Mobile must be 10 digits").required("Mobile is required"),
+  state_id: Yup.string().required("State is required"),
+  city: Yup.string().required("City is required"),
+  address: Yup.string().required("Address is required"),
+  user_type_id: Yup.string().required("Please select a user type"),
+ image: Yup.mixed().nullable(),
 });
 
 // ✅ Initial users
@@ -132,33 +146,35 @@ const Users = () => {
     name: "",
     loading: false,
   });
-  const [tableData, setTableData] = useState(customersList);
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const tableContainerRef = useRef(null);
 
 
-  const { data: userData = [], loading, error } = useSelector((state) => state.user);
+  const { data: tableData = [], loading, error } = useSelector((state) => state.user);
   const { data: states = []} = useSelector((state) => state.state);
+  const { data: userTypes = []} = useSelector((state) => state.userType);
 
   const dispatch = useDispatch();
-  
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL;
+
   
   useEffect(() => {
-    dispatch(fetchCustomers());
+    dispatch(fetchUsers());
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchStates());
+   dispatch(fetchStates());
+   dispatch(fetchActiveUserTypes());
   }, [open, editOpen]);
 
   const handleAdd = async (values, resetForm) => {
     try {
-      await dispatch(addCustomer(values));
+      await dispatch(addUser(values));
       resetForm();
       setOpen(false);
     } catch (error) {
-      console.error("Add customer failed:", error);
+      console.error("Add user failed:", error);
     }
   };
 
@@ -177,7 +193,7 @@ const Users = () => {
     setDeleteDialog((prev) => ({ ...prev, loading: true }));
 
     try {
-      await dispatch(deleteCustomer(deleteDialog.id)).unwrap(); 
+      await dispatch(deleteUser(deleteDialog.id)).unwrap(); 
       // ✅ If API returns success, close modal
     } catch (error) {
       console.error("Delete failed:", error);
@@ -196,8 +212,7 @@ const Users = () => {
     setEditData(null);
   };
   const handleEditSubmit = async (values, resetForm) => {
-    
-    await dispatch(updateCustomer({updated :{ id: editData.id, ...values }}));
+    await dispatch(updateUser({ id: editData.id, ...values }));
     resetForm();
     handleEditClose();
   };
@@ -208,10 +223,10 @@ const Users = () => {
       {
         accessorKey: "profilePic",
         header: "Image",
-        Cell: () => (
+        Cell: ({ row }) => (
           <img
-            src={Profile}
-            alt="Profile"
+            src={row.original.image ? mediaUrl + row.original.image : Profile}
+                alt={row.original.name}
             width="40"
             height="40"
             style={{ borderRadius: "50%" }}
@@ -221,28 +236,27 @@ const Users = () => {
       },
       { accessorKey: "name", header: "Name" },
       { accessorKey: "email", header: "E-mail Address" },
-      { accessorKey: "phone", header: "Phone" },
+      { accessorKey: "mobile", header: "Mobile" },
       { accessorKey: "address", header: "Address" },
-      { accessorKey: "usertype", header: "User Type" },
-      { accessorKey: "department", header: "Department" },
+      {
+        accessorKey: "user_type_id",
+        header: "User Type",
+        Cell: ({ row }) => {
+          const userType = row.original.user_type?.name;
+          return userType ?? "N/A";
+        },
+      },
       {
         accessorKey: "status",
         header: "Status",
-        size: 50,
         enableSorting: false,
         enableColumnFilter: false,
-        muiTableBodyCellProps: { onClick: (e) => e.stopPropagation() },
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
             onChange={(e) => {
-              const newStatus = e.target.checked;
-              const rowId = row.original.id;
-              setTableData((prev) =>
-                prev.map((item) =>
-                  item.id === rowId ? { ...item, status: newStatus } : item
-                )
-              );
+              const newStatus = e.target.checked ? 1 : 0;
+              dispatch(statusUpdate({ ...row.original, status: newStatus }));
             }}
           />
         ),
@@ -260,7 +274,7 @@ const Users = () => {
             <Tooltip title="Edit">
               <IconButton
                 color="primary"
-                onClick={() => alert(`Edit ${row.original.id}`)}
+                onClick={() => handleUpdate(row.original)}
               >
                 <BiSolidEditAlt size={16} />
               </IconButton>
@@ -269,7 +283,7 @@ const Users = () => {
               <IconButton
                 aria-label="delete"
                 color="error"
-                onClick={() => setOpenDelete(true)}
+                onClick={() => handleDeleteClick(row.original)}
               >
                 <RiDeleteBinLine size={16} />
               </IconButton>
@@ -322,7 +336,7 @@ const Users = () => {
           <Typography variant="h6">Users</Typography>
         </Grid>
         <Grid>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenAdd(true)}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
             Add User
           </Button>
         </Grid>
@@ -388,25 +402,24 @@ const Users = () => {
         </Paper>
       </Grid>
       {/* Add Modal */}
-      <BootstrapDialog onClose={() => setOpenAdd(false)} open={openAdd} fullWidth maxWidth="sm">
-        <BootstrapDialogTitle onClose={() => setOpenAdd(false)}>
+      <BootstrapDialog onClose={() => setOpen(false)} open={open} fullWidth maxWidth="sm">
+        <BootstrapDialogTitle onClose={() => setOpen(false)}>
           Add User
         </BootstrapDialogTitle>
         <Formik
           initialValues={{
             name: "",
             email: "",
-            phone: "",
+            mobile: "",
+            state_id: "",
+            city : "",
             address: "",
-            usertype: "",
-            department: "",
+            user_type_id: "",
             image: null,
           }}
           validationSchema={validationSchema}
-          onSubmit={async (values) => {
-            await new Promise((r) => setTimeout(r, 500));
-            console.log("Form Submitted:", values);
-            setOpenAdd(false);
+          onSubmit={ (values, { resetForm }) => {
+           handleAdd(values, resetForm)
           }}
         >
           {({ handleChange, handleSubmit, setFieldValue, touched, errors, values }) => (
@@ -441,58 +454,51 @@ const Users = () => {
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
-                      id="phone"
-                      name="phone"
-                      label="Phone"
+                      id="mobile"
+                      name="mobile"
+                      label="Mobile"
                       variant="standard"
                       fullWidth
                       margin="dense"
                       onChange={handleChange}
-                      error={touched.phone && Boolean(errors.phone)}
-                      helperText={touched.phone && errors.phone}
+                      error={touched.mobile && Boolean(errors.mobile)}
+                      helperText={touched.mobile && errors.mobile}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
-                      id="usertype"
-                      name="usertype"
+                      id="user_type_id"
+                      name="user_type_id"
                       select
                       label="User Type"
                       variant="standard"
                       fullWidth
                       margin="dense"
-                      value={values.usertype}
+                      value={values.user_type_id}
                       onChange={handleChange}
-                      error={touched.usertype && Boolean(errors.usertype)}
-                      helperText={touched.usertype && errors.usertype}
+                      error={touched.user_type_id && Boolean(errors.user_type_id)}
+                      helperText={touched.user_type_id && errors.user_type_id}
                     >
-                      {usertype.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
+                      {userTypes.map((option) => (
+                        <MenuItem key={option.id} value={option.id}>
+                          {option.name}
                         </MenuItem>
                       ))}
                     </TextField>
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
-                      id="department"
-                      name="department"
-                      select
-                      label="Department"
+                      id="password"
+                      name="password"
+                      label="Password"
                       variant="standard"
                       fullWidth
+                      type="password"
                       margin="dense"
-                      value={values.department}
                       onChange={handleChange}
-                      error={touched.department && Boolean(errors.department)}
-                      helperText={touched.department && errors.department}
-                    >
-                      {department.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                      error={touched.password && Boolean(errors.password)}
+                      helperText={touched.password && errors.password}
+                    />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6}}>
                     {/* Upload Image */}
@@ -538,6 +544,40 @@ const Users = () => {
                       </Grid>
                     </Grid>
                   </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      select
+                      id="state_id"
+                      name="state_id"
+                      label="State"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      onChange={handleChange}
+                      error={touched.state_id && Boolean(errors.state_id)}
+                      helperText={touched.state_id && errors.state_id}
+                    >
+                      {states.map((option) => (
+                          <MenuItem key={option.id} value={option.id}>
+                            {option.state}
+                          </MenuItem>
+                        ))}
+                    </TextField>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      id="city"
+                      name="city"
+                      label="City"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      onChange={handleChange}
+                      error={touched.city && Boolean(errors.city)}
+                      helperText={touched.city && errors.city}
+                    />
+                  </Grid>
+                  
                   <Grid size={{ xs: 12, md: 12 }}>
                     <TextField
                       id="address"
@@ -554,7 +594,223 @@ const Users = () => {
                 </Grid>
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={() => setOpenAdd(false)}>
+                <Button variant="outlined" color="error" onClick={() => setOpen(false)}>
+                  Close
+                </Button>
+                <Button type="submit" variant="contained" color="primary">
+                  Submit
+                </Button>
+              </DialogActions>
+            </Form>
+          )}
+        </Formik>
+      </BootstrapDialog>
+      {/* Edit Modal */}
+      <BootstrapDialog onClose={() => setEditOpen(false)} open={editOpen} fullWidth maxWidth="sm">
+        <BootstrapDialogTitle onClose={() => setEditOpen(false)}>
+          Edit User
+        </BootstrapDialogTitle>
+        <Formik
+            initialValues={{
+              name: editData?.name || "",
+              email: editData?.email || "",
+              mobile: editData?.mobile || "", // ✅ fixed typo: was "mbile"
+              state_id: editData?.state_id || "",
+              city: editData?.city || "",
+              address: editData?.address || "",
+              user_type_id: editData?.user_type_id || "",
+              image: null,
+            }}
+            validationSchema={editValidationSchema}
+            enableReinitialize 
+            onSubmit={(values, { resetForm }) => {
+              handleEditSubmit(values, resetForm);
+            }}
+          >
+          {({ handleChange, handleSubmit, setFieldValue, touched, errors, values }) => (
+            <Form onSubmit={handleSubmit}>
+              <DialogContent dividers>
+                <Grid container  rowSpacing={1} columnSpacing={3}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      id="name"
+                      name="name"
+                      label="Name"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      value={values.name}
+                      onChange={handleChange}
+                      error={touched.name && Boolean(errors.name)}
+                      helperText={touched.name && errors.name}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      id="email"
+                      name="email"
+                      label="E-mail Address"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      value={values.email}
+                      onChange={handleChange}
+                      error={touched.email && Boolean(errors.email)}
+                      helperText={touched.email && errors.email}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      id="mobile"
+                      name="mobile"
+                      label="Mobile"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      value={values.mobile}
+                      onChange={handleChange}
+                      error={touched.mobile && Boolean(errors.mobile)}
+                      helperText={touched.mobile && errors.mobile}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      id="user_type_id"
+                      name="user_type_id"
+                      select
+                      label="User Type"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      value={values.user_type_id}
+                      onChange={handleChange}
+                      error={touched.user_type_id && Boolean(errors.user_type_id)}
+                      helperText={touched.user_type_id && errors.user_type_id}
+                    >
+                      {userTypes.map((option) => (
+                        <MenuItem key={option.id} value={option.id}>
+                          {option.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      id="password"
+                      name="password"
+                      label="Password"
+                      variant="standard"
+                      fullWidth
+                      type="password"
+                      margin="dense"
+                      onChange={handleChange}
+                      error={touched.password && Boolean(errors.password)}
+                      helperText={touched.password && errors.password}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6}}>
+                    {/* Upload Image */}
+                    <Grid container spacing={2} alignItems="center" mt={1}>
+                      <Grid size={8}>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          component="label"
+                          startIcon={<FileUploadOutlinedIcon />}
+                          fullWidth
+                        >
+                          Profile Pic
+                          <input
+                            hidden
+                            accept="image/*"
+                            type="file"
+                            onChange={(event) => {
+                              const file = event.currentTarget.files[0];
+                              setFieldValue("image", file);
+                            }}
+                          />
+                        </Button>
+                        {touched.image && errors.image && (
+                          <div style={{ color: "red", fontSize: "0.8rem" }}>{errors.image}</div>
+                        )}
+                      </Grid>
+
+                      <Grid size={4}>
+                        <img
+                          src={ 
+                            values.image
+                              ? URL.createObjectURL(values.image)
+                              : `${mediaUrl}${editData?.image || ""}`
+                          }
+                          alt="Preview"
+                          style={{
+                            width: "45px",
+                            height: "45px",
+                            objectFit: "cover",
+                            borderRadius: "4px",
+                            border: "1px solid #ddd",
+                          }}
+                          onError={(e) => {
+                            e.target.src = Profile; // fallback
+                          }}
+                        />
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      select
+                      id="state_id"
+                      name="state_id"
+                      label="State"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      value={values.state_id}
+                      onChange={handleChange}
+                      error={touched.state_id && Boolean(errors.state_id)}
+                      helperText={touched.state_id && errors.state_id}
+                    >
+                      {states.map((option) => (
+                          <MenuItem key={option.id} value={option.id}>
+                            {option.state}
+                          </MenuItem>
+                        ))}
+                    </TextField>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      id="city"
+                      name="city"
+                      label="City"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      value={values.city}
+                      onChange={handleChange}
+                      error={touched.city && Boolean(errors.city)}
+                      helperText={touched.city && errors.city}
+                    />
+                  </Grid>
+                  
+                  <Grid size={{ xs: 12, md: 12 }}>
+                    <TextField
+                      id="address"
+                      name="address"
+                      label="Address"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      value={values.address}
+                      onChange={handleChange}
+                      error={touched.address && Boolean(errors.address)}
+                      helperText={touched.address && errors.address}
+                    />
+                  </Grid>
+                </Grid>
+              </DialogContent>
+              <DialogActions sx={{ gap: 1, mb: 1 }}>
+                <Button variant="outlined" color="error" onClick={() => setEditOpen(false)}>
                   Close
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
@@ -567,15 +823,36 @@ const Users = () => {
       </BootstrapDialog>
 
       {/* Delete Modal */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>{"Delete the user 'User' ?"}</DialogTitle>
-        <DialogContent style={{ width: "300px" }}>
-          <DialogContentText>This action cannot be undone</DialogContentText>
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() =>
+          setDeleteDialog({ open: false, id: null, name: "", loading: false })
+        }
+      >
+        <DialogTitle>Delete Customer?</DialogTitle>
+        <DialogContent style={{ width: "320px" }}>
+          <DialogContentText>
+            Are you sure you want to delete User{" "}
+            <strong>{deleteDialog.name}</strong>? <br />
+            This action cannot be undone.
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
-          <Button onClick={() => setOpenDelete(false)} variant="contained" color="error" autoFocus>
-            Delete
+          <Button
+            onClick={() =>
+              setDeleteDialog({ open: false, id: null, name: "", loading: false })
+            }
+            disabled={deleteDialog.loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={confirmDelete}
+            disabled={deleteDialog.loading}
+          >
+            {deleteDialog.loading ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>
