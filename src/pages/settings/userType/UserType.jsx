@@ -24,6 +24,7 @@ import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserTypes, addUserType, updateUserType, deleteUserType, statusUpdate } from "../slices/userTypeSlice";
 // import { fetchUserTypes } from "../slices/userTypeSlice";
+import { successMessage, errorMessage } from "../../../toast";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": { padding: theme.spacing(2) },
@@ -75,7 +76,6 @@ const UserType = () => {
       console.log(res)
        if (res.error) {
          console.log("Add failed:", res.payload);
-         alert("Add failed:", res.payload);
           return;
         }
 
@@ -94,8 +94,21 @@ const UserType = () => {
   // };
 
   // Delete
-  const handleDelete = (id) => {
-    dispatch(deleteUserType(id));
+  const handleDelete = async (id) => {
+    try {
+      const res =  await dispatch(deleteUserType(id));
+      console.log(res)
+       if (res.error) {
+         console.log("Add failed:", res.payload);
+          return;
+        }
+
+      // Success
+      resetForm();
+      setOpen(false);
+    } catch (err) {
+     
+    }
   };
 
   const [editOpen, setEditOpen] = useState(false);
@@ -119,7 +132,6 @@ const handleEditSubmit = async (values, resetForm) => {
     const res = await dispatch(updateUserType({ id: editData.id, name: values.userType }));
     if (res.error) {
          console.log("Update failed:", res.payload);
-         alert("Update failed:", res.payload);
           return;
         }
     resetForm();

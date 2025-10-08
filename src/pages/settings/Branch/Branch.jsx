@@ -94,7 +94,8 @@ const Branch = () => {
   const handleClose = () => setOpen(false);
 
   const handleAdd = async (values, resetForm) => {
-    await dispatch(addBranch(values));
+    const res = await dispatch(addBranch(values));
+    if(res.error) return;
     resetForm();
     handleClose();
   };
@@ -112,7 +113,11 @@ const Branch = () => {
     setEditData(null);
   };
   const handleEditSubmit = async (values, resetForm) => {
-    await dispatch(updateBranch({ id: editData.id, ...values }));
+    const res = await dispatch(updateBranch({ id: editData.id, ...values }));
+    if(res.error)
+      {
+        return;
+      }
     resetForm();
     handleEditClose();
   };

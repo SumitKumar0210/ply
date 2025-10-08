@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
-
+import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 // ✅ Fetch all grades
 export const fetchGrades = createAsyncThunk("grade/fetchAll", async () => {
   const res = await api.get("admin/grade/get-data");
@@ -13,11 +13,12 @@ export const addGrade = createAsyncThunk(
   async (newData, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/grade/store", newData);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.error || "Failed to add grade"
-      );
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -28,11 +29,12 @@ export const updateGrade = createAsyncThunk(
   async (updated, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/grade/update/${updated.id}`, updated);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.error || "Failed to update grade"
-      );
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -40,18 +42,32 @@ export const updateGrade = createAsyncThunk(
 export const statusUpdate = createAsyncThunk(
   'grade/update',
   async (updated) => {
-    const res = await api.post("admin/grade/status-update", {
-      id: updated.id,
-      status: updated.status,
-    });
-    return updated;
+    try{
+      const res = await api.post("admin/grade/status-update", {
+        id: updated.id,
+        status: updated.status,
+      });
+      successMessage(res.data.message);
+      return updated;
+    }catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
 // ✅ Delete grade
 export const deleteGrade = createAsyncThunk("grade/delete", async (id) => {
-  await api.post(`admin/grade/delete/${id}`);
-  return id;
+  try{
+    const res = await api.post(`admin/grade/delete/${id}`);
+    successMessage(res.data.message);
+    return id;
+  }catch (error) {
+    const errMsg = getErrorMessage(error);
+    errorMessage(errMsg);
+    return rejectWithValue(errMsg);
+  }
 });
 
 // ✅ Slice
@@ -91,7 +107,8 @@ const gradeSlice = createSlice({
 
       // Delete
       .addCase(deleteGrade.fulfilled, (state, action) => {
-        state.data = state.data.filter((d) => d.id !== action.payload);
+        const deletedId = action.meta.arg; 
+        state.data = state.data.filter((item) => item.id !== deletedId);
       });
   },
 });

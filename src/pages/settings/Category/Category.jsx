@@ -89,7 +89,8 @@ const Category = () => {
       name: values.name,
       group_id: Number(values.group_id),
     };
-    await dispatch(addCategory(payload));
+    const res = await dispatch(addCategory(payload));
+    if (res.error) return ; 
     resetForm();
     handleCloseAdd();
   };
@@ -101,9 +102,17 @@ const Category = () => {
       name: values.name,
       group_id: Number(values.group_id),
     };
-    await dispatch(updateCategory(payload));
-    resetForm();
-    handleCloseEdit();
+    try{
+      const res = await dispatch(updateCategory(payload));
+      if (res.error) {
+      console.log("Update failed:", res.payload);
+        return;
+      }
+      resetForm();
+      handleCloseEdit();
+    }catch(error){
+
+    }
   };
 
   // delete

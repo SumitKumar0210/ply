@@ -170,7 +170,8 @@ const Users = () => {
 
   const handleAdd = async (values, resetForm) => {
     try {
-      await dispatch(addUser(values));
+      const res = await dispatch(addUser(values));
+      if(res.error) return ; 
       resetForm();
       setOpen(false);
     } catch (error) {
@@ -212,7 +213,8 @@ const Users = () => {
     setEditData(null);
   };
   const handleEditSubmit = async (values, resetForm) => {
-    await dispatch(updateUser({ id: editData.id, ...values }));
+    const res = await dispatch(updateUser({ id: editData.id, ...values }));
+    if(res.error) return ; 
     resetForm();
     handleEditClose();
   };
@@ -559,7 +561,7 @@ const Users = () => {
                     >
                       {states.map((option) => (
                           <MenuItem key={option.id} value={option.id}>
-                            {option.state}
+                            {option.name}
                           </MenuItem>
                         ))}
                     </TextField>
@@ -773,7 +775,7 @@ const Users = () => {
                     >
                       {states.map((option) => (
                           <MenuItem key={option.id} value={option.id}>
-                            {option.state}
+                            {option.name}
                           </MenuItem>
                         ))}
                     </TextField>

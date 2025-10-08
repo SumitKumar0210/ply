@@ -14,6 +14,7 @@ import {
   DialogActions,
   MenuItem,
 } from "@mui/material";
+import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import CloseIcon from "@mui/icons-material/Close";
 import { styled } from "@mui/material/styles";
 import {
@@ -35,6 +36,7 @@ import {
   fetchVendors,
   deleteVendor,
   updateVendor,
+  statusUpdate
 } from "../slices/vendorSlice"; // ✅ new slice
 
 import { fetchActiveCategories } from "../slices/categorySlice";
@@ -106,7 +108,8 @@ const Vendor = () => {
   const handleClose = () => setOpen(false);
 
   const handleAdd = async (values, resetForm) => {
-    await dispatch(addVendor(values));
+    const res = await dispatch(addVendor(values));
+    if(res.error) return ; 
     resetForm();
     handleClose();
   };
@@ -124,7 +127,8 @@ const Vendor = () => {
     setEditData(null);
   };
   const handleEditSubmit = async (values, resetForm) => {
-    await dispatch(updateVendor({ id: editData.id, ...values }));
+    const res = await dispatch(updateVendor({ id: editData.id, ...values }));
+    if(res.error) return;
     resetForm();
     handleEditClose();
   };
@@ -137,6 +141,21 @@ const Vendor = () => {
       { accessorKey: "email", header: "Email" },
       { accessorKey: "address", header: "Cateogry", Cell: ({ row }) => row.original.category?.name || "—", },
       { accessorKey: "gst", header: "GST" },
+      {
+        accessorKey: "status",
+        header: "Status",
+        enableSorting: false,
+        enableColumnFilter: false,
+        Cell: ({ row }) => (
+          <CustomSwitch
+            checked={!!row.original.status}
+            onChange={(e) => {
+              const newStatus = e.target.checked ? 1 : 0;
+              dispatch(statusUpdate({ ...row.original, status: newStatus }));
+            }}
+          />
+        ),
+      },
       {
         id: "actions",
         header: "Actions",

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
-
+import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 // ✅ Thunks
 export const fetchCategories = createAsyncThunk('category/fetchAll', async () => {
   const res = await api.get("admin/category/get-data");
@@ -19,14 +19,12 @@ export const addCategory = createAsyncThunk(
   async (newData, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/category/store", newData);
+       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -36,14 +34,12 @@ export const updateCategory = createAsyncThunk(
   async (updated, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/category/update/${updated.id}`, updated);
-      return  res.data.data;
+       successMessage(res.data.message);
+      return res.data.data;
     } catch (error) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -51,11 +47,18 @@ export const updateCategory = createAsyncThunk(
 export const statusUpdate = createAsyncThunk(
   'category/update',
   async (updated) => {
-    const res = await api.post("admin/category/status-update", {
-      id: updated.id,
-      status: updated.status,
-    });
-    return updated;
+    try{
+      const res = await api.post("admin/category/status-update", {
+        id: updated.id,
+        status: updated.status,
+      });
+      successMessage(res.data.message);
+      return updated;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
@@ -63,8 +66,15 @@ export const statusUpdate = createAsyncThunk(
 export const deleteCategory = createAsyncThunk(
   'category/delete',
   async (id) => {
-    await api.post(`admin/category/delete/${id}`, id);
-    return id;
+    try{
+      const res = await api.post(`admin/category/delete/${id}`, id);
+      successMessage(res.data.message)
+      return id;
+    }catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
@@ -107,7 +117,8 @@ const categorySlice = createSlice({
 
       // Delete
       .addCase(deleteCategory.fulfilled, (state, action) => {
-        state.data = state.data.filter((d) => d.id !== action.payload);
+        const deletedId = action.meta.arg; 
+        state.data = state.data.filter((item) => item.id !== deletedId);
       });
   },
 });

@@ -1,7 +1,7 @@
 // src/store/slices/customerSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your API file
-
+import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // ✅ Fetch all customers
 export const fetchCustomers = createAsyncThunk(
   "customer/fetchAll",
@@ -21,9 +21,12 @@ export const addCustomer = createAsyncThunk(
   async (newCustomer, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/customer/store", newCustomer);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Add failed");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -34,9 +37,12 @@ export const updateCustomer = createAsyncThunk(
   async ({ updated }, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/customer/update/${updated.id}`, updated);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Update failed");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -46,10 +52,13 @@ export const statusUpdate = createAsyncThunk(
   "customer/statusUpdate",
   async ({ id, status }, { rejectWithValue }) => {
     try {
-      await api.post("admin/customer/status-update", { id, status });
+      const res = await api.post("admin/customer/status-update", { id, status });
+      successMessage(res.data.message);
       return { id, status };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Status update failed");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -59,10 +68,13 @@ export const deleteCustomer = createAsyncThunk(
   "customer/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.post(`admin/customer/delete/${id}`);
+      const res = await api.post(`admin/customer/delete/${id}`);
+      successMessage(res.data.message);
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Delete failed");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );

@@ -82,7 +82,8 @@ const UOM = () => {
   const handleClose = () => setOpen(false);
 
   const handleAdd = async (value, resetForm) => {
-    await dispatch(addUnitOfMeasurement(value));
+    const res = await dispatch(addUnitOfMeasurement(value));
+    if(res.error) return ; 
     resetForm();
     handleClose();
   };
@@ -122,7 +123,6 @@ const UOM = () => {
       );
       if (res.error) {
         console.log("Update failed:", res.payload);
-        alert("Update failed: " + res.payload);
         return;
       }
       resetForm();

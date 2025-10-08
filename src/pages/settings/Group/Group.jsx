@@ -80,7 +80,8 @@ const Group = () => {
   const handleClose = () => setOpen(false);
 
   const handleAdd = async (value, resetForm) => {
-    await dispatch(addGroup(value));
+    const res = await dispatch(addGroup(value));
+    if(res.error) return ;
     resetForm();
     handleClose();
   };

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
+import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 
 // ✅ Thunks
 export const fetchUnitOfMeasurements = createAsyncThunk(
@@ -24,14 +25,12 @@ export const addUnitOfMeasurement = createAsyncThunk(
   async (newData, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/unit/store", newData);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -40,15 +39,13 @@ export const updateUnitOfMeasurement = createAsyncThunk(
   'unitOfMeasurement/update',
   async (updated, { rejectWithValue }) => {
     try {
-      await api.post(`admin/unit/update/${updated.id}`, updated);
-      return updated;
+      const res = await api.post(`admin/unit/update/${updated.id}`, updated);
+      successMessage(res.data.message);
+      return res.data.data;
     } catch (error) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -56,19 +53,33 @@ export const updateUnitOfMeasurement = createAsyncThunk(
 export const statusUpdate = createAsyncThunk(
   'unitOfMeasurement/update',
   async (updated) => {
-    await api.post("admin/unit/status-update", {
-      id: updated.id,
-      status: updated.status,
-    });
-    return updated;
+    try{  
+      const res = await api.post("admin/unit/status-update", {
+        id: updated.id,
+        status: updated.status,
+      });
+      successMessage(res.data.message);
+      return updated;
+    }catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
 export const deleteUnitOfMeasurement = createAsyncThunk(
   'unitOfMeasurement/delete',
   async (id) => {
-    await api.post(`admin/unit/delete/${id}`, id);
-    return id;
+    try{
+      const res = await api.post(`admin/unit/delete/${id}`, id);
+      successMessage(res.data.message);
+      return id;
+    }catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
@@ -111,7 +122,8 @@ const unitOfMeasurementsSlice = createSlice({
 
       // Delete
       .addCase(deleteUnitOfMeasurement.fulfilled, (state, action) => {
-        state.data = state.data.filter((d) => d.id !== action.payload);
+        const deletedId = action.meta.arg; 
+        state.data = state.data.filter((item) => item.id !== deletedId);
       });
   },
 });

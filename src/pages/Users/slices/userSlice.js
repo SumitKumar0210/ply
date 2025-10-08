@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your api file
-
+import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // ✅ Fetch all users
 export const fetchUsers = createAsyncThunk(
   "users/fetchAll",
@@ -20,9 +20,12 @@ export const addUser = createAsyncThunk(
   async (newUser, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/user/store", newUser);
-      return res.data.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Failed to add user");
+      successMessage(res.data.message);
+       return res.data.data;
+    }  catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -33,9 +36,12 @@ export const updateUser = createAsyncThunk(
   async ({ id, ...updated }, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/user/update/${id}`, updated);
+      successMessage(res.data.message);
       return res.data.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Failed to update user");
+    }  catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -45,10 +51,13 @@ export const statusUpdate = createAsyncThunk(
   "users/statusUpdate",
   async ({ id, status }, { rejectWithValue }) => {
     try {
-      await api.post("admin/user/status-update", { id, status });
+      const res = await api.post("admin/user/status-update", { id, status });
+      successMessage(res.data.message);
       return { id, status };
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Failed to update status");
+    }  catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -58,10 +67,13 @@ export const deleteUser = createAsyncThunk(
   "users/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.post(`admin/user/delete/${id}`);
+      const res = await api.post(`admin/user/delete/${id}`);
+      successMessage(res.data.message);
       return id;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Failed to delete user");
+    }  catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );

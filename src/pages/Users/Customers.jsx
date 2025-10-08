@@ -138,7 +138,8 @@ const Customers = () => {
 
   const handleAdd = async (values, resetForm) => {
     try {
-      await dispatch(addCustomer(values));
+      const res = await dispatch(addCustomer(values));
+      if(res.error) return ;
       resetForm();
       setOpen(false);
     } catch (error) {
@@ -181,7 +182,8 @@ const Customers = () => {
   };
   const handleEditSubmit = async (values, resetForm) => {
     
-    await dispatch(updateCustomer({updated :{ id: editData.id, ...values }}));
+    const res = await dispatch(updateCustomer({updated :{ id: editData.id, ...values }}));
+    if(res.error) return ;
     resetForm();
     handleEditClose();
   };
@@ -194,7 +196,7 @@ const Customers = () => {
       { accessorKey: "email", header: "E-mail" },
       { accessorKey: "address", header: "Address" },
       { accessorKey: "city", header: "City", size: 50 },
-      { accessorKey: "state_id", header: "State", size: 50, Cell: ({ row }) => row.original.state?.state || "", },
+      { accessorKey: "state_id", header: "State", size: 50, Cell: ({ row }) => row.original.state?.name || "", },
       { accessorKey: "zip_code", header: "ZIP", size: 50 },
       { accessorKey: "note", header: "Note" },
       {
@@ -469,7 +471,7 @@ const Customers = () => {
                     >
                       {states.map((s) => (
                         <MenuItem key={s.id} value={s.id}>
-                          {s.state}
+                          {s.name}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -634,7 +636,7 @@ const Customers = () => {
                     >
                       {states.map((s) => (
                         <MenuItem key={s.id} value={s.id}>
-                          {s.state}
+                          {s.name}
                         </MenuItem>
                       ))}
                     </TextField>

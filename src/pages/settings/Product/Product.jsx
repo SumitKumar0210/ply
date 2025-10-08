@@ -138,16 +138,15 @@ const Product = () => {
  
    
    const handleAdd = async (values, resetForm) => {
-     try {
-       
-       await dispatch(addProduct(values));
-       
-       resetForm();
-       handleClose();
-     } catch (error) {
-       console.error("Error adding product:", error);
-     }
-   };
+    try {
+      const res = await dispatch(addProduct(values));
+      if (res.error) return;
+      resetForm();
+      handleClose();
+    } catch (error) {
+    }
+  };
+
 
    
    const handleEditOpen = (row) => {
@@ -161,7 +160,8 @@ const Product = () => {
      setEditData(null);
    };
    const handleEditSubmit = async (values, resetForm) => {
-     await dispatch(updateProduct({updated :{ id: editData.id, ...values }}));
+     const res = await dispatch(updateProduct({updated :{ id: editData.id, ...values }}));
+     if (res.error) return;
      resetForm();
      handleEditClose();
    };

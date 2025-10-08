@@ -43,3 +43,13 @@ export const processMessage = (message) => {
     transition: Bounce,
   });
 };
+
+export const getErrorMessage  = (error) => {
+   return (
+    error.response?.data?.[0] ||
+    error.response?.data?.error ||
+    error.response?.data?.message ||
+    error.message ||
+    "Something went wrong"
+  );
+};

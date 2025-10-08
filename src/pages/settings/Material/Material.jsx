@@ -67,7 +67,7 @@ class ErrorBoundary extends React.Component {
     return { hasError: true, error };
   }
   componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught:", error, errorInfo);
+    // console.log(error("ErrorBoundary caught:", error, errorInfo));
   }
   render() {
     if (this.state.hasError) {
@@ -114,7 +114,6 @@ const Material = () => {
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
-  const [file, setFile] = useState(null);
 
 
   useEffect(() => {
@@ -122,7 +121,6 @@ const Material = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    setFile(null);
     dispatch(fetchActiveCategories());
     dispatch(fetchActiveGroup());
     dispatch(fetchActiveUnitOfMeasurements());
@@ -131,33 +129,15 @@ const Material = () => {
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]); 
-  };
+ 
   
   const handleAdd = async (values, resetForm) => {
     try {
-      const formData = new FormData();
-      
-      // append other values
-      Object.keys(values).forEach((key) => {
-        if (values[key] !== null && values[key] !== undefined) {
-          formData.append(key, values[key]);
-        }
-      });
-      
-      // append file separately
-      if (file) {
-        formData.append("image", file);
-      }
-      
-      await dispatch(addMaterial(formData)).unwrap();
-      
+      const res = await dispatch(addMaterial(values));
+      if (res.error) return;
       resetForm();
-      handleClose();
+      setOpen(false);
     } catch (error) {
-      console.error("Error adding material:", error);
     }
   };
   const handleEditOpen = (row) => {
@@ -641,7 +621,6 @@ const Material = () => {
                                 borderRadius: "4px",
                                 border: "1px solid #ddd",
                               }}
-                              onChange={handleFileChange}
                             />
                           )}
                         </Grid>

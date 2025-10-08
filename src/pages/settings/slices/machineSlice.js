@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
-
+import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // ✅ Fetch all branches
 export const fetchMachines = createAsyncThunk("machine/fetchAll", async () => {
   const res = await api.get("admin/machine/get-data");
@@ -13,11 +13,12 @@ export const addMachine = createAsyncThunk(
   async (newData, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/machine/store", newData);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.error || "Failed to add branch"
-      );
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -28,30 +29,45 @@ export const updateMachine = createAsyncThunk(
   async (updated, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/machine/update/${updated.id}`, updated);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.error || "Failed to update branch"
-      );
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
 
 // ✅ Delete branch
 export const deleteMachine = createAsyncThunk("machine/delete", async (id) => {
-  await api.post(`admin/machine/delete/${id}`);
-  return id;
+  try{
+    const res = await api.post(`admin/machine/delete/${id}`);
+    successMessage(res.data.message);
+    return id;
+  } catch (error) {
+    const errMsg = getErrorMessage(error);
+    errorMessage(errMsg);
+    return rejectWithValue(errMsg);
+  }
 });
 
 // ✅ Status update
 export const statusUpdate = createAsyncThunk(
   "machine/statusUpdate",
   async (updated) => {
-    const res = await api.post("admin/machine/status-update", {
-      id: updated.id,
-      status: updated.status,
-    });
-    return updated;
+    try{
+      const res = await api.post("admin/machine/status-update", {
+        id: updated.id,
+        status: updated.status,
+      });
+      successMessage(res.data.message);
+      return updated;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 

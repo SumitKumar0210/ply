@@ -77,7 +77,8 @@ const Department = () => {
   const handleClose = () => setOpen(false);
 
   const handleAdd = async (value, resetForm) => {
-    await dispatch(addDepartment(value));
+    const res = await dispatch(addDepartment(value));
+    if(res.error) return ;
     resetForm();
     handleClose();
   };
@@ -114,10 +115,9 @@ const Department = () => {
   // update dispatch
   const handleEditSubmit = async (values, resetForm) => {
   try {
-    const res = await dispatch(updateDepartment({ id: editData.id, name: values.department }));
+    const res = await dispatch(updateDepartment({ id: editData.id, ...values }));
     if (res.error) {
       console.log("Update failed:", res.payload);
-      alert("Update failed: " + res.payload);
       return;
     }
     resetForm();

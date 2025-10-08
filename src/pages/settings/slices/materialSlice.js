@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust path
-
+import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // Fetch all materials
 export const fetchMaterials = createAsyncThunk(
   "material/fetchAll",
@@ -18,9 +18,12 @@ export const addMaterial = createAsyncThunk(
 
     try {
       const res = await api.post("admin/material/store", newData, );
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Add failed");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -31,11 +34,13 @@ export const updateMaterial = createAsyncThunk(
   "material/update",
   async ({ updated }, { rejectWithValue }) => {
     try {
-      
       const res = await api.post(`admin/material/update/${updated.id}`, updated,);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Update failed");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -44,18 +49,32 @@ export const updateMaterial = createAsyncThunk(
 export const statusUpdate = createAsyncThunk(
   "material/update",
   async (updated) => {
-    const res = await api.post("admin/material/status-update", {
-      id: updated.id,
-      status: updated.status,
-    });
-    return updated;
+    try{
+      const res = await api.post("admin/material/status-update", {
+        id: updated.id,
+        status: updated.status,
+      });
+      successMessage(res.data.message);
+      return updated;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
 // Delete material
 export const deleteMaterial = createAsyncThunk("material/delete", async (id) => {
-  await api.post(`admin/material/delete/${id}`);
-  return id;
+  try{
+    const res = await api.post(`admin/material/delete/${id}`);
+    successMessage(res.data.message);
+    return id;
+  } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
 });
 
 const materialSlice = createSlice({

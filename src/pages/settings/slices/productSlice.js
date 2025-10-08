@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust path
-
+import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // Fetch all products
 export const fetchProducts = createAsyncThunk(
   "product/fetchAll",
@@ -18,9 +18,12 @@ export const addProduct = createAsyncThunk(
 
     try {
       const res = await api.post("admin/product/store", newData, );
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Add failed");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -34,9 +37,12 @@ export const updateProduct = createAsyncThunk(
       console.log('kya')
       console.log(JSON.stringify(updated))
       const res = await api.post(`admin/product/update/${updated.id}`, updated,);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Update failed");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -45,18 +51,32 @@ export const updateProduct = createAsyncThunk(
 export const statusUpdate = createAsyncThunk(
   "product/update",
   async (updated) => {
-    const res = await api.post("admin/product/status-update", {
-      id: updated.id,
-      status: updated.status,
-    });
-    return updated;
+    try{
+      const res = await api.post("admin/product/status-update", {
+        id: updated.id,
+        status: updated.status,
+      });
+      successMessage(res.data.message);
+      return updated;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
 // Delete product
 export const deleteProduct = createAsyncThunk("product/delete", async (id) => {
-  await api.post(`admin/product/delete/${id}`);
-  return id;
+  try{
+    const res = await api.post(`admin/product/delete/${id}`);
+    successMessage(res.data.message);
+    return id;
+  } catch (error) {
+    const errMsg = getErrorMessage(error);
+    errorMessage(errMsg);
+    return rejectWithValue(errMsg);
+  }
 });
 
 const productSlice = createSlice({

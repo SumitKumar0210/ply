@@ -172,7 +172,8 @@ const Labours = () => {
 
   const handleAdd = async (values, resetForm) => {
     try {
-      await dispatch(addLabour(values));
+      const res = await dispatch(addLabour(values));
+      if(res.error) return ;
       resetForm();
       setOpen(false);
     } catch (error) {
@@ -226,7 +227,8 @@ const Labours = () => {
   };
   const handleEditSubmit = async (values, resetForm) => {
     
-    await dispatch(updateLabour({updated :{ id: editData.id, ...values }}));
+    const res = await dispatch(updateLabour({updated :{ id: editData.id, ...values }}));
+    if(res.error) return ;
     resetForm();
     handleEditClose();
   };
@@ -294,15 +296,6 @@ const Labours = () => {
                 aria-label="delete"
                 color="error"
                 onClick={() => handleDeleteClick(row.original)}
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="toast">
-              <IconButton
-                aria-label="toast"
-                color="success"
-                 onClick={notify}
               >
                 <RiDeleteBinLine size={16} />
               </IconButton>

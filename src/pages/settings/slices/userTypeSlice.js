@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import api from '../../../api';
+import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 
 // ✅ Thunks
 export const fetchUserTypes = createAsyncThunk('userType/fetchAll', async () => {
@@ -28,15 +29,12 @@ export const addUserType = createAsyncThunk(
       "admin/userType/store",
         newData,
       );
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      if (error.response && error.response.data) {
-        // return only the message (serializable)
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -49,34 +47,50 @@ export const updateUserType = createAsyncThunk('userType/update', async (updated
       updated,
      
     );
+    successMessage(res.data.message);
     return updated;
   } catch (error) {
-      if (error.response && error.response.data) {
-        // return only the message (serializable)
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
-    }
+    const errMsg = getErrorMessage(error);
+    errorMessage(errMsg);
+    return rejectWithValue(errMsg);
+  }
 });
 
 export const statusUpdate = createAsyncThunk('userType/update', async (updated) => {
-  const res = await api.post(
-    "admin/userType/status-update",
-    { id: updated.id, status: updated.status },
-  );
+  try{
+    const res = await api.post(
+      "admin/userType/status-update",
+      { id: updated.id, status: updated.status },
+    );
+    successMessage(res.data.message);
+    return updated;
+  } catch (error) {
+    const errMsg = getErrorMessage(error);
+    errorMessage(errMsg);
+    return rejectWithValue(errMsg);
+  }
 
-  return updated;
 });
 
-export const deleteUserType = createAsyncThunk('userType/delete', async (id) => {
-  await api.post(
-    `admin/userType/delete/${id}`,
-    id,
-  );
-  return id;
-});
+export const deleteUserType = createAsyncThunk(
+  "userType/delete",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/userType/delete/${id}`);
+
+      // Log and show success message
+      console.log(res.data.message || "User type deleted successfully!");
+      successMessage(res.data.message || "User type deleted successfully!");
+
+      return res;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 
 // ✅ Slice
 const userTypeSlice = createSlice({
@@ -117,7 +131,8 @@ const userTypeSlice = createSlice({
 
       // Delete
       .addCase(deleteUserType.fulfilled, (state, action) => {
-        state.data = state.data.filter((u) => u.id !== action.payload);
+        const deletedId = action.meta.arg; 
+        state.data = state.data.filter((item) => item.id !== deletedId);
       });
   },
 });

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
+import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 
 // ✅ Fetch all branches
 export const fetchBranches = createAsyncThunk("branch/fetchAll", async () => {
@@ -13,11 +14,12 @@ export const addBranch = createAsyncThunk(
   async (newData, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/branch/store", newData);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.error || "Failed to add branch"
-      );
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -28,30 +30,45 @@ export const updateBranch = createAsyncThunk(
   async (updated, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/branch/update/${updated.id}`, updated);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.error || "Failed to update branch"
-      );
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
 
 // ✅ Delete branch
 export const deleteBranch = createAsyncThunk("branch/delete", async (id) => {
-  await api.post(`admin/branch/delete/${id}`);
-  return id;
+  try{
+    const res = await api.post(`admin/branch/delete/${id}`);
+    successMessage(res.data.message);
+    return id;
+  }catch (error) {
+    const errMsg = getErrorMessage(error);
+    errorMessage(errMsg);
+    return rejectWithValue(errMsg);
+  }
 });
 
 // ✅ Status update
 export const statusUpdate = createAsyncThunk(
   "branch/statusUpdate",
   async (updated) => {
-    const res = await api.post("admin/branch/status-update", {
-      id: updated.id,
-      status: updated.status,
-    });
-    return updated;
+    try{
+      const res = await api.post("admin/branch/status-update", {
+        id: updated.id,
+        status: updated.status,
+      });
+      successMessage(res.data.message);
+      return updated;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 

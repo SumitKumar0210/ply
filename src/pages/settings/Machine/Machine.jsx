@@ -92,7 +92,8 @@ const Machine = () => {
   const handleClose = () => setOpen(false);
 
   const handleAdd = async (values, { resetForm }) => {
-    await dispatch(addMachine(values));
+    const res = await dispatch(addMachine(values));
+    if(res.error) return ;
     resetForm();
     handleClose();
   };
@@ -112,7 +113,8 @@ const Machine = () => {
   };
 
   const handleEditSubmit = async (values, { resetForm }) => {
-    await dispatch(updateMachine({ id: editData.id, ...values }));
+    const res = await dispatch(updateMachine({ id: editData.id, ...values }));
+    if(res.error) return ;
     resetForm();
     handleEditClose();
   };

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust your API path
-
+import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // ✅ Thunks
 
 // Fetch all vendors
@@ -15,15 +15,13 @@ export const addVendor = createAsyncThunk(
   async (newData, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/vendor/store", newData);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
-    }
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+  }
   }
 );
 
@@ -33,14 +31,12 @@ export const updateVendor = createAsyncThunk(
   async (updated, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/vendor/update/${updated.id}`, updated);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -49,8 +45,34 @@ export const updateVendor = createAsyncThunk(
 export const deleteVendor = createAsyncThunk(
   "vendor/delete",
   async (id) => {
-    await api.post(`admin/vendor/delete/${id}`, id);
-    return id;
+    try{
+      const res = await api.post(`admin/vendor/delete/${id}`, id);
+      successMessage(res.data.message);
+      return id;
+    }catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+// ✅ Status update
+export const statusUpdate = createAsyncThunk(
+  "vendor/statusUpdate",
+  async (updated) => {
+    try{
+      const res = await api.post("admin/vendor/status-update", {
+        id: updated.id,
+        status: updated.status,
+      });
+      successMessage(res.data.message);
+      return updated;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
@@ -75,7 +97,7 @@ const vendorSlice = createSlice({
       })
       .addCase(fetchVendors.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message;
+        state.error = action.payload || action.error.message;
       })
 
       // Add
@@ -85,15 +107,20 @@ const vendorSlice = createSlice({
 
       // Update
       .addCase(updateVendor.fulfilled, (state, action) => {
-        const index = state.data.findIndex((d) => d.id === action.payload.id);
-        if (index !== -1) {
-          state.data[index] = action.payload;
-        }
+        const index = state.data.findIndex(d => d.id === action.payload.id);
+        if (index !== -1) state.data[index] = action.payload;
       })
 
       // Delete
       .addCase(deleteVendor.fulfilled, (state, action) => {
-        state.data = state.data.filter((d) => d.id !== action.payload);
+        const deletedId = action.payload; // use payload, not meta.arg
+        state.data = state.data.filter(item => item.id !== deletedId);
+      })
+
+      // Status update
+      .addCase(statusUpdate.fulfilled, (state, action) => {
+        const index = state.data.findIndex(d => d.id === action.payload.id);
+        if (index !== -1) state.data[index] = action.payload;
       });
   },
 });

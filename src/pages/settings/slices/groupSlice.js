@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
+import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 
 // ✅ Thunks
 export const fetchGroups = createAsyncThunk('group/fetchAll', async () => {
@@ -19,14 +20,12 @@ export const addGroup = createAsyncThunk(
   async (newData, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/group/store", newData);
+      successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -36,14 +35,12 @@ export const updateGroup = createAsyncThunk(
   async (updated, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/group/update/${updated.id}`, updated);
-      return updated;
+      successMessage(res.data.message);
+      return res.data.data;
     } catch (error) {
-      if (error.response && error.response.data) {
-        return rejectWithValue(
-          error.response.data[0] ?? error.response.data.error ?? "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -51,22 +48,39 @@ export const updateGroup = createAsyncThunk(
 export const statusUpdate = createAsyncThunk(
   'group/update',
   async (updated) => {
-    const res = await api.post("admin/group/status-update", {
-      id: updated.id,
-      status: updated.status,
-    });
-    return updated;
+    try{
+      const res = await api.post("admin/group/status-update", {
+        id: updated.id,
+        status: updated.status,
+      });
+      successMessage(res.data.message);
+      return updated;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
 
 
 export const deleteGroup = createAsyncThunk(
-  'group/delete',
-  async (id) => {
-    await api.post(`admin/group/delete/${id}`, id);
-    return id;
+  "group/delete",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/group/delete/${id}`);
+
+      successMessage(res.data.message || "Group deleted successfully!");
+      console.log(res)
+      return id;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
   }
 );
+
 
 // ✅ Slice
 const groupSlice = createSlice({
@@ -107,7 +121,8 @@ const groupSlice = createSlice({
 
       // Delete
       .addCase(deleteGroup.fulfilled, (state, action) => {
-        state.data = state.data.filter((d) => d.id !== action.payload);
+        const deletedId = action.meta.arg; 
+        state.data = state.data.filter((item) => item.id !== deletedId);
       });
   },
 });

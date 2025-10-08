@@ -81,7 +81,8 @@ const Grade = () => {
   const handleClose = () => setOpen(false);
 
   const handleAdd = async (value, resetForm) => {
-    await dispatch(addGrade(value));
+    const res = await dispatch(addGrade(value));
+    if(res.error) return;
     resetForm();
     handleClose();
   };
@@ -121,7 +122,6 @@ const Grade = () => {
     const res = await dispatch(updateGrade({ id: editData.id, name: values.name }));
     if (res.error) {
       console.log("Update failed:", res.payload);
-      alert("Update failed: " + res.payload);
       return;
     }
     resetForm();
