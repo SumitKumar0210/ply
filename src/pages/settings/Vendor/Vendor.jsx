@@ -139,7 +139,7 @@ const Vendor = () => {
       { accessorKey: "name", header: "Vendor Name" },
       { accessorKey: "mobile", header: "Mobile" },
       { accessorKey: "email", header: "Email" },
-      { accessorKey: "address", header: "Cateogry", Cell: ({ row }) => row.original.category?.name || "—", },
+      { accessorKey: "category_id", header: "Cateogry", Cell: ({ row }) => row.original.category?.name || "—", },
       { accessorKey: "gst", header: "GST" },
       {
         accessorKey: "status",
@@ -396,6 +396,7 @@ const Vendor = () => {
             email: editData?.email || "",
             category_id: editData?.category_id || "",
             gst: editData?.gst || "",
+            address: editData?.address || "",
           }}
           validationSchema={validationSchema}
           enableReinitialize
@@ -438,6 +439,18 @@ const Vendor = () => {
                   onChange={handleChange}
                   error={touched.email && Boolean(errors.email)}
                   helperText={touched.email && errors.email}
+                  sx={{ mb: 3 }}
+                />
+                <TextField
+                  fullWidth
+                  id="address"
+                  name="address"
+                  label="Address"
+                  variant="standard"
+                  value={values.address}
+                  onChange={handleChange}
+                  error={touched.address && Boolean(errors.address)}
+                  helperText={touched.address && errors.address}
                   sx={{ mb: 3 }}
                 />
                 <TextField

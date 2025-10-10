@@ -9,6 +9,12 @@ export const fetchVendors = createAsyncThunk("vendor/fetchAll", async () => {
   return res.data.data;
 });
 
+
+export const fetchActiveVendors = createAsyncThunk("vendor/fetchAll", async () => {
+  const res = await api.get("admin/vendor/get-data?status=1");
+  return res.data.data;
+});
+
 // Add vendor
 export const addVendor = createAsyncThunk(
   "vendor/add",

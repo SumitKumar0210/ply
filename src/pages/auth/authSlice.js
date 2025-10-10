@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
+import { successMessage, errorMessage, getErrorMessage } from "../../toast";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
@@ -14,17 +15,12 @@ export const authLogin = createAsyncThunk(
       if (res.data?.access_token) {
         localStorage.setItem("token", res.data.access_token);
       }
-
+      successMessage(res.data.message);
       return res.data; // return API response (user + token)
     } catch (error) {
-      if (error.response?.data) {
-        return rejectWithValue(
-          error.response.data[0] ??
-            error.response.data.error ??
-            "Login failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );
@@ -42,11 +38,12 @@ export const authLogout = createAsyncThunk(
       );
 
       localStorage.removeItem("token");
+      successMessage(res.data.message);
       return res.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.error ?? "Logout failed"
-      );
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );

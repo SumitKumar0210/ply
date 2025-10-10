@@ -10,6 +10,14 @@ export const fetchMaterials = createAsyncThunk(
   }
 );
 
+export const fetchActiveMaterials = createAsyncThunk(
+  "material/fetchAll",
+  async () => {
+    const res = await api.get("admin/material/get-data?status=1");
+    return res.data.data;
+  }
+);
+
 // Add material
 export const addMaterial = createAsyncThunk(
   "material/add",
