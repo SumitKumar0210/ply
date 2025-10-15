@@ -48,7 +48,9 @@ const seed = [
 
 const UserType = () => {
   const validationSchema = Yup.object({
-    userType: Yup.string().required("User type is required"),
+    userType: Yup.string()
+    .min(2, "User type must be at least 2 characters")
+    .required("User type is required"),
   });
 
   const tableContainerRef = useRef(null);

@@ -38,6 +38,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { addUser, fetchUsers, updateUser, statusUpdate, deleteUser } from "./slices/userSlice";
 import {fetchStates} from "../settings/slices/stateSlice";
 import { fetchActiveUserTypes } from "../settings/slices/userTypeSlice";
+import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 // ✅ Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -90,7 +91,12 @@ const department = [{ value: "Polish", label: "Polish" }];
 
 // ✅ Validation schema
 const validationSchema = Yup.object({
-  name: Yup.string().required("Name is required"),
+  name: Yup.string()
+  .min(2, "Name must be at least 2 characters")
+  .required("Name is required"),
+  password: Yup.string()
+  .min(4, "Password must be at least 4 characters")
+  .required("Password is required"),
   email: Yup.string().email("Invalid email format").required("E-mail is required"),
   mobile: Yup.string().matches(/^[0-9]{10}$/, "Mobile must be 10 digits").required("Mobile is required"),
   state_id: Yup.string().required("State is required"),
@@ -102,7 +108,11 @@ const validationSchema = Yup.object({
 
 // ✅ Validation schema
 const editValidationSchema = Yup.object({
-  name: Yup.string().required("Name is required"),
+  name: Yup.string()
+  .min(2, "Name must be at least 2 characters")
+  .required("Name is required"),
+  password: Yup.string()
+  .min(4, "Password must be at least 4 characters"),
   email: Yup.string().email("Invalid email format").required("E-mail is required"),
   mobile: Yup.string().matches(/^[0-9]{10}$/, "Mobile must be 10 digits").required("Mobile is required"),
   state_id: Yup.string().required("State is required"),
@@ -226,12 +236,9 @@ const Users = () => {
         accessorKey: "profilePic",
         header: "Image",
         Cell: ({ row }) => (
-          <img
-            src={row.original.image ? mediaUrl + row.original.image : Profile}
-                alt={row.original.name}
-            width="40"
-            height="40"
-            style={{ borderRadius: "50%" }}
+          <ImagePreviewDialog
+            imageUrl={row.original.image ? mediaUrl + row.original.image : Profile}
+            alt={row.original.name}
           />
         ),
         size: 80,
@@ -417,6 +424,7 @@ const Users = () => {
             city : "",
             address: "",
             user_type_id: "",
+            password: "",
             image: null,
           }}
           validationSchema={validationSchema}
@@ -621,6 +629,7 @@ const Users = () => {
               city: editData?.city || "",
               address: editData?.address || "",
               user_type_id: editData?.user_type_id || "",
+              password:  "",
               image: null,
             }}
             validationSchema={editValidationSchema}
@@ -816,7 +825,7 @@ const Users = () => {
                   Close
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
-                  Submit
+                  Save changes
                 </Button>
               </DialogActions>
             </Form>
@@ -846,7 +855,7 @@ const Users = () => {
             }
             disabled={deleteDialog.loading}
           >
-            Cancel
+            Close
           </Button>
           <Button
             variant="contained"

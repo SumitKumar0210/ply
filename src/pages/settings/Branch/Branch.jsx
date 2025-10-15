@@ -79,7 +79,9 @@ const Branch = () => {
 
   // ✅ Validation Schema
   const validationSchema = Yup.object({
-    name: Yup.string().required("Branch Name is required"),
+    name: Yup.string()
+    .min(2, "Branch name must be at least 2 characters")
+    .required("Branch Name is required"),
     mobile: Yup.string()
       .matches(/^[0-9]{10}$/, "Enter valid 10-digit mobile number")
       .required("Mobile is required"),

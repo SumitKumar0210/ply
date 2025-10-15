@@ -11,7 +11,7 @@ export const errorMessage = (message) => {
     pauseOnHover: true,
     draggable: true,
     progress: undefined,
-    theme: "light",
+    theme: "colored",
     transition: Bounce,
   });
 };
@@ -25,7 +25,7 @@ export const successMessage = (message) => {
     pauseOnHover: true,
     draggable: true,
     progress: undefined,
-    theme: "light",
+    theme: "colored",
     transition: Bounce,
   });
 };
@@ -39,7 +39,7 @@ export const processMessage = (message) => {
     pauseOnHover: true,
     draggable: true,
     progress: undefined,
-    theme: "light",
+    theme: "colored",
     transition: Bounce,
   });
 };

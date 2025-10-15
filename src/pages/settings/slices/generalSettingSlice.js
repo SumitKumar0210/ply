@@ -12,7 +12,7 @@ export const updateSetting = createAsyncThunk(
   'setting/update',
   async (updated, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/setting/update/${updated.id}`, updated);
+      const res = await api.post(`admin/setting/update/${updated.get("id")}`, updated);
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {

@@ -27,6 +27,9 @@ import { MdOutlineGrade } from "react-icons/md";
 import { TbRosetteNumber1 } from "react-icons/tb";
 import { GoGitBranch } from "react-icons/go";
 import { MdOutlineStorefront } from "react-icons/md";
+import { IoSettingsOutline } from "react-icons/io5";
+import ListAltIcon from '@mui/icons-material/ListAlt';
+
 
 import ColorLensIcon from "@mui/icons-material/ColorLens";
 import UserType from "./userType/UserType";
@@ -40,20 +43,24 @@ import Vendor from "./Vendor/Vendor";
 import Material from "./Material/Material";
 import Product from "./Product/Product";
 import Machine from "./Machine/Machine";
+import GeneralSetting from "./GeneralSetting/GeneralSetting";
+import TaxSlab from "./TaxSlab/TaxSlab";
 
 
 const tabConfig = [
-  { value: "tab1", label: "User Type", icon: <LuUserRoundCog />, component: <UserType/> },
-  { value: "tab15", label: "Departments", icon: <FaLayerGroup />, component: <Department/> },
-  { value: "tab2", label: "Groups", icon: <GrGroup />, component: <Group/> },
-  { value: "tab3", label: "Categories", icon: <DescriptionIcon />, component: <Category/>},
-  { value: "tab8", label: "UOM", icon: <TbRosetteNumber1 />, component: <UOM/> },
-  { value: "tab6", label: "Grades", icon: <MdOutlineGrade />, component: <Grade/> },
   { value: "tab10", label: "Branch", icon: <GoGitBranch />, component: <Branch/> },
-  { value: "tab4", label: "Vendors", icon: <MdOutlineStorefront />, component: <Vendor/> },
+  { value: "tab3", label: "Categories", icon: <DescriptionIcon />, component: <Category/>},
+  { value: "tab15", label: "Departments", icon: <FaLayerGroup />, component: <Department/> },
+  { value: "tab35", label: "General Settings", icon: <IoSettingsOutline />, component: <GeneralSetting/> },
+  { value: "tab6", label: "Grades", icon: <MdOutlineGrade />, component: <Grade/> },
+  { value: "tab2", label: "Groups", icon: <GrGroup />, component: <Group/> },
+  { value: "tab9", label: "Machines", icon: <CheckCircleOutlineIcon />, component: <Machine/> },
   { value: "tab5", label: "Material", icon: <FolderOpenIcon />, component: <Material/> },
   { value: "tab7", label: "Products", icon: <LayersIcon />, component: <Product/> },
-  { value: "tab9", label: "Machines", icon: <CheckCircleOutlineIcon />, component: <Machine/> },
+  { value: "tab33", label: "Tax Slabs", icon: <ListAltIcon />, component: <TaxSlab/> },
+  { value: "tab8", label: "UOM", icon: <TbRosetteNumber1 />, component: <UOM/> },
+  { value: "tab1", label: "User Type", icon: <LuUserRoundCog />, component: <UserType/> },
+  { value: "tab4", label: "Vendors", icon: <MdOutlineStorefront />, component: <Vendor/> },
 ];
 
 function SettingsPage() {

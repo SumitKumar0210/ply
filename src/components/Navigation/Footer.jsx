@@ -25,7 +25,7 @@ const Footer = ({ mobileOpen }) => {
           © {new Date().getFullYear()} Aarish Ply. All rights reserved.
         </Typography>
         <Typography variant="body2" sx={{ textAlign: "right" }}>
-          Powered by <a href="#">Techie Squad &reg;</a>
+          Powered by <a href="https://techiesquad.com" target="_blank">Techie Squad &reg;</a>
         </Typography>
       </Box>
     </Box>

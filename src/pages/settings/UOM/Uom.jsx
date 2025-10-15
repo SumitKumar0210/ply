@@ -72,7 +72,9 @@ const UOM = () => {
 
   // ✅ Validation Schema
   const validationSchema = Yup.object({
-    name: Yup.string().required("UOM is required"),
+    name: Yup.string()
+    .min(2, "UOM must be at least 2 characters")
+    .required("UOM is required"),
   });
 
   const tableContainerRef = useRef(null);

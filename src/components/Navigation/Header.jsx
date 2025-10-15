@@ -70,7 +70,7 @@ const Header = ({ mobileOpen, onToggleSidebar }) => {
           <Box>
             <Tooltip title="Account settings">
               <IconButton onClick={handleClick} size="small" sx={{ ml: 2 }}>
-                <Avatar sx={{ width: 40, height: 40 }} src={User} alt="User" />
+                <Avatar sx={{ width: 40, height: 40 }} src={user?.profileImage??User} alt="User" />
               </IconButton>
             </Tooltip>
           </Box>
@@ -118,20 +118,20 @@ const Header = ({ mobileOpen, onToggleSidebar }) => {
               {user?.name || "Amit Kumar"}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {user?.role || "Admin"}
+              {user?.type || "Admin"}
             </Typography>
           </MenuItem>
 
           <Divider />
 
-          <MenuItem onClick={() => navigate("/profile")}>
+          <MenuItem onClick={() => navigate("#")}>
             <ListItemIcon>
               <PersonAdd fontSize="small" />
             </ListItemIcon>
             Profile
           </MenuItem>
 
-          <MenuItem onClick={() => navigate("/reset-password")}>
+          <MenuItem onClick={() => navigate("#")}>
             <ListItemIcon>
               <Settings fontSize="small" />
             </ListItemIcon>

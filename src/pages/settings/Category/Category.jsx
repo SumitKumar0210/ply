@@ -148,8 +148,12 @@ const Category = () => {
       {
         id: "actions",
         header: "Actions",
+        enableSorting: false,
+        enableColumnFilter: false,
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Edit">
               <IconButton onClick={() => handleOpenEdit(row.original)}>
                 <BiSolidEditAlt size={16} />
@@ -263,7 +267,9 @@ const Category = () => {
         <Formik
           initialValues={{ name: "", group_id: "" }}
           validationSchema={Yup.object({
-            name: Yup.string().required("Category is required"),
+            name: Yup.string()
+            .min(2, "Category must be at least 2 characters")
+            .required("Category is required"),
             group_id: Yup.string().required("Group is required"),
           })}
           onSubmit={handleAddSubmit}
@@ -301,8 +307,8 @@ const Category = () => {
                 </TextField>
               </DialogContent>
               <DialogActions>
-                <Button onClick={handleCloseAdd} color="error">
-                  Cancel
+                <Button onClick={handleCloseAdd} variant="outlined" color="error">
+                  Close
                 </Button>
                 <Button type="submit" variant="contained">
                   Submit
@@ -370,8 +376,8 @@ const Category = () => {
                 </TextField>
               </DialogContent>
               <DialogActions>
-                <Button onClick={handleCloseEdit} color="error">
-                  Cancel
+                <Button variant="outlined" color="error" onClick={handleCloseEdit}>
+                  Close
                 </Button>
                 <Button type="submit" variant="contained">
                   Save Changes

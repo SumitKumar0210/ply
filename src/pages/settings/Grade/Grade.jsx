@@ -71,7 +71,9 @@ const Grade = () => {
 
   // ✅ Validation Schema
   const validationSchema = Yup.object({
-    name: Yup.string().required("Grade is required"),
+    name: Yup.string()
+    .min(2, "Grade must be at least 2 characters")
+    .required("Grade is required"),
   });
 
   const tableContainerRef = useRef(null);

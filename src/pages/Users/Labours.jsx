@@ -36,8 +36,9 @@ import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 
 import { successMessage, errorMessage, processMessage } from "../../toast";
 import { useDispatch, useSelector } from "react-redux";
-import { addLabour, deleteLabour,fetchLabours, updateLabour, statusUpdate } from "./slices/labourSlice";
+import { addLabour, deleteLabour, fetchLabours, updateLabour, statusUpdate } from "./slices/labourSlice";
 import { fetchActiveDepartments } from "../settings/slices/departmentSlice";
+import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 // ✅ Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -113,14 +114,16 @@ const department = [{ value: "Polish", label: "Polish" }];
 
 // ✅ Validation schema
 const validationSchema = Yup.object({
-  name: Yup.string().required("Name is required"),
+  name: Yup.string()
+    .min(2, "Name must be at least 2 characters")
+    .required("Name is required"),
   per_hour_cost: Yup.number()
-    .typeError("Per hour cost must be a number")  
-    .positive("Per hour cost must be positive")   
+    .typeError("Per hour cost must be a number")
+    .positive("Per hour cost must be positive")
     .required("Per hour cost is required"),
   overtime_hourly_rate: Yup.number()
-    .typeError("Over time hourly rate must be a number")  
-    .positive("Over time hourly rate must be positive")   
+    .typeError("Over time hourly rate must be a number")
+    .positive("Over time hourly rate must be positive")
     .required("Over time hourly rate is required"),
   department_id: Yup.string().required("Please select a department"),
   image: Yup.mixed().required("Image is required"),
@@ -129,15 +132,15 @@ const validationSchema = Yup.object({
 const editValidationSchema = Yup.object({
   name: Yup.string().required("Name is required"),
   per_hour_cost: Yup.number()
-    .typeError("Per hour cost must be a number")  
-    .positive("Per hour cost must be positive")   
+    .typeError("Per hour cost must be a number")
+    .positive("Per hour cost must be positive")
     .required("Per hour cost is required"),
   overtime_hourly_rate: Yup.number()
-    .typeError("Over time hourly rate must be a number")  
-    .positive("Over time hourly rate must be positive")   
+    .typeError("Over time hourly rate must be a number")
+    .positive("Over time hourly rate must be positive")
     .required("Over time hourly rate is required"),
   department_id: Yup.string().required("Please select a department"),
-  
+
 });
 
 
@@ -153,15 +156,15 @@ const Labours = () => {
   const [editData, setEditData] = useState(null);
   const tableContainerRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
-  
+
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
   const { data: tableData = [], loading, error } = useSelector((state) => state.labour);
-  const { data: departments = []} = useSelector((state) => state.department);
+  const { data: departments = [] } = useSelector((state) => state.department);
 
   const dispatch = useDispatch();
-  
-  
+
+
   useEffect(() => {
     dispatch(fetchLabours());
   }, [dispatch]);
@@ -173,7 +176,7 @@ const Labours = () => {
   const handleAdd = async (values, resetForm) => {
     try {
       const res = await dispatch(addLabour(values));
-      if(res.error) return ;
+      if (res.error) return;
       resetForm();
       setOpen(false);
     } catch (error) {
@@ -185,7 +188,7 @@ const Labours = () => {
     setDeleteDialog({
       open: true,
       id: row.id,
-      name: row.name, 
+      name: row.name,
       loading: false,
     });
   };
@@ -196,7 +199,7 @@ const Labours = () => {
     setDeleteDialog((prev) => ({ ...prev, loading: true }));
 
     try {
-      await dispatch(deleteLabour(deleteDialog.id)).unwrap(); 
+      await dispatch(deleteLabour(deleteDialog.id)).unwrap();
       // ✅ If API returns success, close modal
     } catch (error) {
       console.error("Delete failed:", error);
@@ -205,20 +208,20 @@ const Labours = () => {
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
     }
   };
-   const notify = () => {
+  const notify = () => {
     successMessage("User created successfully!");
     errorMessage("Something went wrong!");
     processMessage("Processing your request...");
-   };
+  };
 
   const handleUpdate = (row) => {
     setEditData(row);
     if (row.image instanceof File) {
       const objectUrl = URL.createObjectURL(row.image);
-        setPreviewUrl(objectUrl);
-      } else if (row.image) {
-        setPreviewUrl(mediaUrl + row.image);
-      }
+      setPreviewUrl(objectUrl);
+    } else if (row.image) {
+      setPreviewUrl(mediaUrl + row.image);
+    }
     setEditOpen(true);
   };
   const handleEditClose = () => {
@@ -226,9 +229,9 @@ const Labours = () => {
     setEditData(null);
   };
   const handleEditSubmit = async (values, resetForm) => {
-    
-    const res = await dispatch(updateLabour({updated :{ id: editData.id, ...values }}));
-    if(res.error) return ;
+
+    const res = await dispatch(updateLabour({ updated: { id: editData.id, ...values } }));
+    if (res.error) return;
     resetForm();
     handleEditClose();
   };
@@ -240,24 +243,23 @@ const Labours = () => {
         accessorKey: "profilePic",
         header: "Image",
         Cell: ({ row }) => (
-          <img
-            src={row.original.image ? mediaUrl + row.original.image : Profile}
-                alt={row.original.name}
-            width="40"
-            height="40"
-            style={{ borderRadius: "50%" }}
+          <ImagePreviewDialog
+            imageUrl={row.original.image ? mediaUrl + row.original.image : Profile}
+            alt={row.original.name}
           />
         ),
         size: 80,
       },
       { accessorKey: "name", header: "Name" },
-      { accessorKey: "department_id", header: "Department", Cell: ({ row }) => {
-        const dept = row.original.department;
-        return dept ? dept.name : "N/A";
-      } },
+      {
+        accessorKey: "department_id", header: "Department", Cell: ({ row }) => {
+          const dept = row.original.department;
+          return dept ? dept.name : "N/A";
+        }
+      },
       { accessorKey: "per_hour_cost", header: "Per Hour Cost" },
       { accessorKey: "overtime_hourly_rate", header: "Over Time Hour" },
-    
+
       {
         accessorKey: "status",
         header: "Status",
@@ -349,7 +351,7 @@ const Labours = () => {
         </Grid>
         <Grid>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
-            Add Labours
+            Add Labour
           </Button>
         </Grid>
       </Grid>
@@ -418,7 +420,7 @@ const Labours = () => {
       {/* Add Modal */}
       <BootstrapDialog onClose={() => setOpen(false)} open={open} fullWidth maxWidth="sm">
         <BootstrapDialogTitle onClose={() => setOpen(false)}>
-          Add Labours
+          Add Labour
         </BootstrapDialogTitle>
         <Formik
           initialValues={{
@@ -429,7 +431,7 @@ const Labours = () => {
             image: null,
           }}
           validationSchema={validationSchema}
-          onSubmit={ (values, { resetForm } ) => {
+          onSubmit={(values, { resetForm }) => {
             console.log('pass')
             handleAdd(values, resetForm)
           }}
@@ -437,7 +439,7 @@ const Labours = () => {
           {({ handleChange, handleSubmit, setFieldValue, touched, errors, values }) => (
             <Form onSubmit={handleSubmit}>
               <DialogContent dividers>
-                <Grid container  rowSpacing={1} columnSpacing={3}>
+                <Grid container rowSpacing={1} columnSpacing={3}>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       id="name"
@@ -521,7 +523,7 @@ const Labours = () => {
                       ))}
                     </TextField>
                   </Grid>
-                   <Grid size={{ xs: 12, md: 6}}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Grid container spacing={2} alignItems="center" mt={1}>
                       <Grid size={6}>
                         <Button
@@ -594,7 +596,7 @@ const Labours = () => {
       {/* Edit Modal */}
       <BootstrapDialog onClose={() => setEditOpen(false)} open={editOpen} fullWidth maxWidth="sm">
         <BootstrapDialogTitle onClose={() => setEditOpen(false)}>
-          Edit Labours
+          Edit Labour
         </BootstrapDialogTitle>
         <Formik
           enableReinitialize
@@ -742,7 +744,7 @@ const Labours = () => {
                   Close
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
-                  Submit
+                  Save changes
                 </Button>
               </DialogActions>
             </Form>
@@ -751,7 +753,7 @@ const Labours = () => {
 
       </BootstrapDialog>
 
-     {/* Delete Modal */}
+      {/* Delete Modal */}
       <Dialog
         open={deleteDialog.open}
         onClose={() =>
@@ -773,7 +775,7 @@ const Labours = () => {
             }
             disabled={deleteDialog.loading}
           >
-            Cancel
+            Close
           </Button>
           <Button
             variant="contained"

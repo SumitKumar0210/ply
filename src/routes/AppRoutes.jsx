@@ -17,6 +17,7 @@ import Invoice from "../pages/Vendor/Invoice/Invoice";
 import Payment from "../pages/Vendor/Payment/Payment";
 import Ledger from "../pages/Vendor/Ledger/Ledger";
 import CreateVendor from "../pages/Vendor/CreateVendor/CreateVendor";
+import CreatePurchaseOrder from "../pages/Vendor/PurchaseOrder/CreatePurchaseOrder";
 
 const AppRoutes = () => {
   return (
@@ -35,6 +36,7 @@ const AppRoutes = () => {
       {/* Vendor */}
       <Route path="/vendor/dashboard" element={<ProtectedRoute><MainLayout><VendorDashboard/></MainLayout></ProtectedRoute>}/>
       <Route path="/vendor/purchase-order" element={<ProtectedRoute><MainLayout><PurchaseOrder/></MainLayout></ProtectedRoute>}/>
+      <Route path="/vendor/purchase-order/create" element={<ProtectedRoute><MainLayout><CreatePurchaseOrder/></MainLayout></ProtectedRoute>}/>
       <Route path="/vendor/invoice" element={<ProtectedRoute><MainLayout><Invoice/></MainLayout></ProtectedRoute>}/>
       <Route path="/vendor/payment" element={<ProtectedRoute><MainLayout><Payment/></MainLayout></ProtectedRoute>}/>
       <Route path="/vendor/ledger" element={<ProtectedRoute><MainLayout><Ledger/></MainLayout></ProtectedRoute>}/>

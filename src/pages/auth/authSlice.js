@@ -53,17 +53,13 @@ export const forgotPassword = createAsyncThunk(
   "auth/forgotPassword",
   async (payload, { rejectWithValue }) => {
     try {
-      const res = await axios.post(`${BASE_URL}forget`, payload);
+      const res = await axios.post(`${BASE_URL}forgot-password`, payload);
+      successMessage(res.data.message);
       return res.data; // usually { message: "reset link sent" }
     } catch (error) {
-      if (error.response?.data) {
-        return rejectWithValue(
-          error.response.data.error ??
-            error.response.data.message ??
-            "Request failed"
-        );
-      }
-      return rejectWithValue("Something went wrong");
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
     }
   }
 );

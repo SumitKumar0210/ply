@@ -79,7 +79,9 @@ function BootstrapDialogTitle(props) {
 
 // ✅ Validation schema
 const validationSchema = Yup.object({
-  name: Yup.string().required("Name is required"),
+  name: Yup.string()
+  .min(2, "Name must be at least 2 characters")
+  .required("Name is required"),
   mobile: Yup.string()
     .matches(/^[0-9]{10}$/, "Mobile must be 10 digits")
     .required("Mobile is required"),
@@ -506,7 +508,7 @@ const Customers = () => {
               </DialogContent>
               <DialogActions>
                 <Button onClick={() => setOpen(false)} variant="outlined" color="error">
-                  Cancel
+                  Close
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
                   Submit
@@ -671,10 +673,10 @@ const Customers = () => {
               </DialogContent>
               <DialogActions>
                 <Button onClick={() => setEditOpen(false)} variant="outlined" color="error">
-                  Cancel
+                  Close
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
-                  Submit
+                  Save changes
                 </Button>
               </DialogActions>
             </Form>
@@ -704,7 +706,7 @@ const Customers = () => {
             }
             disabled={deleteDialog.loading}
           >
-            Cancel
+            Close
           </Button>
           <Button
             variant="contained"

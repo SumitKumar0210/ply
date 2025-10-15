@@ -84,7 +84,9 @@ const Vendor = () => {
 
   // ✅ Validation Schema
   const validationSchema = Yup.object({
-    name: Yup.string().required("Vendor Name is required"),
+    name: Yup.string()
+    .min(2, "Vendor must be at least 2 characters")
+    .required("Vendor Name is required"),
     mobile: Yup.string()
       .matches(/^[0-9]{10}$/, "Enter valid 10-digit mobile number")
       .required("Mobile is required"),

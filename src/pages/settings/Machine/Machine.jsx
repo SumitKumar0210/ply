@@ -48,7 +48,9 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 const validationSchema = Yup.object({
-  name: Yup.string().required("Machine Name is required"),
+  name: Yup.string()
+  .min(2, "Machine must be at least 2 characters")
+  .required("Machine Name is required"),
 
   run_hours_at_service: Yup.number()
     .typeError("Enter valid number of hours")
@@ -606,7 +608,7 @@ const Machine = () => {
                   </Button>
                   
                   <Button type="submit" variant="contained" color="primary">
-                    Update
+                    Save changes
                   </Button>
                 </DialogActions>
               </Form>

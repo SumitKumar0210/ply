@@ -67,7 +67,9 @@ const Department = () => {
 
   // ✅ Validation Schema
   const validationSchema = Yup.object({
-    name: Yup.string().required("Department is required"),
+    name: Yup.string()
+    .min(2, "Department must be at least 2 characters")
+    .required("Department is required"),
   });
 
   const tableContainerRef = useRef(null);

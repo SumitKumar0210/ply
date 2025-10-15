@@ -70,7 +70,9 @@ const Group = () => {
 
   // ✅ Validation Schema
   const validationSchema = Yup.object({
-    name: Yup.string().required("Group is required"),
+    name: Yup.string()
+    .min(2, "Group must be at least 2 characters")
+    .required("Group is required"),
   });
 
   const tableContainerRef = useRef(null);

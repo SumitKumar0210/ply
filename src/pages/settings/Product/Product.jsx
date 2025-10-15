@@ -35,6 +35,7 @@ import * as Yup from "yup";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProducts, addProduct, deleteProduct, updateProduct, statusUpdate } from "../slices/productSlice";
 import { fetchActiveGroup } from "../slices/groupSlice";
+import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -75,7 +76,9 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 const Product = () => {
   // Validation Schema
   const validationSchema = Yup.object({
-    name: Yup.string().required("Name is required"),
+    name: Yup.string()
+      .min(2, "Name must be at least 2 characters")
+      .required("Name is required"),
     model: Yup.string().required("Model is required"),
     size: Yup.string().required("Size is required"),
     color: Yup.string().required("Color is required"),
@@ -96,7 +99,9 @@ const Product = () => {
 
   // Validation Schema (for Edit → image optional)
   const editValidationSchema = Yup.object({
-    name: Yup.string().required("Name is required"),
+    name: Yup.string()
+      .min(2, "Name must be at least 2 characters")
+      .required("Name is required"),
     model: Yup.string().required("Model is required"),
     size: Yup.string().required("Size is required"),
     color: Yup.string().required("Color is required"),
@@ -112,32 +117,32 @@ const Product = () => {
         !value || ["image/jpeg", "image/png", "image/jpg"].includes(value.type)
       ),
   });
- 
- const mediaUrl = import.meta.env.VITE_MEDIA_URL;
-   const dispatch = useDispatch();
-   const { data: data = [] } = useSelector((state) => state.product);
-   const { data: groups = [] } = useSelector((state) => state.group);
- 
-   const tableContainerRef = useRef(null);
-   const [open, setOpen] = useState(false);
-   const [editOpen, setEditOpen] = useState(false);
-   const [editData, setEditData] = useState(null);
 
- 
- 
-   useEffect(() => {
-     dispatch(fetchProducts());
-   }, [dispatch]);
- 
-   useEffect(() => {
-     dispatch(fetchActiveGroup());
-   }, [open, editOpen]);
- 
-   const handleClickOpen = () => setOpen(true);
-   const handleClose = () => setOpen(false);
- 
-   
-   const handleAdd = async (values, resetForm) => {
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL;
+  const dispatch = useDispatch();
+  const { data: data = [] } = useSelector((state) => state.product);
+  const { data: groups = [] } = useSelector((state) => state.group);
+
+  const tableContainerRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
+
+
+
+  useEffect(() => {
+    dispatch(fetchProducts());
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchActiveGroup());
+  }, [open, editOpen]);
+
+  const handleClickOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+
+  const handleAdd = async (values, resetForm) => {
     try {
       const res = await dispatch(addProduct(values));
       if (res.error) return;
@@ -148,102 +153,95 @@ const Product = () => {
   };
 
 
-   
-   const handleEditOpen = (row) => {
-     setEditData(row);
-     setEditOpen(true);
-     
-   };
-   
-   const handleEditClose = () => {
-     setEditOpen(false);
-     setEditData(null);
-   };
-   const handleEditSubmit = async (values, resetForm) => {
-     const res = await dispatch(updateProduct({updated :{ id: editData.id, ...values }}));
-     if (res.error) return;
-     resetForm();
-     handleEditClose();
-   };
- 
-   const handleDelete = (id) => {
-     dispatch(deleteProduct(id));
-   };
+
+  const handleEditOpen = (row) => {
+    setEditData(row);
+    setEditOpen(true);
+
+  };
+
+  const handleEditClose = () => {
+    setEditOpen(false);
+    setEditData(null);
+  };
+  const handleEditSubmit = async (values, resetForm) => {
+    const res = await dispatch(updateProduct({ updated: { id: editData.id, ...values } }));
+    if (res.error) return;
+    resetForm();
+    handleEditClose();
+  };
+
+  const handleDelete = (id) => {
+    dispatch(deleteProduct(id));
+  };
   const columns = useMemo(
     () => [
-        {
-            accessorKey: "image",
-            header: "Image",
-            size: 80,
-            Cell: ({ row }) => (
-                <img
-                src={mediaUrl + row.original.image}
-                alt={row.original.name}
-                style={{
-                    width: "40px",
-                    height: "40px",
-                    objectFit: "cover",
-                    borderRadius: "4px",
-                    border: "1px solid #ddd",
-                }}
-                />
-            ),
-        },
-        { accessorKey: "name", header: "Name", size: 150 },
-        { accessorKey: "model", header: "Model", size: 120 },
-        { accessorKey: "size", header: "Size", size: 100 },
-        { accessorKey: "color", header: "Color", size: 100 },
-        { accessorKey: "hsn_code", header: "HSN Code", size: 120 },
-        { accessorKey: "rrp", header: "RRP", size: 100 },
-        { accessorKey: "product_type", header: "Product Type", size: 150 },
-        { accessorKey: "group_id", header: "Group", size: 100,  Cell: ({ row }) => row.original.group?.name || row.original.group_id, },
-        {
-                accessorKey: "status",
-                header: "Status",
-                enableSorting: false,
-                enableColumnFilter: false,
-                Cell: ({ row }) => (
-                  <CustomSwitch
-                    checked={!!row.original.status}
-                    onChange={(e) => {
-                      const newStatus = e.target.checked ? 1 : 0;
-                      dispatch(statusUpdate({ ...row.original, status: newStatus }));
-                    }}
-                  />
-                ),
-              },
-        {
-            id: "actions",
-            header: "Actions",
-            enableSorting: false,
-            enableColumnFilter: false,
-            muiTableHeadCellProps: { align: "right" },
-            muiTableBodyCellProps: { align: "right" },
-            Cell: ({ row }) => (
-            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                <Tooltip title="Edit">
-                <IconButton
-                    color="primary"
-                    onClick={() => handleEditOpen(row.original)}
-                >
-                    <BiSolidEditAlt size={16} />
-                </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                <IconButton
-                    color="error"
-                    onClick={() => handleDelete(row.original.id)}
-                >
-                    <RiDeleteBinLine size={16} />
-                </IconButton>
-                </Tooltip>
-            </Box>
-            ),
-        },
+      {
+        accessorKey: "image",
+        header: "Image",
+        size: 80,
+        Cell: ({ row }) => (
+          <ImagePreviewDialog
+            imageUrl={mediaUrl + row.original.image}
+            alt={row.original.name}
+          />
+        ),
+      },
+      { accessorKey: "name", header: "Name", size: 150 },
+      { accessorKey: "model", header: "Model", size: 120 },
+      { accessorKey: "size", header: "Size", size: 100 },
+      { accessorKey: "color", header: "Color", size: 100 },
+      { accessorKey: "hsn_code", header: "HSN Code", size: 120 },
+      { accessorKey: "rrp", header: "RRP", size: 100 },
+      { accessorKey: "product_type", header: "Product Type", size: 150 },
+      { accessorKey: "group_id", header: "Group", size: 100, Cell: ({ row }) => row.original.group?.name || row.original.group_id, },
+      {
+        accessorKey: "status",
+        header: "Status",
+        enableSorting: false,
+        enableColumnFilter: false,
+        Cell: ({ row }) => (
+          <CustomSwitch
+            checked={!!row.original.status}
+            onChange={(e) => {
+              const newStatus = e.target.checked ? 1 : 0;
+              dispatch(statusUpdate({ ...row.original, status: newStatus }));
+            }}
+          />
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableColumnFilter: false,
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+        Cell: ({ row }) => (
+          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            <Tooltip title="Edit">
+              <IconButton
+                color="primary"
+                onClick={() => handleEditOpen(row.original)}
+              >
+                <BiSolidEditAlt size={16} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete">
+              <IconButton
+                color="error"
+                onClick={() => handleDelete(row.original.id)}
+              >
+                <RiDeleteBinLine size={16} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
     ],
     []
   );
-    // Function to download CSV from data
+  // Function to download CSV from data
   const downloadCSV = () => {
     // Prepare csv header
     const headers = columns
@@ -284,85 +282,85 @@ const Product = () => {
     <>
       <Grid container spacing={1}>
         <Grid size={12}>
-            <Paper
+          <Paper
             elevation={0}
             sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
             ref={tableContainerRef}
-            >
+          >
             <MaterialReactTable
-                columns={columns}
-                data={data}
-                enableTopToolbar={true}
-                enableColumnFilters={true}
-                enableSorting={true}
-                enablePagination={true}
-                enableBottomToolbar={true}
-                enableGlobalFilter={true}
-                enableDensityToggle={false} // Remove density toggle
-                enableColumnActions={false} // Remove column actions
-                enableColumnVisibilityToggle={false}
+              columns={columns}
+              data={data}
+              enableTopToolbar={true}
+              enableColumnFilters={true}
+              enableSorting={true}
+              enablePagination={true}
+              enableBottomToolbar={true}
+              enableGlobalFilter={true}
+              enableDensityToggle={false} // Remove density toggle
+              enableColumnActions={false} // Remove column actions
+              enableColumnVisibilityToggle={false}
 
-                initialState={{
+              initialState={{
                 density: "compact",
-                }}
-            muiTableContainerProps={{
-                    sx: { 
-                        width: "100%",
-                        backgroundColor: "#fff",
-                        overflowX: "auto",
-                        minWidth: "1200px",
-                    },
-                }}
-                muiTableBodyCellProps={{
-                    sx: {
-                        whiteSpace: "wrap",
-                        width:"100px"
-                    },
-                }}
-                muiTablePaperProps={{
+              }}
+              muiTableContainerProps={{
+                sx: {
+                  width: "100%",
+                  backgroundColor: "#fff",
+                  overflowX: "auto",
+                  minWidth: "1200px",
+                },
+              }}
+              muiTableBodyCellProps={{
+                sx: {
+                  whiteSpace: "wrap",
+                  width: "100px"
+                },
+              }}
+              muiTablePaperProps={{
                 sx: { backgroundColor: "#fff" },
-                }}
-                renderTopToolbar={({ table }) => (
+              }}
+              renderTopToolbar={({ table }) => (
                 <Box
-                    sx={{
+                  sx={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
                     width: "100%",
                     p: 1,
-                    }}
+                  }}
                 >
-                    <Typography variant="h6" fontWeight={400}>
+                  <Typography variant="h6" fontWeight={400}>
                     Products
-                    </Typography>
+                  </Typography>
 
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <MRT_GlobalFilterTextField table={table} />
 
                     <MRT_ToolbarInternalButtons table={table} />
                     <Tooltip title="Print">
-                        <IconButton color="light" onClick={handlePrint}>
+                      <IconButton color="light" onClick={handlePrint}>
                         <FiPrinter size={20} />
-                        </IconButton>
+                      </IconButton>
                     </Tooltip>
 
                     <Tooltip title="Download CSV">
-                        <IconButton color="light" onClick={downloadCSV}>
+                      <IconButton color="light" onClick={downloadCSV}>
                         <BsCloudDownload size={20} />
-                        </IconButton>
+                      </IconButton>
                     </Tooltip>
                     <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={handleClickOpen}
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={handleClickOpen}
                     >
-                        Add Product
+                      Add Product
                     </Button>
-                    </Box>
+                  </Box>
                 </Box>
-                )}
+              )}
             />
-            </Paper>
+          </Paper>
         </Grid>
       </Grid>
       {/* Dialog */}
@@ -393,11 +391,11 @@ const Product = () => {
             group_id: "",
           }}
           validationSchema={validationSchema}
-            onSubmit={ (values) => {
-               handleAdd(values)   
-            }}
+          onSubmit={(values) => {
+            handleAdd(values)
+          }}
         >
-          {({ values, errors, touched, handleChange, setFieldValue  }) => (
+          {({ values, errors, touched, handleChange, setFieldValue }) => (
             <Form>
               <DialogContent dividers>
                 <Grid container spacing={2}>
@@ -511,7 +509,7 @@ const Product = () => {
                       <MenuItem value="Software">Software</MenuItem>
                     </TextField>
                   </Grid>
-                  
+
 
                   {/* Group */}
                   <Grid size={{ xs: 12, md: 6 }}>
@@ -536,7 +534,7 @@ const Product = () => {
                   </Grid>
 
                   {/* Image Upload */}
-                 <Grid size={{ xs: 12, md: 6 }} sx={{mb:3}}>
+                  <Grid size={{ xs: 12, md: 6 }} sx={{ mb: 3 }}>
                     <Grid container spacing={1} alignItems="center">
                       <Grid size={{ xs: 8 }}>
                         <Button
@@ -628,12 +626,12 @@ const Product = () => {
             group_id: editData?.group_id || "",
           }}
           validationSchema={editValidationSchema}
-            onSubmit={ (values, { resetForm }) => {
-               handleEditSubmit(values, resetForm)
-                  
-            }}
+          onSubmit={(values, { resetForm }) => {
+            handleEditSubmit(values, resetForm)
+
+          }}
         >
-          {({ values, errors, touched, handleChange, setFieldValue  }) => (
+          {({ values, errors, touched, handleChange, setFieldValue }) => (
             <Form>
               <DialogContent dividers>
                 <Grid container spacing={2}>
@@ -747,7 +745,7 @@ const Product = () => {
                       <MenuItem value="Software">Software</MenuItem>
                     </TextField>
                   </Grid>
-                  
+
 
                   {/* Group */}
                   <Grid size={{ xs: 12, md: 6 }}>
@@ -772,7 +770,7 @@ const Product = () => {
                   </Grid>
 
                   {/* Image Upload */}
-                 <Grid size={{ xs: 12, md: 6 }} sx={{mb:3}}>
+                  <Grid size={{ xs: 12, md: 6 }} sx={{ mb: 3 }}>
                     <Grid container spacing={1} alignItems="center">
                       <Grid size={{ xs: 8 }}>
                         <Button
@@ -804,7 +802,7 @@ const Product = () => {
                       </Grid>
                       <Grid size={4}>
                         <img
-                          src={ 
+                          src={
                             values.image
                               ? URL.createObjectURL(values.image)
                               : `${mediaUrl}${editData?.image || ""}`
@@ -832,7 +830,7 @@ const Product = () => {
                   Close
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
-                  Submit
+                  Save changes
                 </Button>
               </DialogActions>
             </Form>
