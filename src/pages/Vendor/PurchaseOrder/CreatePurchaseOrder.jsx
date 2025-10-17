@@ -1,491 +1,596 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import Grid from "@mui/material/Grid";
 import {
-  Grid,
   Button,
   Typography,
   Card,
-  CardContent,
-  TextField,
-  MenuItem,
-  IconButton,
   Tooltip,
+  IconButton,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
+  CardContent,
+  Stack,
+  Box,
+  TextareaAutosize,
+  MenuItem,
+  CircularProgress
 } from "@mui/material";
-import { Box } from "@mui/material";                  
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
-import { AiOutlinePrinter } from "react-icons/ai";
 import { RiDeleteBinLine } from "react-icons/ri";
-import { Formik, Form } from "formik";
-import * as Yup from "yup";
-
-import { addPO } from "../slice/purchaseOrderSlice";
+import { Autocomplete, TextField } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { fetchActiveVendors } from "../../settings/slices/vendorSlice";
 import { fetchActiveMaterials } from "../../settings/slices/materialSlice";
-import { useDispatch, useSelector } from "react-redux";
+import { fetchActiveTaxSlabs } from "../../settings/slices/taxSlabSlice";
+import { addPO } from "../slice/purchaseOrderSlice";
+import { Formik, Form } from "formik";
+import * as Yup from "yup";
+import { addDays, format } from 'date-fns';
+import { successMessage, errorMessage } from "../../../toast";
+
+// Validation Schema
+const validationSchema = Yup.object().shape({
+  vendor: Yup.object().nullable().required("Vendor is required"),
+  creditDays: Yup.number()
+    .typeError("Credit days must be a number")
+    .nullable()
+    .min(0, "Credit days must be positive")
+    .max(365, "Credit days cannot exceed 365"),
+  eddDate: Yup.date()
+    .nullable()
+    .typeError("Invalid date format"),
+  discount: Yup.number()
+    .typeError("Discount must be a number")
+    .nullable()
+    .min(0, "Discount must be positive"),
+  additionalCharges: Yup.number()
+    .typeError("Charges must be a number")
+    .nullable()
+    .min(0, "Charges must be positive"),
+  gstRate: Yup.number()
+    .typeError("GST must be a number")
+    .min(0, "GST must be positive")
+    .max(100, "GST cannot exceed 100"),
+  orderTerms: Yup.string().max(500, "Order terms cannot exceed 500 characters"),
+});
 
 const CreatePurchaseOrder = () => {
-  const [openDelete, setOpenDelete] = useState(false);
-  const [selectedMaterial, setSelectedMaterial] = useState({
-    id: "",
-    name: "",
-    code: "",
-    uom: "",
-    size: "",
-    rate: "",
-  });
-  const [qty, setQty] = useState(1);
-  const [items, setItems] = useState([]);
-  const [deleteId, setDeleteId] = useState(null);
-
-  // Order totals
-  const [carriage, setCarriage] = useState(0);
-  const [gstRate, setGstRate] = useState(5);
-  const [gstAmount, setGstAmount] = useState(0);
-  const [grandTotal, setGrandTotal] = useState(0);
-
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const validationSchema = Yup.object({
-    vendor_id: Yup.string().required("Vendor is required"),
-    // credit_days: Yup.date().required("Creation date is required"),
-    expected_delivery_date: Yup.date().required("Expected delivery date is required"),
-    orderTerms: Yup.string().max(200, "Order terms must be under 200 characters"),
-    credit_days: Yup.number().min(0, "Invalid number of days").required("Credit days required"),
-  });                                                           
+  // State management
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState(null);
+  const [items, setItems] = useState([]);
+  const [selectedItemCode, setSelectedItemCode] = useState(null);
+  const [selectedQty, setSelectedQty] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAddItem = () => {
-    if (!selectedMaterial.id || !qty) return;
-    
-    const total = qty * selectedMaterial.rate;
+  // Redux selectors
+  const { data: vendors = [], loading: vendorLoading } = useSelector((state) => state.vendor);
+  const { data: materials = [] } = useSelector((state) => state.material);
+  const { data: gst = [] } = useSelector((state) => state.taxSlab);
 
-    setItems([
-      ...items,
-      {
-        id: Date.now(),
-        material_id: selectedMaterial.id,
-        name: selectedMaterial.name,
-        code: selectedMaterial.code,
-        qty: Number(qty),
-        size: selectedMaterial.size,
-        uom: selectedMaterial.uom,
-        rate: selectedMaterial.rate,
-        total,
-      },
-    ]);
-    
-    // Reset material selection
-    setSelectedMaterial({
-      id: "",
-      name: "",
-      code: "",
-      uom: "",
-      size: "",
-      rate: "",
-    });
-    setQty(1);
-  };
-
-  const handleDelete = (id) => {
-    setDeleteId(id);
-    setOpenDelete(true);
-  };
-
-  const confirmDelete = () => {
-    setItems(items.filter((i) => i.id !== deleteId));
-    setOpenDelete(false);
-    setDeleteId(null);
-  };
-
-  const calculateSubTotal = () =>
-    items.reduce((sum, item) => sum + item.total, 0);
-
-  const { data: vendors = [], loading: vendorsLoading } = useSelector((state) => state.vendor);
-  const { data: materials = [], loading: materialsLoading } = useSelector((state) => state.material);
-
+  // Fetch data on mount
   useEffect(() => {
     dispatch(fetchActiveVendors());
     dispatch(fetchActiveMaterials());
+    dispatch(fetchActiveTaxSlabs());
   }, [dispatch]);
 
-  // Auto calculate GST and grand total
-  useEffect(() => {
-    const subTotal = calculateSubTotal();
-    const gst = (subTotal * gstRate) / 100;
-    const total = subTotal + gst + Number(carriage || 0);
+  // Validate item inputs
+  const validateItemInput = useCallback(() => {
+    if (!selectedItemCode?.id) {
+      errorMessage("Please select a material");
+      return false;
+    }
+    if (!selectedQty || isNaN(selectedQty) || parseInt(selectedQty) <= 0) {
+      errorMessage("Please enter a valid quantity greater than 0");
+      return false;
+    }
+    return true;
+  }, [selectedItemCode, selectedQty]);
 
-    setGstAmount(gst.toFixed(2));
-    setGrandTotal(total.toFixed(2));
-  }, [items, carriage, gstRate]);
+  // Check for duplicate items
+  const isDuplicateItem = useCallback((materialId) => {
+    return items.some(item => item.materialId === materialId);
+  }, [items]);
 
-  const handleFormSubmit = (values, { resetForm }) => {
-    const subtotal = calculateSubTotal();
+  // Handle Add Item
+  const handleAddItem = useCallback(() => {
+    if (!validateItemInput()) return;
 
-    const formData = {
-      vendor_id: values.vendor_id,
-      gst_percentage: gstRate,
-      gst_amount: Number(gstAmount),
-      carriage_amount: Number(carriage || 0),
-      subtotal: subtotal,
-      grand_total: Number(grandTotal),
-      expected_delivery_date: values.expected_delivery_date,
-      credit_days: Number(values.credit_days || 0),
-      order_terms: values.orderTerms,
-      material_items: JSON.stringify(items), // store as JSON
-      creation_date: values.credit_days,
-      quality_status: "0",
+    if (isDuplicateItem(selectedItemCode.id)) {
+      errorMessage("This material is already added. Update quantity in the table instead.");
+      return;
+    }
+
+    const materialData = materials.find(m => m.id === selectedItemCode.id);
+    if (!materialData) {
+      errorMessage("Material not found");
+      return;
+    }
+
+    const rate = materialData.price || 0;
+    if (rate <= 0) {
+      errorMessage("Material price is invalid");
+      return;
+    }
+
+    const qty = parseInt(selectedQty);
+    const total = rate * qty;
+
+    const newItem = {
+      id: items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1,
+      materialId: selectedItemCode.id,
+      name: materialData.name || "Unknown",
+      qty,
+      size: materialData.size || "N/A",
+      uom: materialData.uom || "pcs",
+      rate,
+      total,
     };
 
-    console.log("Purchase Order Data:", formData);
-    dispatch(addPO(formData));
+    setItems(prev => [...prev, newItem]);
+    setSelectedItemCode(null);
+    setSelectedQty("");
+    successMessage("Item added successfully");
+  }, [selectedItemCode, selectedQty, items, materials, validateItemInput, isDuplicateItem]);
 
-    resetForm();
-    setItems([]);
-    setCarriage(0);
-    setGstRate(5);
-    setQty(1);
-  };
+  // Handle quantity change
+  const handleQtyChange = useCallback((itemId, newQty) => {
+    const qty = parseInt(newQty) || 0;
+    
+    if (qty < 0) {
+      errorMessage("Quantity cannot be negative");
+      return;
+    }
 
-  const handleSaveDraft = (values) => {
-    const subtotal = calculateSubTotal();
+    if (qty === 0) {
+      errorMessage("Quantity must be greater than 0");
+      return;
+    }
 
-    const formData = {
-      vendor_id: values.vendor_id,
-      gst_percentage: gstRate,
-      gst_amount: Number(gstAmount),
-      carriage_amount: Number(carriage || 0),
-      subtotal: subtotal,
-      grand_total: Number(grandTotal),
-      expected_delivery_date: values.expected_delivery_date,
-      credit_days: Number(values.credit_days || 0),
-      order_terms: values.orderTerms,
-      material_items: JSON.stringify(items),
-      quality_status: "0",
+    setItems(prev =>
+      prev.map(item =>
+        item.id === itemId
+          ? { ...item, qty, total: qty * item.rate }
+          : item
+      )
+    );
+  }, []);
+
+  // Handle Delete Item
+  const handleDeleteConfirm = useCallback(() => {
+    setItems(prev => prev.filter(item => item.id !== deleteItemId));
+    setOpenDelete(false);
+    setDeleteItemId(null);
+    successMessage("Item deleted successfully");
+  }, [deleteItemId]);
+
+  const handleDeleteClick = useCallback((itemId) => {
+    setDeleteItemId(itemId);
+    setOpenDelete(true);
+  }, []);
+
+  // Memoized calculations
+  const { subTotal, formattedItems } = useMemo(() => {
+    const total = items.reduce((sum, item) => sum + item.total, 0);
+    const formatted = items.map(item => ({
+      material_id: item.materialId,
+      name: item.name,
+      qty: item.qty,
+      size: item.size,
+      uom: item.uom,
+      rate: item.rate,
+      total: item.total
+    }));
+    return { subTotal: total, formattedItems: formatted };
+  }, [items]);
+
+  // Validate PO data
+  const validatePOData = useCallback((values) => {
+    if (!values.vendor?.id) {
+      errorMessage("Please select a vendor");
+      return false;
+    }
+
+    if (items.length === 0) {
+      errorMessage("Please add at least one item");
+      return false;
+    }
+
+    const discount = parseFloat(values.discount) || 0;
+    const subtotalAfterDiscount = subTotal - discount;
+    
+    if (subtotalAfterDiscount < 0) {
+      errorMessage("Discount cannot exceed subtotal");
+      return false;
+    }
+
+    return true;
+  }, [items, subTotal]);
+
+  // Calculate totals
+  const calculateTotals = useCallback((values) => {
+    const discountAmount = parseFloat(values.discount) || 0;
+    const additionalChargesAmount = parseFloat(values.additionalCharges) || 0;
+    const gstRateValue = parseFloat(values.gstRate) || 0;
+
+    const subtotalAfterDiscount = Math.max(0, subTotal - discountAmount);
+    const gstAmount = Math.round(subtotalAfterDiscount * (gstRateValue / 100));
+    const grandTotal = subtotalAfterDiscount + additionalChargesAmount + gstAmount;
+
+    return { discountAmount, additionalChargesAmount, gstRateValue, gstAmount, grandTotal, subtotalAfterDiscount };
+  }, [subTotal]);
+
+  // Prepare PO data
+  const preparePOData = useCallback((values, isDraft = false) => {
+    const { discountAmount, additionalChargesAmount, gstRateValue, gstAmount, grandTotal } = calculateTotals(values);
+
+    return {
+      vendor_id: values.vendor.id,
+      credit_days: values.creditDays || 0,
+      edd_date: values.eddDate ? format(values.eddDate, 'yyyy-MM-dd') : null,
+      items: JSON.stringify(formattedItems),
+      subtotal: subTotal,
+      discount: discountAmount,
+      additional_charges: additionalChargesAmount,
+      gst_amount: gstAmount,
+      grand_total: grandTotal,
+      gst_percentage: gstRateValue,
+      order_terms: values.orderTerms || "",
+      is_draft: isDraft,
     };
+  }, [calculateTotals, formattedItems, subTotal]);
 
-    console.log("Save as Draft:", formData);
-    // dispatch(addPO(formData));
+  // Handle save (both submit and draft)
+  const handleSavePO = async (values, isDraft = false) => {
+    if (!validatePOData(values)) return;
+
+    setIsSubmitting(true);
+    try {
+      const poData = preparePOData(values, isDraft);
+      const res = await dispatch(addPO(poData));
+
+      if (res.error) {
+        const errorMsg = res.error?.message || (isDraft ? "Failed to save draft" : "Failed to save purchase order");
+        errorMessage(errorMsg);
+      } else {
+          setTimeout(() => navigate("/vendor/purchase-order"), 1500);
+      }
+    } catch (err) {
+      errorMessage(err?.message || "An error occurred while saving");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <>
-      {/* Header */}
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Grid item>
-          <Typography variant="h6">Purchase Order</Typography>
-        </Grid>
-        <Grid item>
-          <Button variant="contained" color="secondary" startIcon={<AiOutlinePrinter />}>
-            Print
-          </Button>
+        <Grid>
+          <Typography variant="h6">Create Purchase Order</Typography>
         </Grid>
       </Grid>
-      
-      <Box sx={{
-        height: "80vh",
-        overflowY: "auto",
-        overflowX: "hidden",
-        p: 2,
-        backgroundColor: "#f9f9f9",
-        marginBottom: "40px",
-      }}>
-        {/* Main Card */}
-        <Card>
-          <CardContent>
-            <Formik
-              initialValues={{
-                vendor_id: "",
-                credit_days: "",
-                expected_delivery_date: "",
-                orderTerms: "",
-              }}
-              validationSchema={validationSchema}
-              onSubmit={handleFormSubmit}
-            >
-              {({ values, errors, touched, handleChange, handleBlur, setFieldValue }) => {
-                const selectedVendor = vendors.find(v => v.id === values.vendor_id);
 
-                return (
-                  <Form>
-                    {/* Vendor Info */}
-                    <Grid container spacing={2} sx={{ mb: 3 }}>
-                      <Grid size={{ xs: 12, md: 2 }}>
-                        <TextField
-                          select
-                          label="Select Vendor"
-                          fullWidth
-                          name="vendor_id"
-                          value={values.vendor_id}
-                          error={touched.vendor_id && Boolean(errors.vendor_id)}
-                          helperText={touched.vendor_id && errors.vendor_id}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                        >
-                          <MenuItem value="">Select Vendor</MenuItem>
-                          {vendors.map((v) => (
-                            <MenuItem key={v.id} value={v.id}>
-                              {v.name}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                        {selectedVendor && (
-                          <Typography variant="body2" sx={{ mt: 2, p: 1, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-                            <strong>{selectedVendor.name}</strong> <br />
-                            {selectedVendor.address} <br />
-                            GSTIN: {selectedVendor.gst || 'N/A'}
-                          </Typography>
-                        )}
-                      </Grid>
+      <Grid container spacing={1} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+        <Grid size={12}>
+          <Formik
+            initialValues={{
+              vendor: null,
+              creditDays: "",
+              eddDate: null,
+              discount: 0,
+              additionalCharges: 0,
+              gstRate: 18,
+              orderTerms: "",
+            }}
+            validationSchema={validationSchema}
+            onSubmit={(values) => handleSavePO(values, false)}
+          >
+            {({ values, errors, touched, handleChange, setFieldValue }) => {
+              useEffect(() => {
+                if (values.creditDays && !isNaN(values.creditDays) && values.creditDays > 0) {
+                  const newDate = addDays(new Date(), parseInt(values.creditDays));
+                  setFieldValue("eddDate", newDate);
+                }
+              }, [values.creditDays, setFieldValue]);
 
-                      <Grid item xs={12} md={3}>
-                        <TextField
-                          label="Creation Date"
-                          type="number"
-                          fullWidth
-                          name="credit_days"
-                          value={values.credit_days}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                          error={touched.credit_days && Boolean(errors.credit_days)}
-                          helperText={touched.credit_days && errors.credit_days}
-                          InputLabelProps={{ shrink: true }}
-                        />
-                      </Grid>
+              const { discountAmount, additionalChargesAmount, gstRateValue, gstAmount, grandTotal } = calculateTotals(values);
 
-                      <Grid item xs={12} md={3}>
-                        <TextField
-                          label="EDD Date"
-                          type="date"
-                          fullWidth
-                          name="expected_delivery_date"
-                          value={values.expected_delivery_date}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                          error={touched.expected_delivery_date && Boolean(errors.expected_delivery_date)}
-                          helperText={touched.expected_delivery_date && errors.expected_delivery_date}
-                          InputLabelProps={{ shrink: true }}
-                        />
-                      </Grid>
-                    </Grid>
-
-                    {/* Item Selector */}
-                    <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                      <Grid size={{ xs: 12, md: 2  }}>
-                        <TextField
-                          select
-                          label="Select Material"
-                          fullWidth
-                          value={selectedMaterial.id}
-                          onChange={(e) => {
-                            const selectedId = e.target.value;
-                            const material = materials.find((m) => m.id === selectedId);
-                            if (material) {
-                              setSelectedMaterial({
-                                id: material.id,
-                                name: material.name,
-                                code: material.code || `MAT-${material.id}`,
-                                uom: material.unit_of_measurement?.name || material.uom || "pcs",
-                                rate: material.price || material.rate || 0,
-                              });
-                            }
-                          }}
-                        >
-                          <MenuItem value="">Select Material</MenuItem>
-                          {materials.map((material) => (
-                            <MenuItem key={material.id} value={material.id}>
-                              {material.name} - ₹{material.price || material.rate}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                      </Grid>
-                      
-                      <Grid item xs={4} md={2}>
-                        <TextField
-                          label="Qty"
-                          type="number"
-                          fullWidth
-                          value={qty}
-                          onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
-                          inputProps={{ min: 1 }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} md={3}>
-                        <Button
-                          variant="contained"
-                          sx={{ py: 2 , mt: 0}}
-                          fullWidth
-                          onClick={handleAddItem}
-                          disabled={!selectedMaterial.id || !qty}
-                        >
-                          Add Item
-                        </Button>
-                      </Grid>
-                    </Grid>
-
-                    {/* Items Table */}
-                    {items.length > 0 && (
-                      <Table style={{ marginTop: '20px' }}>
-                        <Thead>
-                          <Tr>
-                            <Th>Item Name</Th>
-                            <Th>Item Code</Th>
-                            <Th>Qty</Th>
-                            <Th>Size</Th>
-                            <Th>UOM</Th>
-                            <Th>Rate</Th>
-                            <Th>Total</Th>
-                            <Th>Action</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {items.map((item) => (
-                            <Tr key={item.id}>
-                              <Td>{item.name}</Td>
-                              <Td>{item.code}</Td>
-                              <Td>{item.qty}</Td>
-                              <Td>{item.size}</Td>
-                              <Td>{item.uom}</Td>
-                              <Td>₹{item.rate}</Td>
-                              <Td>₹{item.total.toFixed(2)}</Td>
-                              <Td>
-                                <Tooltip title="Delete">
-                                  <IconButton color="error" onClick={() => handleDelete(item.id)}>
-                                    <RiDeleteBinLine size={16} />
-                                  </IconButton>
-                                </Tooltip>
-                              </Td>
-                            </Tr>
-                          ))}
-                        </Tbody>
-                      </Table>
-                    )}
-
-                    {/* Order Terms & Totals */}
-                    <Grid container spacing={2} sx={{ mt: 3 }}>
-                      {/* Left: Terms */}
-                      <Grid size={{ xs: 12, md: 6  }}>
-                        <TextField
-                          label="Order Terms"
-                          name="orderTerms"
-                          multiline
-                          minRows={3}
-                          fullWidth
-                          value={values.orderTerms}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                          error={touched.orderTerms && Boolean(errors.orderTerms)}
-                          helperText={touched.orderTerms && errors.orderTerms}
-                          placeholder="Enter order terms and conditions..."
-                        />
-                      </Grid>
-
-                      {/* Right: Totals */}
-                      <Grid size={{ xs: 12, md: 6  }} sx={{ ml: "auto" }}>
-                        <Card variant="outlined" sx={{ p: 2 }}>
-                          <Typography variant="h6" gutterBottom>
-                            Order Total Details
-                          </Typography>
-
-                          <TextField
-                            label="Sub Total"
-                            fullWidth
-                            value={calculateSubTotal().toFixed(2)}
-                            InputProps={{ readOnly: true }}
-                            margin="dense"
+              return (
+                <Form>
+                  <Card>
+                    <CardContent>
+                      <Grid size={12} sx={{ pt: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+                          <Autocomplete
+                            options={vendors}
+                            value={values.vendor}
+                            onChange={(e, value) => setFieldValue("vendor", value)}
+                            size="small"
+                            getOptionLabel={(option) => option?.name || ""}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                label="Select Vendor"
+                                variant="outlined"
+                                error={touched.vendor && !!errors.vendor}
+                                helperText={touched.vendor && errors.vendor}
+                                sx={{ width: 300, height: 40 }}
+                                required
+                              />
+                            )}
+                            sx={{ width: 300 }}
+                            loading={vendorLoading}
+                            disabled={vendorLoading}
+                            noOptionsText="No vendors available"
                           />
 
+                          <LocalizationProvider dateAdapter={AdapterDateFns}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                              <TextField
+                                label="Credit Days"
+                                type="number"
+                                size="small"
+                                name="creditDays"
+                                value={values.creditDays}
+                                onChange={handleChange}
+                                error={touched.creditDays && !!errors.creditDays}
+                                helperText={touched.creditDays && errors.creditDays}
+                                sx={{ width: 150 }}
+                                inputProps={{ min: 0, max: 365 }}
+                              />
+                              <DatePicker
+                                label="EDD"
+                                value={values.eddDate}
+                                onChange={(newValue) => setFieldValue("eddDate", newValue)}
+                                slotProps={{
+                                  textField: {
+                                    size: 'small',
+                                    sx: { width: 300, height: 40 },
+                                    error: touched.eddDate && !!errors.eddDate,
+                                    helperText: touched.eddDate && errors.eddDate,
+                                  },
+                                }}
+                              />
+                            </Box>
+                          </LocalizationProvider>
+                        </Box>
+                      </Grid>
+
+                      {values.vendor && (
+                        <Grid size={{ xs: 12, md: 3 }} sx={{ pt: 2 }}>
+                          <Typography variant="body2">
+                            <strong>{values.vendor.name}</strong>
+                            <br />
+                            {values.vendor.address || "N/A"}
+                            <br />
+                            GSTIN: {values.vendor.gst || "N/A"}
+                          </Typography>
+                        </Grid>
+                      )}
+
+                      <Grid size={12} sx={{ pt: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+                          <Autocomplete
+                            options={materials}
+                            value={selectedItemCode}
+                            onChange={(e, value) => setSelectedItemCode(value)}
+                            size="small"
+                            getOptionLabel={(option) => `${option?.name || ""} (₹${option?.price || 0})`}
+                            renderInput={(params) => (
+                              <TextField {...params} label="Select Material" variant="outlined" />
+                            )}
+                            sx={{ width: 300 }}
+                            noOptionsText="No materials available"
+                          />
                           <TextField
-                            label="Carriage Amount"
+                            label="Qty"
+                            name="qty"
+                            size="small"
+                            onChange={(e) => setSelectedQty(e.target.value)}
                             type="number"
-                            fullWidth
-                            value={carriage}
-                            onChange={(e) => setCarriage(Math.max(0, Number(e.target.value)))}
-                            margin="dense"
-                            inputProps={{ min: 0 }}
+                            value={selectedQty}
+                            sx={{ width: 150 }}
+                            inputProps={{ min: 1 }}
+                            placeholder="Enter quantity"
                           />
-
-                          <TextField
-                            select
-                            label="GST (%)"
-                            fullWidth
-                            value={gstRate}
-                            onChange={(e) => setGstRate(Number(e.target.value))}
-                            margin="dense"
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleAddItem}
+                            sx={{ height: 40 }}
+                            disabled={isSubmitting}
                           >
-                            {[0, 5, 10, 12, 15, 18, 20, 28].map((rate) => (
-                              <MenuItem key={rate} value={rate}>
-                                {rate}%
-                              </MenuItem>
-                            ))}
-                          </TextField>
+                            Add Item
+                          </Button>
+                        </Box>
+                      </Grid>
 
-                          <TextField
-                            label="GST Amount"
-                            fullWidth
-                            value={gstAmount}
-                            InputProps={{ readOnly: true }}
-                            margin="dense"
+                      <Grid size={12} sx={{ mt: 3, overflowX: 'auto' }}>
+                        <Table>
+                          <Thead>
+                            <Tr>
+                              <Th>Material Name</Th>
+                              <Th>Qty</Th>
+                              <Th>Size</Th>
+                              <Th>UOM</Th>
+                              <Th>Rate</Th>
+                              <Th>Total</Th>
+                              <Th style={{ textAlign: "right" }}>Action</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {items.length > 0 ? (
+                              items.map((item) => (
+                                <Tr key={item.id}>
+                                  <Td>{item.name}</Td>
+                                  <Td>
+                                    <TextField
+                                      type="number"
+                                      size="small"
+                                      value={item.qty}
+                                      onChange={(e) => handleQtyChange(item.id, e.target.value)}
+                                      inputProps={{ min: 1 }}
+                                      sx={{ width: '80px' }}
+                                    />
+                                  </Td>
+                                  <Td>{item.size}</Td>
+                                  <Td>{item.uom}</Td>
+                                  <Td>₹{item.rate.toLocaleString('en-IN')}</Td>
+                                  <Td>₹{item.total.toLocaleString('en-IN')}</Td>
+                                  <Td align="right">
+                                    <Tooltip title="Delete Item">
+                                      <IconButton
+                                        color="error"
+                                        onClick={() => handleDeleteClick(item.id)}
+                                        size="small"
+                                      >
+                                        <RiDeleteBinLine size={18} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Td>
+                                </Tr>
+                              ))
+                            ) : (
+                              <Tr>
+                                <Td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                                  No items added yet. Add items to continue.
+                                </Td>
+                              </Tr>
+                            )}
+                          </Tbody>
+                        </Table>
+                      </Grid>
+
+                      <Grid size={12} sx={{ mt: 3 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2 }}>
+                          <TextareaAutosize
+                            minRows={3}
+                            maxRows={6}
+                            placeholder="Order Terms (max 500 characters)"
+                            name="orderTerms"
+                            value={values.orderTerms}
+                            onChange={handleChange}
+                            style={{ width: '50%', padding: '8px', fontFamily: 'inherit', borderRadius: '4px', border: '1px solid #ccc' }}
                           />
 
-                          <TextField
-                            label="Grand Total"
-                            fullWidth
-                            value={grandTotal}
-                            InputProps={{ readOnly: true }}
-                            margin="dense"
-                            sx={{ fontWeight: 'bold', '& .MuiInputBase-input': { fontWeight: 'bold' } }}
-                          />
-                        </Card>
-                      </Grid>
-                    </Grid>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '20%' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
+                              <span>Sub Total</span>
+                              <span>₹{subTotal.toLocaleString('en-IN')}</span>
+                            </Box>
 
-                    {/* Action Buttons */}
-                    <Grid container justifyContent="flex-end" spacing={2} sx={{ mt: 3 }}>
-                      <Grid item>
-                        <Button 
-                          variant="outlined" 
-                          onClick={() => handleSaveDraft(values)}
-                          disabled={items.length === 0}
-                        >
-                          Save as Draft
-                        </Button>
-                      </Grid>
-                      <Grid item>
-                        <Button 
-                          type="submit" 
-                          variant="contained" 
-                          color="primary"
-                          disabled={items.length === 0}
-                        >
-                          Create Purchase Order
-                        </Button>
-                      </Grid>
-                    </Grid>
-                  </Form>
-                );
-              }}
-            </Formik>
-          </CardContent>
-        </Card>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                              <TextField
+                                label="Discount"
+                                type="number"
+                                size="small"
+                                name="discount"
+                                value={values.discount}
+                                onChange={handleChange}
+                                error={touched.discount && !!errors.discount}
+                                sx={{ width: '55%' }}
+                                inputProps={{ min: 0 }}
+                              />
+                              <span>₹{(subTotal - discountAmount).toLocaleString('en-IN')}</span>
+                            </Box>
 
-        {/* Delete Modal */}
-        <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-          <DialogTitle>Delete Item?</DialogTitle>
-          <DialogContent style={{ width: "300px" }}>
-            <DialogContentText>This action cannot be undone.</DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
-            <Button variant="contained" color="error" onClick={confirmDelete}>
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                              <TextField
+                                label="Add Charges"
+                                type="number"
+                                size="small"
+                                name="additionalCharges"
+                                value={values.additionalCharges}
+                                onChange={handleChange}
+                                error={touched.additionalCharges && !!errors.additionalCharges}
+                                sx={{ width: '55%' }}
+                                inputProps={{ min: 0 }}
+                              />
+                              <span>₹{additionalChargesAmount.toLocaleString('en-IN')}</span>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                              <TextField
+                                select
+                                label="GST %"
+                                size="small"
+                                name="gstRate"
+                                value={values.gstRate}
+                                onChange={handleChange}
+                                error={touched.gstRate && !!errors.gstRate}
+                                sx={{ width: '55%' }}
+                              >
+                                {gst.map((item) => (
+                                  <MenuItem key={item.id} value={item.percentage}>
+                                    {item.percentage}%
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                              <span>₹{gstAmount.toLocaleString('en-IN')}</span>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #222', mt: 1, pt: 0.5, fontWeight: '600' }}>
+                              <span>Grand Total</span>
+                              <span>₹{grandTotal.toLocaleString('en-IN')}</span>
+                            </Box>
+                          </Box>
+                        </Box>
+                      </Grid>
+
+                      <Grid size={12} sx={{ mt: 4 }}>
+                        <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end", alignItems: "flex-end" }}>
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            onClick={() => handleSavePO(values, true)}
+                            type="button"
+                            disabled={isSubmitting || items.length === 0}
+                          >
+                            Save as Draft
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            type="submit"
+                            disabled={isSubmitting || items.length === 0}
+                            endIcon={isSubmitting && <CircularProgress size={20} />}
+                          >
+                            {isSubmitting ? "Saving..." : "Save"}
+                          </Button>
+                        </Stack>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Form>
+              );
+            }}
+          </Formik>
+        </Grid>
+      </Grid>
+
+      <Dialog maxWidth="xs" fullWidth open={openDelete} onClose={() => setOpenDelete(false)}>
+        <DialogTitle>Delete Item?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleDeleteConfirm}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

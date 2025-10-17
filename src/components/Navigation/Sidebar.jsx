@@ -52,10 +52,11 @@ const menuSections = [
         children: [
           { text: "Dashboard", to: "/vendor/dashboard", icon: <MdOutlineDashboard/> },
           { text: "Purchase Order", to: "/vendor/purchase-order", icon: <RiFileList3Line /> },
+          { text: "Approve PO", to: "/vendor/purchase-order/approve", icon: <RiFileList3Line /> },
           { text: "Vendor Invoice", to: "/vendor/invoice", icon: <LiaFileInvoiceSolid /> },
-          { text: "Vendor Payment", to: "/vendor/payment", icon: <MdPayment /> },
+          // { text: "Vendor Payment", to: "/vendor/payment", icon: <MdPayment /> },
           { text: "Vendor Ledger", to: "/vendor/ledger", icon: <LuTable /> },
-          { text: "Create Vendor", to: "/vendor/create-vendor", icon: <MdStorefront /> },
+          // { text: "Create Vendor", to: "/vendor/create-vendor", icon: <MdStorefront /> },
         ],
       },
       {

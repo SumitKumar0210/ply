@@ -47,6 +47,24 @@ export const updatePO = createAsyncThunk(
   }
 );
 
+// ✅ Update customer
+export const editPO = createAsyncThunk(
+  "purchaseOrder/edit",
+  async ( id , { rejectWithValue }) => {
+    console.log(id)
+    try {
+      const res = await api.post(`admin/purchase-order/edit/${id}`);
+      // console.log(JSON.parse(res.data.data.material_items))
+      successMessage(res.data.message);
+      return res.data.data;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 // ✅ Status update
 export const statusUpdate = createAsyncThunk(
   "purchaseOrder/statusUpdate",
@@ -97,6 +115,12 @@ const purchaseOrderSlice = createSlice({
 
       // Add
       .addCase(addPO.fulfilled, (state, action) => { state.data.unshift(action.payload); })
+
+      // Update
+      .addCase(editPO.fulfilled, (state, action) => {
+        const index = state.data.findIndex((d) => d.id === action.payload.id);
+        if (index !== -1) state.data[index] = action.payload;
+      })
 
       // Update
       .addCase(updatePO.fulfilled, (state, action) => {
