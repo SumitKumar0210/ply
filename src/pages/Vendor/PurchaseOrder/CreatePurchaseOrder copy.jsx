@@ -16,15 +16,14 @@ import {
   Box,
   TextareaAutosize,
   MenuItem,
-  CircularProgress,
-  TextField,
+  CircularProgress
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { RiDeleteBinLine } from "react-icons/ri";
-import { Autocomplete } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import { Autocomplete, TextField } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetchActiveVendors } from "../../settings/slices/vendorSlice";
@@ -33,7 +32,7 @@ import { fetchActiveTaxSlabs } from "../../settings/slices/taxSlabSlice";
 import { addPO } from "../slice/purchaseOrderSlice";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
-import { addDays, format } from "date-fns";
+import { addDays, format } from 'date-fns';
 import { successMessage, errorMessage } from "../../../toast";
 
 // Validation Schema
@@ -44,7 +43,9 @@ const validationSchema = Yup.object().shape({
     .nullable()
     .min(0, "Credit days must be positive")
     .max(365, "Credit days cannot exceed 365"),
-  eddDate: Yup.date().nullable().typeError("Invalid date format"),
+  eddDate: Yup.date()
+    .nullable()
+    .typeError("Invalid date format"),
   discount: Yup.number()
     .typeError("Discount must be a number")
     .nullable()
@@ -64,6 +65,7 @@ const CreatePurchaseOrder = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // State management
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState(null);
   const [items, setItems] = useState([]);
@@ -71,17 +73,19 @@ const CreatePurchaseOrder = () => {
   const [selectedQty, setSelectedQty] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Redux selectors
   const { data: vendors = [], loading: vendorLoading } = useSelector((state) => state.vendor);
   const { data: materials = [] } = useSelector((state) => state.material);
   const { data: gst = [] } = useSelector((state) => state.taxSlab);
 
+  // Fetch data on mount
   useEffect(() => {
     dispatch(fetchActiveVendors());
     dispatch(fetchActiveMaterials());
     dispatch(fetchActiveTaxSlabs());
   }, [dispatch]);
 
-  
+  // Validate item inputs
   const validateItemInput = useCallback(() => {
     if (!selectedItemCode?.id) {
       errorMessage("Please select a material");
@@ -94,11 +98,12 @@ const CreatePurchaseOrder = () => {
     return true;
   }, [selectedItemCode, selectedQty]);
 
-  const isDuplicateItem = useCallback(
-    (materialId) => items.some((item) => item.materialId === materialId),
-    [items]
-  );
+  // Check for duplicate items
+  const isDuplicateItem = useCallback((materialId) => {
+    return items.some(item => item.materialId === materialId);
+  }, [items]);
 
+  // Handle Add Item
   const handleAddItem = useCallback(() => {
     if (!validateItemInput()) return;
 
@@ -107,13 +112,13 @@ const CreatePurchaseOrder = () => {
       return;
     }
 
-    const materialData = materials.find((m) => m.id === selectedItemCode.id);
+    const materialData = materials.find(m => m.id === selectedItemCode.id);
     if (!materialData) {
       errorMessage("Material not found");
       return;
     }
 
-    const rate = parseFloat(materialData.price) || 0;
+    const rate = materialData.price || 0;
     if (rate <= 0) {
       errorMessage("Material price is invalid");
       return;
@@ -123,37 +128,48 @@ const CreatePurchaseOrder = () => {
     const total = rate * qty;
 
     const newItem = {
-      id: Date.now(),
+      id: items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1,
       materialId: selectedItemCode.id,
       name: materialData.name || "Unknown",
       qty,
       size: materialData.size || "N/A",
-      uom: materialData?.unit_of_measurement.name || "pcs",
+      uom: materialData.uom || "pcs",
       rate,
       total,
     };
 
-    setItems((prev) => [...prev, newItem]);
+    setItems(prev => [...prev, newItem]);
     setSelectedItemCode(null);
     setSelectedQty("");
     successMessage("Item added successfully");
-  }, [selectedItemCode, selectedQty, materials, items, validateItemInput, isDuplicateItem]);
+  }, [selectedItemCode, selectedQty, items, materials, validateItemInput, isDuplicateItem]);
 
+  // Handle quantity change
   const handleQtyChange = useCallback((itemId, newQty) => {
-    const qty = parseInt(newQty);
-    if (isNaN(qty) || qty <= 0) {
+    const qty = parseInt(newQty) || 0;
+    
+    if (qty < 0) {
+      errorMessage("Quantity cannot be negative");
+      return;
+    }
+
+    if (qty === 0) {
       errorMessage("Quantity must be greater than 0");
       return;
     }
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, qty, total: qty * item.rate } : item
+
+    setItems(prev =>
+      prev.map(item =>
+        item.id === itemId
+          ? { ...item, qty, total: qty * item.rate }
+          : item
       )
     );
   }, []);
 
+  // Handle Delete Item
   const handleDeleteConfirm = useCallback(() => {
-    setItems((prev) => prev.filter((item) => item.id !== deleteItemId));
+    setItems(prev => prev.filter(item => item.id !== deleteItemId));
     setOpenDelete(false);
     setDeleteItemId(null);
     successMessage("Item deleted successfully");
@@ -164,109 +180,94 @@ const CreatePurchaseOrder = () => {
     setOpenDelete(true);
   }, []);
 
+  // Memoized calculations
   const { subTotal, formattedItems } = useMemo(() => {
     const total = items.reduce((sum, item) => sum + item.total, 0);
-    const formatted = items.map((item) => ({
+    const formatted = items.map(item => ({
       material_id: item.materialId,
       name: item.name,
       qty: item.qty,
       size: item.size,
       uom: item.uom,
       rate: item.rate,
-      total: item.total,
+      total: item.total
     }));
     return { subTotal: total, formattedItems: formatted };
   }, [items]);
 
-  const validatePOData = useCallback(
-    (values) => {
-      if (!values.vendor?.id) {
-        errorMessage("Please select a vendor");
-        return false;
-      }
-      if (items.length === 0) {
-        errorMessage("Please add at least one item");
-        return false;
-      }
+  // Validate PO data
+  const validatePOData = useCallback((values) => {
+    if (!values.vendor?.id) {
+      errorMessage("Please select a vendor");
+      return false;
+    }
 
-      const discount = parseFloat(values.discount) || 0;
-      if (discount > subTotal) {
-        errorMessage("Discount cannot exceed subtotal");
-        return false;
-      }
+    if (items.length === 0) {
+      errorMessage("Please add at least one item");
+      return false;
+    }
 
-      // if (!values.edd_date) {
-      //   errorMessage("Please choose edd data");
-      //   return false;
-      // }
+    const discount = parseFloat(values.discount) || 0;
+    const subtotalAfterDiscount = subTotal - discount;
+    
+    if (subtotalAfterDiscount < 0) {
+      errorMessage("Discount cannot exceed subtotal");
+      return false;
+    }
 
-      return true;
-    },
-    [items, subTotal]
-  );
+    return true;
+  }, [items, subTotal]);
 
-  const calculateTotals = useCallback(
-    (values) => {
-      const discountAmount = Math.max(0, parseFloat(values.discount) || 0);
-      const additionalChargesAmount = Math.max(0, parseFloat(values.additionalCharges) || 0);
-      const gstRateValue = Math.max(0, parseFloat(values.gstRate) || 0);
+  // Calculate totals
+  const calculateTotals = useCallback((values) => {
+    const discountAmount = parseFloat(values.discount) || 0;
+    const additionalChargesAmount = parseFloat(values.additionalCharges) || 0;
+    const gstRateValue = parseFloat(values.gstRate) || 0;
 
-      const subtotalAfterDiscount = Math.max(0, subTotal - discountAmount);
-      const gstAmount = Math.round(subtotalAfterDiscount * (gstRateValue / 100));
-      const grandTotal = subtotalAfterDiscount + additionalChargesAmount + gstAmount;
+    const subtotalAfterDiscount = Math.max(0, subTotal - discountAmount);
+    const gstAmount = Math.round(subtotalAfterDiscount * (gstRateValue / 100));
+    const grandTotal = subtotalAfterDiscount + additionalChargesAmount + gstAmount;
 
-      return {
-        discountAmount,
-        additionalChargesAmount,
-        gstRateValue,
-        gstAmount,
-        grandTotal,
-        subtotalAfterDiscount,
-      };
-    },
-    [subTotal]
-  );
+    return { discountAmount, additionalChargesAmount, gstRateValue, gstAmount, grandTotal, subtotalAfterDiscount };
+  }, [subTotal]);
 
-  const preparePOData = useCallback(
-    (values, isDraft = false) => {
-      const { discountAmount, additionalChargesAmount, gstRateValue, gstAmount, grandTotal } =
-        calculateTotals(values);
+  // Prepare PO data
+  const preparePOData = useCallback((values, isDraft = false) => {
+    const { discountAmount, additionalChargesAmount, gstRateValue, gstAmount, grandTotal } = calculateTotals(values);
 
-      return {
-        vendor_id: values.vendor.id,
-        credit_days: values.creditDays || 0,
-        edd_date: values.eddDate ? format(values.eddDate, "yyyy-MM-dd") : null,
-        items: JSON.stringify(formattedItems),
-        subtotal: subTotal,
-        discount: discountAmount,
-        additional_charges: additionalChargesAmount,
-        gst_amount: gstAmount,
-        grand_total: grandTotal,
-        gst_percentage: gstRateValue,
-        order_terms: values.orderTerms || "",
-        is_draft: isDraft,
-      };
-    },
-    [calculateTotals, formattedItems, subTotal]
-  );
+    return {
+      vendor_id: values.vendor.id,
+      credit_days: values.creditDays || 0,
+      edd_date: values.eddDate ? format(values.eddDate, 'yyyy-MM-dd') : null,
+      items: JSON.stringify(formattedItems),
+      subtotal: subTotal,
+      discount: discountAmount,
+      additional_charges: additionalChargesAmount,
+      gst_amount: gstAmount,
+      grand_total: grandTotal,
+      gst_percentage: gstRateValue,
+      order_terms: values.orderTerms || "",
+      is_draft: isDraft,
+    };
+  }, [calculateTotals, formattedItems, subTotal]);
 
-  
+  // Handle save (both submit and draft)
   const handleSavePO = async (values, isDraft = false) => {
     if (!validatePOData(values)) return;
+
     setIsSubmitting(true);
     try {
       const poData = preparePOData(values, isDraft);
-      console.log(poData)
       const res = await dispatch(addPO(poData));
 
-      if (res.meta.requestStatus === "fulfilled") {
-        successMessage(isDraft ? "Draft saved successfully" : "Purchase Order saved");
-        setTimeout(() => navigate("/vendor/purchase-order"), 1500);
+      if (res.error) {
+        const errorMsg = res.error?.message || (isDraft ? "Failed to save draft" : "Failed to save purchase order");
+        errorMessage(errorMsg);
       } else {
-        errorMessage(res.error?.message || "Failed to save Purchase Order");
+          setTimeout(() => navigate("/vendor/purchase-order"), 1500);
       }
     } catch (err) {
-      errorMessage(err?.message || "An unexpected error occurred");
+      errorMessage(err?.message || "An error occurred while saving");
     } finally {
       setIsSubmitting(false);
     }
@@ -296,7 +297,6 @@ const CreatePurchaseOrder = () => {
             onSubmit={(values) => handleSavePO(values, false)}
           >
             {({ values, errors, touched, handleChange, setFieldValue }) => {
-              
               useEffect(() => {
                 if (values.creditDays && !isNaN(values.creditDays) && values.creditDays > 0) {
                   const newDate = addDays(new Date(), parseInt(values.creditDays));
@@ -304,10 +304,8 @@ const CreatePurchaseOrder = () => {
                 }
               }, [values.creditDays, setFieldValue]);
 
-              const { discountAmount, additionalChargesAmount, gstAmount, grandTotal } =
-                calculateTotals(values);
+              const { discountAmount, additionalChargesAmount, gstRateValue, gstAmount, grandTotal } = calculateTotals(values);
 
-              
               return (
                 <Form>
                   <Card>
@@ -388,7 +386,7 @@ const CreatePurchaseOrder = () => {
                             value={selectedItemCode}
                             onChange={(e, value) => setSelectedItemCode(value)}
                             size="small"
-                            getOptionLabel={(option) => option?.name || ""}
+                            getOptionLabel={(option) => `${option?.name || ""} (₹${option?.price || 0})`}
                             renderInput={(params) => (
                               <TextField {...params} label="Select Material" variant="outlined" />
                             )}

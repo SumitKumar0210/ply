@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -14,17 +14,14 @@ import {
   Box,
   Tooltip,
   Chip,
+  CircularProgress,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
-import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import AddIcon from "@mui/icons-material/Add";
-import { MdOutlineRemoveRedEye } from "react-icons/md";
-import { useNavigate } from 'react-router-dom';
 import { IoMdCheckmarkCircleOutline } from "react-icons/io";
-
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -32,8 +29,9 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import { useDispatch, useSelector } from "react-redux";
+import { getApprovePOData } from "../slice/purchaseOrderSlice";
 
-// ✅ Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -72,7 +70,7 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// ✅ Status colors
+// ✅ Status helper
 const getStatusChip = (status) => {
   switch (status) {
     case "Pending":
@@ -82,69 +80,65 @@ const getStatusChip = (status) => {
     case "Partially Paid":
       return <Chip label="Partially Paid" color="info" size="small" />;
     default:
-      return <Chip label="Unknown" size="small" />;
+      return <Chip label={status || "Unknown"} size="small" />;
   }
 };
 
-// ✅ Initial purchaseOrder (updated)
-const purchaseOrder = [
-  {
-    id: 1,
-    poNumber: "PO-1001",
-    vendorName: "ABC Suppliers",
-    dated: "2025-09-10",
-    orderTotal: 50000,
-    itemsOrdered: 150,
-    qcPassed: 120,
-    receivedTotal: 150,
-    status: "Pending",
-  },
-  {
-    id: 2,
-    poNumber: "PO-1002",
-    vendorName: "XYZ Traders",
-    dated: "2025-09-12",
-    orderTotal: 75000,
-    itemsOrdered: 200,
-    qcPassed: 200,
-    receivedTotal: 200,
-    status: "Paid",
-  },
-  {
-    id: 3,
-    poNumber: "PO-1003",
-    vendorName: "LMN Enterprises",
-    dated: "2025-09-14",
-    orderTotal: 60000,
-    itemsOrdered: 180,
-    qcPassed: 160,
-    receivedTotal: 170,
-    status: "Partially Paid",
-  },
-];
-
 const ApprovePurchaseOrder = () => {
   const [openDelete, setOpenDelete] = useState(false);
-  
-  const [tableData, setTableData] = useState(purchaseOrder);
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
-  const handlePrintClick = () => {
-      navigate('/vendor/purchase-order/print');
-    };
-  const handleQualitycheckClick = () => {
-      navigate('/vendor/purchase-order/quality-check');
-    };
-  // ✅ Table columns (updated)
+  const dispatch = useDispatch();
+
+  const { data = [], total = 0, loading } = useSelector(
+    (state) => state.purchaseOrder
+  );
+
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  // Fetch paginated data
+  useEffect(() => {
+    dispatch(
+      getApprovePOData({
+        page: pagination.pageIndex + 1,
+        per_page: pagination.pageSize,
+      })
+    );
+  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+
+  // Format data for table
+  const tableData = useMemo(() => {
+    if (!Array.isArray(data)) return [];
+    return data.map((po) => ({
+      id: po.id,
+      poNumber: po.purchase_no || "N/A",
+      vendorName: po.vendor?.name || "N/A",
+      dated: po.order_date || "-",
+      orderTotal: po.grand_total || 0,
+      itemsOrdered: po.material_items
+        ? JSON.parse(po.material_items).length
+        : 0,
+      qcPassed: po.qc_passed || 0,
+      status: po.quality_status || "Pending",
+    }));
+  }, [data]);
+
+  const handlePrintClick = () => navigate("/vendor/purchase-order/print");
+  const handleQualitycheckClick = () =>
+    navigate("/vendor/purchase-order/quality-check");
+
   const columns = useMemo(
     () => [
       { accessorKey: "poNumber", header: "Po No." },
       { accessorKey: "vendorName", header: "Vendor Name" },
-      { accessorKey: "dated", header: "Dated" },
+      { accessorKey: "dated", header: "Order Date" },
       { accessorKey: "orderTotal", header: "Order Total" },
       { accessorKey: "itemsOrdered", header: "Items Ordered" },
       { accessorKey: "qcPassed", header: "QC Passed Item" },
-      { accessorKey: "receivedTotal", header: "Received Total" },
       {
         accessorKey: "status",
         header: "Status",
@@ -161,18 +155,12 @@ const ApprovePurchaseOrder = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Quality Check">
-              <IconButton
-                color="primary"
-                onClick={handleQualitycheckClick}
-              >
+              <IconButton color="primary" onClick={handleQualitycheckClick}>
                 <IoMdCheckmarkCircleOutline size={16} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Print">
-              <IconButton
-                color="warning"
-                onClick={handlePrintClick}
-              >
+              <IconButton color="warning" onClick={handlePrintClick}>
                 <FiPrinter size={16} />
               </IconButton>
             </Tooltip>
@@ -192,7 +180,6 @@ const ApprovePurchaseOrder = () => {
     []
   );
 
-  // ✅ CSV export using tableData
   const downloadCSV = () => {
     const headers = columns
       .filter((col) => col.accessorKey && col.accessorKey !== "actions")
@@ -214,7 +201,6 @@ const ApprovePurchaseOrder = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
@@ -225,9 +211,15 @@ const ApprovePurchaseOrder = () => {
     window.location.reload();
   };
 
+  if (loading)
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
+        <CircularProgress />
+      </Box>
+    );
+
   return (
     <>
-      {/* Header Row */}
       <Grid
         container
         spacing={2}
@@ -243,14 +235,13 @@ const ApprovePurchaseOrder = () => {
             variant="contained"
             startIcon={<AddIcon />}
             component={Link}
-            to="/vendor/purchase-order/create" // your route path
+            to="/vendor/purchase-order/create"
           >
             Create PO
           </Button>
         </Grid>
       </Grid>
 
-      {/* Invoice Table */}
       <Grid size={12}>
         <Paper
           elevation={0}
@@ -266,10 +257,16 @@ const ApprovePurchaseOrder = () => {
           <MaterialReactTable
             columns={columns}
             data={tableData}
+            manualPagination
+            rowCount={total}
+            state={{
+              pagination,
+              isLoading: loading,
+            }}
+            onPaginationChange={setPagination}
             enableTopToolbar
             enableColumnFilters
             enableSorting
-            enablePagination
             enableBottomToolbar
             enableGlobalFilter
             enableDensityToggle={false}
@@ -326,10 +323,9 @@ const ApprovePurchaseOrder = () => {
           />
         </Paper>
       </Grid>
-      
-      {/* Delete Modal */}
+
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>{"Delete this purchas order?"}</DialogTitle>
+        <DialogTitle>{"Delete this purchase order?"}</DialogTitle>
         <DialogContent style={{ width: "300px" }}>
           <DialogContentText>This action cannot be undone</DialogContentText>
         </DialogContent>

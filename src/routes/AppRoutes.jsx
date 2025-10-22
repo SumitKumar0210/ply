@@ -59,8 +59,8 @@ const AppRoutes = () => {
       <Route path="/vendor/purchase-order/edit/:id" element={<ProtectedRoute><MainLayout><EditPurchaseOrder /></MainLayout></ProtectedRoute>} />
       <Route path="/vendor/purchase-order/view/:id" element={<ProtectedRoute><MainLayout><ViewPurchaseOrder /></MainLayout></ProtectedRoute>} />
       <Route path="/vendor/purchase-order/approve" element={<ProtectedRoute><MainLayout><ApprovePurchaseOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/purchase-order/quality-check" element={<ProtectedRoute><MainLayout><PurchaseOrderQC /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/purchase-order/print" element={<ProtectedRoute><MainLayout><PrintPurchaseOrder /></MainLayout></ProtectedRoute>} />
+      <Route path="/vendor/purchase-order/quality-check/:id" element={<ProtectedRoute><MainLayout><PurchaseOrderQC /></MainLayout></ProtectedRoute>} />
+      <Route path="/vendor/purchase-order/print/:id" element={<ProtectedRoute><MainLayout><PrintPurchaseOrder /></MainLayout></ProtectedRoute>} />
 
       <Route path="/vendor/invoice" element={<ProtectedRoute><MainLayout><VendorInvoice /></MainLayout></ProtectedRoute>} />
       <Route path="/vendor/invoice/view" element={<ProtectedRoute><MainLayout><InvoiceDetail /></MainLayout></ProtectedRoute>} />

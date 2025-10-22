@@ -25,42 +25,43 @@ import { BiSolidEditAlt } from "react-icons/bi";
 import { MdOutlineCheckCircle } from "react-icons/md";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { editPO } from "../slice/purchaseOrderSlice";
-
+import { editPO, approvePO } from "../slice/purchaseOrderSlice";
+import { useNavigate } from "react-router-dom";
 const ViewPurchaseOrder = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
+  const { selected:data = {}, loading = false } = useSelector((state) => state.purchaseOrder);
+
   useEffect(() => {
-    if (id) {
-      dispatch(editPO(id));
-    }
+    const fetchData = async () => {
+      if (id) {
+        await dispatch(editPO(id));
+      }
+    };
+    fetchData();
   }, [id, dispatch]);
-  const { data = {}, loading = false } = useSelector((state) => state.purchaseOrder);
-console.log(data.vendor?.name);
-console.log(data.vendor?.items);
-console.log(data.vendor?.subtotal);
 
-  const parseItems = (materialItems) => {
-    try {
-      if (!materialItems) return [];
-      const items = typeof materialItems === "string" ? JSON.parse(materialItems) : materialItems;
-      return Array.isArray(items) ? items : [];
-    } catch (error) {
-      console.error("Error parsing material items:", error);
-      return [];
-    }
-  };
+  const navigate = useNavigate();
 
-  const items = parseItems(data?.items);
+  const handleApprove = async () => {
+    const res = dispatch(approvePO(id));
+    if(res.error) return ;
+    navigate("/vendor/purchase-order");
+    
+  }
 
-  if (loading) {
+  const isLoaded = !loading && Object.keys(data).length > 0;
+
+  if (loading || !isLoaded) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
         <CircularProgress />
       </Box>
     );
   }
+  const items = data.material_items ? JSON.parse(data.material_items) : [];
 
+  // Render your component with data here
   return (
     <>
       <Grid
@@ -100,9 +101,9 @@ console.log(data.vendor?.subtotal);
                   <Typography variant="body2">
                     <strong>{data.vendor?.name}</strong>
                     <br />
-                    {data?.address}
+                    {data.vendor?.address}
                     <br />
-                    GSTIN: {data?.gst || "N/A"}
+                    GSTIN: {data.vendor?.gst || "N/A"}
                   </Typography>
                 </Grid>
               )}
@@ -116,22 +117,25 @@ console.log(data.vendor?.subtotal);
                     alignItems: "flex-end",
                   }}
                 >
-                  <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<MdOutlineCheckCircle />}
-                  >
-                    Approve
-                  </Button>
+                  {data.status == '1' && (
+                    
+                      <Button
+                        variant="contained"
+                        color="success"
+                        onClick={() => {handleApprove(id)}}
+                        startIcon={<MdOutlineCheckCircle />} >
+                        Approve
+                      </Button>
+                    
+                  )}
                   <Button
                     variant="contained"
                     color="secondary"
                     startIcon={<BiSolidEditAlt />}
-                    component={Link}
-                    to={`/vendor/purchase-order/edit/${id}`}
-                  >
+                    component={Link} to={`/vendor/purchase-order/edit/${id}`} >
                     Edit PO
                   </Button>
+
                 </Stack>
               </Grid>
 
@@ -185,10 +189,10 @@ console.log(data.vendor?.subtotal);
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
                       <span>Charges:</span>
-                      <span>₹{data.additional_charges?.toLocaleString('en-IN') || 0}</span>
+                      <span>₹{data.cariage_amount?.toLocaleString('en-IN') || 0}</span>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
-                      <span>GST ({data.gst_percentage || 0}%):</span>
+                      <span>GST ({parseInt(data.gst_per) || 0}%):</span>
                       <span>₹{data.gst_amount?.toLocaleString('en-IN') || 0}</span>
                     </Box>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #222', mt: 1, pt: 0.5, fontWeight: '600' }}>

@@ -187,15 +187,17 @@ const PurchaseOrder = () => {
   const columns = useMemo(
     () => [
       { accessorKey: "purchase_no", header: "Po No." },
-      { accessorKey: "vendor_id", header: "Vendor Name", 
-        Cell: ({ row }) => row.original?.vendor?.name || "—", },
-        {
-          accessorKey: "material_items",
-          header: "Items Ordered",
-          Cell: ({ row }) => getItemCount(row.original.material_items),
-        },
-        { accessorKey: "order_date", header: "Order Date" },
-        { accessorKey: "credit_days", header: "Credit Days" },
+      {
+        accessorKey: "vendor_id", header: "Vendor Name",
+        Cell: ({ row }) => row.original?.vendor?.name || "—",
+      },
+      {
+        accessorKey: "material_items",
+        header: "Items Ordered",
+        Cell: ({ row }) => getItemCount(row.original.material_items),
+      },
+      { accessorKey: "order_date", header: "Order Date" },
+      { accessorKey: "credit_days", header: "Credit Days" },
       {
         accessorKey: "grand_total",
         header: "Order Total",
@@ -230,15 +232,19 @@ const PurchaseOrder = () => {
                 <MdOutlineRemoveRedEye size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleEditClick(row.original.id)}
-                size="small"
-              >
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
+            {(row.original.status == '0' || row.original.status == '1') && (
+              <Tooltip title="Edit">
+                <IconButton
+                  color="primary"
+                  onClick={() => handleEditClick(row.original.id)}
+                  size="small"
+                >
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+
             <Tooltip title="Delete">
               <IconButton
                 color="error"
