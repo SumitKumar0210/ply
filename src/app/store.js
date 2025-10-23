@@ -14,10 +14,11 @@ import machineReducer from '../pages/settings/slices/machineSlice';
 import productReducer from '../pages/settings/slices/productSlice';
 import stateReducer from '../pages/settings/slices/stateSlice';
 import customerReducer from '../pages/Users/slices/customerSlice';
-import userReducer from '../pages/users/slices/userSlice';
-import labourReducer from '../pages/users/slices/labourSlice';
+import userReducer from '../pages/Users/slices/userSlice';
+import labourReducer from '../pages/Users/slices/labourSlice';
 import purchaseOrderReducer from '../pages/Vendor/slice/purchaseOrderSlice';
 import taxSlabReducer from '../pages/settings/slices/taxSlabSlice';
+import purchaseInwardReducer from '../pages/Vendor/slice/purchaseInwardSlice';
 export const store = configureStore({
     reducer : {
          userType: userTypeReducer,
@@ -39,5 +40,6 @@ export const store = configureStore({
          purchaseOrder: purchaseOrderReducer,
          generalSetting: generalSettingReducer,
          taxSlab: taxSlabReducer,
+         purchaseInward: purchaseInwardReducer,
     }
 })

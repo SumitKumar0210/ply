@@ -127,9 +127,9 @@ const ApprovePurchaseOrder = () => {
     }));
   }, [data]);
 
-  const handlePrintClick = () => navigate("/vendor/purchase-order/print");
-  const handleQualitycheckClick = () =>
-    navigate("/vendor/purchase-order/quality-check");
+  const handlePrintClick = (id) => navigate("/vendor/purchase-order/print/" + id);
+  const handleQualitycheckClick = (id) =>
+    navigate("/vendor/purchase-order/quality-check/" + id);
 
   const columns = useMemo(
     () => [
@@ -155,12 +155,12 @@ const ApprovePurchaseOrder = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Quality Check">
-              <IconButton color="primary" onClick={handleQualitycheckClick}>
+              <IconButton color="primary" onClick={ () => handleQualitycheckClick(row.original.id)}>
                 <IoMdCheckmarkCircleOutline size={16} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Print">
-              <IconButton color="warning" onClick={handlePrintClick}>
+              <IconButton color="warning" onClick={ () =>handlePrintClick(row.original.id)}>
                 <FiPrinter size={16} />
               </IconButton>
             </Tooltip>
