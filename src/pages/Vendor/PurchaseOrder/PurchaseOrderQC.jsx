@@ -57,7 +57,7 @@ const PurchaseOrderQC = () => {
   // Set initial values after PO data is loaded
   useEffect(() => {
     if (po && po.id) {
-      const parsedItems = po.material_items ? JSON.parse(po.material_items) : [];
+      const parsedItems = po.material_items ? JSON.parse(po.inward? po.inward.material_items : po.material_items) : [];
       setItems(
         parsedItems.map((item, index) => ({
           id: index + 1,
@@ -190,7 +190,7 @@ const PurchaseOrderQC = () => {
     navigate('/vendor/purchase-order/print/' + id);
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!invoiceNo) {
       errorMessage("Please enter vendor invoice number");
       return;
@@ -219,8 +219,9 @@ const PurchaseOrderQC = () => {
       vendor_invoice_date: invoiceDate,
     };
 
-    console.log("Approve Data:", approveData);
-    dispatch(addInward(approveData));
+    await dispatch(addInward(approveData)).unwrap();
+    if (id) dispatch(editPO(id));
+    
   };
 
   if (poLoading) {
@@ -270,8 +271,8 @@ const PurchaseOrderQC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'nowrap' }}>
                   <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', justifyContent: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body1" sx={{ m: 0 }}>Vendor Invoice No.:</Typography>
-                      <TextField
+                      <Typography variant="body1" sx={{ m: 0 }}>Vendor Invoice No.: <b>{po.inward?.vendor_invoice_no}</b></Typography>
+                      {!po.inward && (<TextField
                         label="Invoice No"
                         type="text"
                         size="small"
@@ -279,11 +280,11 @@ const PurchaseOrderQC = () => {
                         value={invoiceNo}
                         onChange={(e) => setInvoiceNo(e.target.value)}
                         sx={{ width: 150 }}
-                      />
+                      />)}
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body1" sx={{ m: 0 }}>Vendor Invoice Date:</Typography>
-                      <TextField
+                      <Typography variant="body1" sx={{ m: 0 }}>Vendor Invoice Date: <b>{po.inward?.vendor_invoice_date}</b></Typography>
+                      {!po.inward && (<TextField
                         label="Invoice Date"
                         type="date"
                         size="small"
@@ -292,16 +293,18 @@ const PurchaseOrderQC = () => {
                         onChange={(e) => setInvoiceDate(e.target.value)}
                         sx={{ width: 150 }}
                         InputLabelProps={{ shrink: true }}
-                      />
+                      />)}
                     </Box>
                   </Box>
-
+                  {!po.inward && (
                   <Button variant="contained" color="primary" onClick={handleApprove}>
                     Approve
                   </Button>
+                  )}
                 </Box>
               </Grid>
-
+              
+              {!po.inward && (
               <Grid size={12} sx={{ pt: 2 }}>
                 <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
                   <Autocomplete
@@ -337,7 +340,7 @@ const PurchaseOrderQC = () => {
                   </Button>
                 </Box>
               </Grid>
-
+              )}
               <Grid size={12} sx={{ mt: 3, overflowX: 'auto' }}>
                 <Table>
                   <Thead>

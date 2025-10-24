@@ -267,7 +267,7 @@ const PrintPurchaseOrder = () => {
                         mt: 1,
                         pt: 0.5,
                         fontWeight: 600,
-                      }}
+                      }}                
                     >
                       <span>Grand Total</span>
                       <span style={{ marginLeft: 'auto' }}>{po.grand_total || 0}</span>

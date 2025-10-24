@@ -80,7 +80,7 @@ const EditPurchaseOrder = () => {
   const [initialValues, setInitialValues] = useState({
     vendor: null,
     creditDays: "",
-    edd_date: null,
+    edd_date: "",
     discount: 0,
     cariage_amount: 0,
     gst_per: 18,
@@ -301,10 +301,10 @@ const EditPurchaseOrder = () => {
       const res = await dispatch(updatePO(poData));
 
       if (res.meta.requestStatus === "fulfilled") {
-        successMessage(isDraft ? "Draft updated successfully" : "Purchase Order updated");
+        // successMessage(isDraft ? "Draft updated successfully" : "Purchase Order updated");
         setTimeout(() => navigate("/vendor/purchase-order"), 1500);
       } else {
-        errorMessage(res.error?.message || "Failed to update Purchase Order");
+        // errorMessage(res.error?.message || "Failed to update Purchase Order");
       }
     } catch (err) {
       errorMessage(err?.message || "An unexpected error occurred");
@@ -325,7 +325,7 @@ const EditPurchaseOrder = () => {
     <>
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
-          <Typography variant="h6">Create Purchase Order</Typography>
+          <Typography variant="h6">Edit Purchase Order</Typography>
         </Grid>
       </Grid>
 

@@ -31,40 +31,40 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-const VendorDashboard = () => {
+const CustomerDashboard = () => {
 
   // --- Summary data ---
   const summaryCards = [
-    { title: "Total Vendors", value: 108, icon: <Store />, color: "#42a5f5" },
-    { title: "Active Purchase Order", value: 108, icon: <ShoppingCart />, color: "#66bb6a" },
-    { title: "Pending Purchase Order", value: 108, icon: <PendingActions />, color: "#ffa726" },
-    { title: "Due Purchase Order", value: 108, icon: <AssignmentLate />, color: "#ef5350" },
+    { title: "Total Customer", value: 108, icon: <Store />, color: "#42a5f5" },
+    { title: "Active Order", value: 108, icon: <ShoppingCart />, color: "#66bb6a" },
+    { title: "Pending Order", value: 108, icon: <PendingActions />, color: "#ffa726" },
+    { title: "Due Order", value: 108, icon: <AssignmentLate />, color: "#ef5350" },
     { title: "Low on Inventory Items", value: 108, icon: <Inventory />, color: "#ab47bc" },
     { title: "Total Due", value: 108, icon: <MonetizationOn />, color: "#26c6da" },
   ];
 
   // --- Table data ---
-  const vendors = [
-    { name: "Vendor A", invoices: 12, total: "₹45,000" },
-    { name: "Vendor B", invoices: 10, total: "₹38,000" },
-    { name: "Vendor C", invoices: 9, total: "₹30,000" },
-    { name: "Vendor D", invoices: 8, total: "₹28,000" },
-    { name: "Vendor E", invoices: 6, total: "₹25,000" },
+  const customers = [
+    { name: "Customer A", invoices: 12, total: "₹45,000" },
+    { name: "Customer B", invoices: 10, total: "₹38,000" },
+    { name: "Customer C", invoices: 9, total: "₹30,000" },
+    { name: "Customer D", invoices: 8, total: "₹28,000" },
+    { name: "Customer E", invoices: 6, total: "₹25,000" },
   ];
 
   // --- Chart data ---
   const chartData = [
-    { name: "Vendor A", value: 4000 },
-    { name: "Vendor B", value: 3000 },
-    { name: "Vendor C", value: 2000 },
-    { name: "Vendor D", value: 2780 },
+    { name: "Customer A", value: 4000 },
+    { name: "Customer B", value: 3000 },
+    { name: "Customer C", value: 2000 },
+    { name: "Customer D", value: 2780 },
   ];
 
   return (
     <>
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
-          <Typography variant="h6">Vendor Dashboard</Typography>
+          <Typography variant="h6">Customer Dashboard</Typography>
         </Grid>
       </Grid>
       {/* Summary Cards */}
@@ -127,7 +127,7 @@ const VendorDashboard = () => {
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 6 }}>
               <Typography variant="subtitle1" fontWeight="600" mb={2}>
-                Top 5 Vendors (Most Value)
+                Top 5 Customers (Most Value)
               </Typography>
               <Paper variant="outlined" sx={{ borderRadius: 2 }}>
                 <Table >
@@ -139,7 +139,7 @@ const VendorDashboard = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {vendors.map((v, i) => (
+                    {customers.map((v, i) => (
                       <TableRow key={i}>
                         <TableCell>{v.name}</TableCell>
                         <TableCell>{v.invoices}</TableCell>
@@ -153,7 +153,7 @@ const VendorDashboard = () => {
 
             <Grid size={{ xs: 12, md: 6 }}>
               <Typography variant="subtitle1" fontWeight="600" mb={2}>
-                Top 5 Vendors (Most Invoices)
+                Top 5 Customers (Most Invoices)
               </Typography>
               <Paper variant="outlined" sx={{ borderRadius: 2 }}>
                 <Table>
@@ -165,7 +165,7 @@ const VendorDashboard = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {vendors.map((v, i) => (
+                    {customers.map((v, i) => (
                       <TableRow key={i}>
                         <TableCell>{v.name}</TableCell>
                         <TableCell>{v.invoices}</TableCell>
@@ -182,14 +182,14 @@ const VendorDashboard = () => {
         {/* Chart */}
         <Grid size={{ xs: 12, md: 6, lg: 5 }}>
           <Typography variant="subtitle1" fontWeight="600" mb={2}>
-            Vendor Performance Overview
+            Customer Performance Overview
           </Typography>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
             <ResponsiveContainer width="100%" height={290}>
               <BarChart data={chartData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={75} />
+                <YAxis dataKey="name" type="category" width={100} />
                  <Tooltip cursor={{ fill: "transparent" }} />
                 <Bar dataKey="value" fill="#54aca4d5" barSize={28} activeBar={false} radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -201,4 +201,4 @@ const VendorDashboard = () => {
   )
 }
 
-export default VendorDashboard
+export default CustomerDashboard

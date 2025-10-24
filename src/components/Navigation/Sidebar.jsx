@@ -60,6 +60,16 @@ const menuSections = [
         ],
       },
       {
+        text: "Customers",
+        icon: <FiUsers/>,
+        children: [
+          { text: "Dashboard", to: "/customer/dashboard", icon: <MdOutlineDashboard/> },
+          { text: "Quotation", to: "/customer/quote", icon: <RiFileList3Line /> },
+          { text: "Order", to: "/customer/order", icon: <RiFileList3Line /> },
+          { text: "Customer Ledger", to: "/customer/ledger", icon: <LuTable /> },
+        ],
+      },
+      {
         text: "Users",
         icon: <FiUsers />,
         children: [

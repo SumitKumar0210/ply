@@ -79,7 +79,7 @@ export const editPO = createAsyncThunk(
     try {
       const res = await api.post(`admin/purchase-order/edit/${id}`);
       // console.log(JSON.parse(res.data.data.material_items))
-      successMessage(res.data.message);
+      // successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
       const errMsg = getErrorMessage(error);

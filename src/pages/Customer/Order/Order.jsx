@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -14,14 +14,16 @@ import {
   Box,
   Tooltip,
   Chip,
-  CircularProgress,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
+import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import AddIcon from "@mui/icons-material/Add";
-import { IoMdCheckmarkCircleOutline } from "react-icons/io";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { useNavigate } from 'react-router-dom';
+
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -29,9 +31,8 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
-import { useDispatch, useSelector } from "react-redux";
-import { getApprovePOData, deletePO } from "../slice/purchaseOrderSlice";
 
+// ✅ Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -70,98 +71,61 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// ✅ Status helper
+// ✅ Status colors
 const getStatusChip = (status) => {
   switch (status) {
     case "Pending":
       return <Chip label="Pending" color="warning" size="small" />;
-    case "Approved":
-      return <Chip label="Approved" color="success" size="small" />;
-    case "Partially Paid":
-      return <Chip label="Partially Paid" color="info" size="small" />;
+    case "Delivered":
+      return <Chip label="Delivered" color="success" size="small" />;
+    case "Production":
+      return <Chip label="Production" color="info" size="small" />;
     default:
-      return <Chip label={status || "Unknown"} size="small" />;
+      return <Chip label="Unknown" size="small" />;
   }
 };
 
-const ApprovePurchaseOrder = () => {
+// ✅ Initial Quote (updated)
+const QuoteList = [
+  {
+    id: 1,
+    orderNumber: "PO-1001",
+    customerName: "ABC Suppliers",
+    dated: "2025-09-10",
+    orderTotal: 50000,
+    itemOrdered: 50000,
+    qcPassedItem: 150,
+    deliveredTotal: 150,
+    status: "Pending",
+  },
+  
+];
+
+
+const Order = () => {
   const [openDelete, setOpenDelete] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
+  
+  const [tableData, setTableData] = useState(QuoteList);
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
-  const dispatch = useDispatch();
 
-  const { data = [], total = 0, loading } = useSelector(
-    (state) => state.purchaseOrder
-  );
+  const handleViewClick = () => {
+    navigate('/customer/order/view');
+  };
+  const handleEditClick = () => {
+    navigate('/customer/order/edit');
+  };
 
-  // Pagination state
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
-  });
-
-  // Fetch paginated data
-  useEffect(() => {
-    dispatch(
-      getApprovePOData({
-        page: pagination.pageIndex + 1,
-        per_page: pagination.pageSize,
-      })
-    );
-  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
-
-  // Format data for table
-  const tableData = useMemo(() => {
-    if (!Array.isArray(data)) return [];
-    return data.map((po) => ({
-      id: po.id,
-      poNumber: po.purchase_no || "N/A",
-      vendorName: po.vendor?.name || "N/A",
-      dated: po.order_date || "-",
-      orderTotal: po.grand_total || 0,
-      itemsOrdered: po.material_items
-        ? JSON.parse(po.material_items).length
-        : 0,
-      qcPassed: po.inward
-        ? JSON.parse(po.inward.material_items).length
-        : 0,
-      status: po.quality_status ? "Approved" : "Pending",
-    }));
-  }, [data]);
-
-  const handlePrintClick = (id) => navigate("/vendor/purchase-order/print/" + id);
-  const handleQualitycheckClick = (id) =>
-    navigate("/vendor/purchase-order/quality-check/" + id);
-
-  const handleDeleteConfirm = async () => {
-  if (deleteId) {
-    try {
-      await dispatch(deletePO(deleteId)).unwrap();
-      // Reload the table data after successful deletion
-      dispatch(
-        getApprovePOData({
-          page: pagination.pageIndex + 1,
-          per_page: pagination.pageSize,
-        })
-      );
-      setOpenDelete(false);
-      setDeleteId(null);
-    } catch (error) {
-      console.error("Failed to delete purchase order:", error);
-      // Optionally show an error message to the user
-    }
-  }
-};
-
+  // ✅ Table columns (updated)
   const columns = useMemo(
     () => [
-      { accessorKey: "poNumber", header: "Po No." },
-      { accessorKey: "vendorName", header: "Vendor Name" },
-      { accessorKey: "dated", header: "Order Date" },
+      { accessorKey: "orderNumber", header: "Order No." },
+      { accessorKey: "customerName", header: "Customer Name" },
+      { accessorKey: "dated", header: "Dated" },
       { accessorKey: "orderTotal", header: "Order Total" },
-      { accessorKey: "itemsOrdered", header: "Items Ordered" },
-      { accessorKey: "qcPassed", header: "QC Passed Item" },
+      { accessorKey: "itemOrdered", header: "Item Ordered" },
+      { accessorKey: "qcPassedItem", header: "QC Passed Item" },
+      { accessorKey: "deliveredTotal", header: "Delivered Total" },
       {
         accessorKey: "status",
         header: "Status",
@@ -177,24 +141,27 @@ const ApprovePurchaseOrder = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Quality Check">
-              <IconButton color="primary" onClick={() => handleQualitycheckClick(row.original.id)}>
-                <IoMdCheckmarkCircleOutline size={16} />
+            <Tooltip title="View">
+              <IconButton
+                color="warning"
+                onClick={handleViewClick}
+              >
+                <MdOutlineRemoveRedEye size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Print">
-              <IconButton color="warning" onClick={() => handlePrintClick(row.original.id)}>
-                <FiPrinter size={16} />
+            <Tooltip title="Edit">
+              <IconButton
+                color="primary"
+                onClick={handleEditClick}
+              >
+                <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
               <IconButton
                 aria-label="delete"
                 color="error"
-                onClick={() => {
-                  setDeleteId(row.original.id);
-                  setOpenDelete(true);
-                }}
+                onClick={() => setOpenDelete(true)}
               >
                 <RiDeleteBinLine size={16} />
               </IconButton>
@@ -206,6 +173,7 @@ const ApprovePurchaseOrder = () => {
     []
   );
 
+  // ✅ CSV export using tableData
   const downloadCSV = () => {
     const headers = columns
       .filter((col) => col.accessorKey && col.accessorKey !== "actions")
@@ -221,12 +189,13 @@ const ApprovePurchaseOrder = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "PurchaseOrder.csv");
+    link.setAttribute("download", "Quote.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  // ✅ Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
@@ -237,15 +206,9 @@ const ApprovePurchaseOrder = () => {
     window.location.reload();
   };
 
-  if (loading)
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
-        <CircularProgress />
-      </Box>
-    );
-
   return (
     <>
+      {/* Header Row */}
       <Grid
         container
         spacing={2}
@@ -254,20 +217,21 @@ const ApprovePurchaseOrder = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Approved Purchase Order</Typography>
+          <Typography variant="h6">Order</Typography>
         </Grid>
         <Grid>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             component={Link}
-            to="/vendor/purchase-order/create"
+            to="/customer/order/create" // your route path
           >
-            Create PO
+            Create Order
           </Button>
         </Grid>
       </Grid>
 
+      {/* Invoice Table */}
       <Grid size={12}>
         <Paper
           elevation={0}
@@ -283,16 +247,10 @@ const ApprovePurchaseOrder = () => {
           <MaterialReactTable
             columns={columns}
             data={tableData}
-            manualPagination
-            rowCount={total}
-            state={{
-              pagination,
-              isLoading: loading,
-            }}
-            onPaginationChange={setPagination}
             enableTopToolbar
             enableColumnFilters
             enableSorting
+            enablePagination
             enableBottomToolbar
             enableGlobalFilter
             enableDensityToggle={false}
@@ -328,7 +286,7 @@ const ApprovePurchaseOrder = () => {
                 }}
               >
                 <Typography variant="h6" fontWeight={400}>
-                  Approved PO
+                  Order List
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <MRT_GlobalFilterTextField table={table} />
@@ -349,17 +307,17 @@ const ApprovePurchaseOrder = () => {
           />
         </Paper>
       </Grid>
-
-      {/* Delete Confirmation Dialog */}
+      
+      {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>Delete this purchase order?</DialogTitle>
+        <DialogTitle>{"Delete this purchas order?"}</DialogTitle>
         <DialogContent style={{ width: "300px" }}>
-          <DialogContentText>This action cannot be undone.</DialogContentText>
+          <DialogContentText>This action cannot be undone</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
           <Button
-            onClick={handleDeleteConfirm}
+            onClick={() => setOpenDelete(false)}
             variant="contained"
             color="error"
             autoFocus
@@ -372,4 +330,4 @@ const ApprovePurchaseOrder = () => {
   );
 };
 
-export default ApprovePurchaseOrder;
+export default Order;

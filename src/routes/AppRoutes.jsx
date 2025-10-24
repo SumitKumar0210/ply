@@ -32,6 +32,17 @@ import Payment from "../pages/Vendor/Payment/Payment";
 import Ledger from "../pages/Vendor/Ledger/Ledger";
 import CreateVendor from "../pages/Vendor/CreateVendor/CreateVendor";
 
+import CustomerDashboard from "../pages/Customer/Dashboard/CustomerDashboard";
+import Quote from "../pages/Customer/Quote/Quote";
+import QuoteDetailsView from "../pages/Customer/Quote/QuoteDetailsView";
+import CreateQuote from "../pages/Customer/Quote/CreateQuote";
+import EditQuote from "../pages/Customer/Quote/EditQuote";
+import Order from "../pages/Customer/Order/Order";
+import OrderDetailsView from "../pages/Customer/Order/OrderDetailsView";
+import CreateOrder from "../pages/Customer/Order/CreateOrder";
+import EditOrder from "../pages/Customer/Order/EditOrder";
+import CustomerLedger from "../pages/Customer/Ledger/Ledger";
+
 
 import Error404 from "../pages/error/404";
 
@@ -67,6 +78,18 @@ const AppRoutes = () => {
       <Route path="/vendor/payment" element={<ProtectedRoute><MainLayout><Payment /></MainLayout></ProtectedRoute>} />
       <Route path="/vendor/ledger" element={<ProtectedRoute><MainLayout><Ledger /></MainLayout></ProtectedRoute>} />
       <Route path="/vendor/create-vendor" element={<ProtectedRoute><MainLayout><CreateVendor /></MainLayout></ProtectedRoute>} />
+
+      {/* Customer */}
+      <Route path="/customer/dashboard" element={<ProtectedRoute><MainLayout><CustomerDashboard/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/quote" element={<ProtectedRoute><MainLayout><Quote/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/quote/view" element={<ProtectedRoute><MainLayout><QuoteDetailsView/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/quote/create" element={<ProtectedRoute><MainLayout><CreateQuote/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/quote/edit" element={<ProtectedRoute><MainLayout><EditQuote/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/order" element={<ProtectedRoute><MainLayout><Order/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/order/view" element={<ProtectedRoute><MainLayout><OrderDetailsView/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/order/create" element={<ProtectedRoute><MainLayout><CreateOrder/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/order/edit" element={<ProtectedRoute><MainLayout><EditOrder/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/ledger" element={<ProtectedRoute><MainLayout><CustomerLedger/></MainLayout></ProtectedRoute>}/>
 
       {/* Catch-all */}
        <Route path="*" element={<Error404 />} />

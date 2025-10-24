@@ -169,7 +169,7 @@ const PurchaseOrder = () => {
 
     setIsDeleting(true);
     try {
-      await api.delete(`admin/purchase-order/${deleteItemId}`);
+      await api.post(`admin/purchase-order/delete/${deleteItemId}`);
       showAlert("Purchase order deleted successfully", "success");
       setOpenDelete(false);
       setDeleteItemId(null);
