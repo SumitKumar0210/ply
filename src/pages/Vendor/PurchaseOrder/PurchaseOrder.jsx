@@ -1,6 +1,4 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
-import Grid from "@mui/material/Grid";
-import PropTypes from "prop-types";
 import {
   Button,
   Paper,
@@ -15,15 +13,13 @@ import {
   Tooltip,
   Chip,
   Alert,
+  Grid,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
 import { Link, useNavigate } from "react-router-dom";
-import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import AddIcon from "@mui/icons-material/Add";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
-
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -31,61 +27,24 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import { useDispatch } from "react-redux";
 import api from "../../../api";
+import { deletePO } from "../slice/purchaseOrderSlice";
 
-// ✅ Styled Dialog
-const BootstrapDialog = styled(Dialog)(({ theme }) => ({
-  "& .MuiDialogContent-root": {
-    padding: theme.spacing(2),
-    paddingBottom: theme.spacing(4),
-  },
-  "& .MuiDialogActions-root": {
-    padding: theme.spacing(1),
-  },
-}));
-
-function BootstrapDialogTitle(props) {
-  const { children, onClose, ...other } = props;
-  return (
-    <DialogTitle sx={{ m: 0, p: 2 }} {...other}>
-      {children}
-      {onClose && (
-        <IconButton
-          aria-label="close"
-          onClick={onClose}
-          sx={{
-            position: "absolute",
-            right: 8,
-            top: 8,
-            color: (theme) => theme.palette.grey[500],
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      )}
-    </DialogTitle>
-  );
-}
-
-BootstrapDialogTitle.propTypes = {
-  children: PropTypes.node,
-  onClose: PropTypes.func.isRequired,
+// Status mapping: 0-draft, 1-save, 2-reject, 3-approve
+const STATUS_CONFIG = {
+  0: { label: "Draft", color: "default" },
+  1: { label: "Saved", color: "info" },
+  2: { label: "Rejected", color: "error" },
+  3: { label: "Approved", color: "success" },
 };
 
-// ✅ Status mapping: 0-draft, 1-save, 2-reject, 3-approve
 const getStatusChip = (status) => {
-  const statusMap = {
-    0: { label: "Draft", color: "default" },
-    1: { label: "Saved", color: "info" },
-    2: { label: "Rejected", color: "error" },
-    3: { label: "Approved", color: "success" },
-  };
-
-  const statusConfig = statusMap[status] || { label: "Unknown", color: "default" };
-  return <Chip label={statusConfig.label} color={statusConfig.color} size="small" />;
+  const config = STATUS_CONFIG[status] || { label: "Unknown", color: "default" };
+  return <Chip label={config.label} color={config.color} size="small" />;
 };
 
-// ✅ Helper function to get item count from material_items JSON
+// Helper function to get item count from material_items JSON
 const getItemCount = (materialItems) => {
   try {
     if (!materialItems) return 0;
@@ -100,18 +59,15 @@ const getItemCount = (materialItems) => {
 const PurchaseOrder = () => {
   const navigate = useNavigate();
   const tableContainerRef = useRef(null);
+  const dispatch = useDispatch();
 
   // State management
   const [tableData, setTableData] = useState([]);
   const [totalRows, setTotalRows] = useState(0);
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
-  });
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [loading, setLoading] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-  const [deleteItemId, setDeleteItemId] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
   const [alertMessage, setAlertMessage] = useState("");
   const [alertSeverity, setAlertSeverity] = useState("info");
 
@@ -123,10 +79,9 @@ const PurchaseOrder = () => {
   }, []);
 
   // Fetch data from API
-  const fetchData = useCallback(async (customPagination = null) => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    const currentPagination = customPagination || pagination;
-    const { pageIndex, pageSize } = currentPagination;
+    const { pageIndex, pageSize } = pagination;
 
     try {
       const res = await api.get(
@@ -144,51 +99,50 @@ const PurchaseOrder = () => {
     }
   }, [pagination, showAlert]);
 
-  // ✅ Fetch when pagination changes
+  // Fetch when pagination changes
   useEffect(() => {
     fetchData();
-  }, [pagination.pageIndex, pagination.pageSize, fetchData]);
+  }, [fetchData]);
 
-  // ✅ Navigation handlers with useCallback
-  const handleViewClick = useCallback((id) => {
-    navigate(`/vendor/purchase-order/view/${id}`);
-  }, [navigate]);
+  // Navigation handlers
+  const handleViewClick = useCallback(
+    (id) => navigate(`/vendor/purchase-order/view/${id}`),
+    [navigate]
+  );
 
-  const handleEditClick = useCallback((id) => {
-    navigate(`/vendor/purchase-order/edit/${id}`);
-  }, [navigate]);
+  const handleEditClick = useCallback(
+    (id) => navigate(`/vendor/purchase-order/edit/${id}`),
+    [navigate]
+  );
 
-  // ✅ Delete handlers
+  // Delete handlers
   const handleDeleteClick = useCallback((id) => {
-    setDeleteItemId(id);
+    setDeleteId(id);
     setOpenDelete(true);
   }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
-    if (!deleteItemId) return;
+    if (!deleteId) return;
 
-    setIsDeleting(true);
     try {
-      await api.post(`admin/purchase-order/delete/${deleteItemId}`);
-      showAlert("Purchase order deleted successfully", "success");
+      await dispatch(deletePO(deleteId)).unwrap();
       setOpenDelete(false);
-      setDeleteItemId(null);
-      // Refresh table data
-      fetchData(pagination);
+      setDeleteId(null);
+      // Reload the table data after successful deletion
+      fetchData();
     } catch (error) {
       console.error("Delete error:", error);
-      showAlert(error.response?.data?.message || "Failed to delete purchase order", "error");
-    } finally {
-      setIsDeleting(false);
+      
     }
-  }, [deleteItemId, pagination, fetchData, showAlert]);
+  }, [deleteId, dispatch, showAlert, fetchData]);
 
-  // ✅ Table columns (fixed)
+  // Table columns
   const columns = useMemo(
     () => [
       { accessorKey: "purchase_no", header: "Po No." },
       {
-        accessorKey: "vendor_id", header: "Vendor Name",
+        accessorKey: "vendor_id",
+        header: "Vendor Name",
         Cell: ({ row }) => row.original?.vendor?.name || "—",
       },
       {
@@ -201,12 +155,12 @@ const PurchaseOrder = () => {
       {
         accessorKey: "grand_total",
         header: "Order Total",
-        Cell: ({ cell }) => `₹${Number(cell.getValue() || 0).toLocaleString('en-IN')}`,
+        Cell: ({ cell }) => `₹${Number(cell.getValue() || 0).toLocaleString("en-IN")}`,
       },
       {
         accessorKey: "cariage_amount",
         header: "Additional Amount",
-        Cell: ({ cell }) => `₹${Number(cell.getValue() || 0).toLocaleString('en-IN')}`,
+        Cell: ({ cell }) => `₹${Number(cell.getValue() || 0).toLocaleString("en-IN")}`,
       },
       {
         accessorKey: "status",
@@ -232,7 +186,7 @@ const PurchaseOrder = () => {
                 <MdOutlineRemoveRedEye size={16} />
               </IconButton>
             </Tooltip>
-            {(row.original.status == '0' || row.original.status == '1') && (
+            {(row.original.status === 0 || row.original.status === 1) && (
               <Tooltip title="Edit">
                 <IconButton
                   color="primary"
@@ -243,8 +197,6 @@ const PurchaseOrder = () => {
                 </IconButton>
               </Tooltip>
             )}
-
-
             <Tooltip title="Delete">
               <IconButton
                 color="error"
@@ -261,20 +213,29 @@ const PurchaseOrder = () => {
     [handleViewClick, handleEditClick, handleDeleteClick]
   );
 
-  // ✅ CSV export using tableData with better handling
+  // CSV export
   const downloadCSV = useCallback(() => {
     try {
-      const headers = ["Po No.", "Vendor Name", "Credit Days", "Order Total", "Items Ordered", "Order Date", "Additional Amount", "Status"];
+      const headers = [
+        "Po No.",
+        "Vendor Name",
+        "Credit Days",
+        "Order Total",
+        "Items Ordered",
+        "Order Date",
+        "Additional Amount",
+        "Status",
+      ];
 
       const rows = tableData.map((row) => [
         row.purchase_no || "",
-        row.vendor_id || "",
+        row.vendor?.name || "",
         row.credit_days || 0,
         row.grand_total || 0,
         getItemCount(row.material_items),
         row.order_date || "",
         row.cariage_amount || 0,
-        ["Draft", "Saved", "Rejected", "Approved"][row.status] || "Unknown",
+        STATUS_CONFIG[row.status]?.label || "Unknown",
       ]);
 
       const csvContent = [
@@ -288,7 +249,10 @@ const PurchaseOrder = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `PurchaseOrder_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `PurchaseOrder_${new Date().toISOString().split("T")[0]}.csv`
+      );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -300,7 +264,7 @@ const PurchaseOrder = () => {
     }
   }, [tableData, showAlert]);
 
-  // ✅ Print handler with improved approach
+  // Print handler
   const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
 
@@ -323,7 +287,11 @@ const PurchaseOrder = () => {
     <>
       {/* Alert Messages */}
       {alertMessage && (
-        <Alert severity={alertSeverity} sx={{ mb: 2 }} onClose={() => setAlertMessage("")}>
+        <Alert
+          severity={alertSeverity}
+          sx={{ mb: 2 }}
+          onClose={() => setAlertMessage("")}
+        >
           {alertMessage}
         </Alert>
       )}
@@ -336,10 +304,10 @@ const PurchaseOrder = () => {
         justifyContent="space-between"
         sx={{ mb: 2 }}
       >
-        <Grid>
+        <Grid item>
           <Typography variant="h6">Purchase Order</Typography>
         </Grid>
-        <Grid>
+        <Grid item>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -352,107 +320,94 @@ const PurchaseOrder = () => {
       </Grid>
 
       {/* Purchase Order Table */}
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          ref={tableContainerRef}
-          sx={{
-            width: "100%",
-            overflow: "hidden",
-            backgroundColor: "#fff",
-            px: 2,
-            py: 1,
+      <Paper
+        elevation={0}
+        ref={tableContainerRef}
+        sx={{
+          width: "100%",
+          overflow: "hidden",
+          backgroundColor: "#fff",
+          px: 2,
+          py: 1,
+        }}
+      >
+        <MaterialReactTable
+          columns={columns}
+          data={tableData}
+          manualPagination
+          rowCount={totalRows}
+          state={{
+            pagination,
+            isLoading: loading,
           }}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={tableData}
-            manualPagination
-            rowCount={totalRows}
-            state={{
-              pagination: pagination,
-              isLoading: loading,
-            }}
-            onPaginationChange={setPagination}
-            enableTopToolbar
-            enableColumnFilters
-            enableSorting
-            enablePagination
-            enableBottomToolbar
-            enableGlobalFilter
-            enableDensityToggle={false}
-            enableColumnActions={false}
-            enableColumnVisibilityToggle={false}
-            initialState={{ density: "compact" }}
-            muiTableContainerProps={{
-              sx: {
+          onPaginationChange={setPagination}
+          enableTopToolbar
+          enableColumnFilters
+          enableSorting
+          enableBottomToolbar
+          enableGlobalFilter
+          enableDensityToggle={false}
+          enableColumnActions={false}
+          enableColumnVisibilityToggle={false}
+          initialState={{ density: "compact" }}
+          muiTableContainerProps={{
+            sx: {
+              width: "100%",
+              backgroundColor: "#fff",
+              overflowX: "auto",
+              minWidth: "1200px",
+            },
+          }}
+          muiTablePaperProps={{
+            sx: { backgroundColor: "#fff", boxShadow: "none" },
+          }}
+          renderTopToolbar={({ table }) => (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
                 width: "100%",
-                backgroundColor: "#fff",
-                overflowX: "auto",
-                minWidth: "1200px",
-              },
-            }}
-            muiTablePaperProps={{
-              sx: { backgroundColor: "#fff", boxShadow: "none" },
-            }}
-            muiTableBodyRowProps={({ row }) => ({
-              hover: false,
-              sx:
-                row.original.status === "inactive"
-                  ? { "&:hover": { backgroundColor: "transparent" } }
-                  : {},
-            })}
-            renderTopToolbar={({ table }) => (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  p: 1,
-                }}
-              >
-                <Typography variant="h6" fontWeight={400}>
-                  Purchase Order
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print">
-                    <IconButton onClick={handlePrint} size="small">
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download CSV">
-                    <IconButton onClick={downloadCSV} size="small">
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
+                p: 1,
+              }}
+            >
+              <Typography variant="h6" fontWeight={400}>
+                Purchase Order
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <MRT_GlobalFilterTextField table={table} />
+                <MRT_ToolbarInternalButtons table={table} />
+                <Tooltip title="Print">
+                  <IconButton onClick={handlePrint} size="small">
+                    <FiPrinter size={20} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Download CSV">
+                  <IconButton onClick={downloadCSV} size="small">
+                    <BsCloudDownload size={20} />
+                  </IconButton>
+                </Tooltip>
               </Box>
-            )}
-          />
-        </Paper>
-      </Grid>
+            </Box>
+          )}
+        />
+      </Paper>
 
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>Delete Purchase Order?</DialogTitle>
-        <DialogContent style={{ width: "300px" }}>
+        <DialogContent sx={{ width: "300px" }}>
           <DialogContentText>This action cannot be undone</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
-            Cancel
-          </Button>
+          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
           <Button
             onClick={handleDeleteConfirm}
             variant="contained"
             color="error"
             autoFocus
-            disabled={isDeleting}
           >
-            {isDeleting ? "Deleting..." : "Delete"}
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

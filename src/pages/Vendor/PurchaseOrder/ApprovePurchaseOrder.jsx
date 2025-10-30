@@ -165,7 +165,7 @@ const ApprovePurchaseOrder = () => {
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ cell }) => getStatusChip(cell.getValue()),
+        Cell: ({ cell }) => getStatusChip( cell.getValue() ),
       },
       {
         id: "actions",

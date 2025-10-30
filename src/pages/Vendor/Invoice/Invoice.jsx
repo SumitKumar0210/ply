@@ -1,6 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
-import Grid from "@mui/material/Grid";
-import PropTypes from "prop-types";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import {
   Button,
   Paper,
@@ -11,42 +9,37 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  DialogContentText,
   DialogTitle,
   Box,
   Tooltip,
   Chip,
+  Grid,
+  TableContainer,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  CircularProgress,
 } from "@mui/material";
-import { styled } from "@mui/material/styles";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import * as Yup from "yup";
 import CloseIcon from "@mui/icons-material/Close";
-import { BiSolidEditAlt } from "react-icons/bi";
-import { RiDeleteBinLine } from "react-icons/ri";
 import AddIcon from "@mui/icons-material/Add";
-import { useNavigate } from 'react-router-dom';
-
+import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { GrCurrency } from "react-icons/gr";
+import { FiPrinter } from "react-icons/fi";
+import { BsCloudDownload } from "react-icons/bs";
+import { Formik, Form } from "formik";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
   MRT_GlobalFilterTextField,
 } from "material-react-table";
-import { FiPrinter } from "react-icons/fi";
-import { BsCloudDownload } from "react-icons/bs";
-import { MdOutlineRemoveRedEye } from "react-icons/md";
-import { GrCurrency } from "react-icons/gr";
-import { Formik, Form } from "formik";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchVendorInvoices, recordPayment, fetchPaymentRecord, clearPayments } from "../slice/vendorInvoiceSlice";
 
-
-const BootstrapDialog = styled(Dialog)(({ theme }) => ({
-  '& .MuiDialogContent-root': {
-    padding: theme.spacing(2),
-  },
-  '& .MuiDialogActions-root': {
-    padding: theme.spacing(1),
-  },
-}));
-
+// Validation Schema
 const validationSchema = Yup.object().shape({
   paymentMode: Yup.string().required("Please select a payment mode"),
   amount: Yup.number()
@@ -55,125 +48,173 @@ const validationSchema = Yup.object().shape({
     .required("Please enter the amount"),
   referenceNo: Yup.string().when("paymentMode", {
     is: (val) => val === "upi" || val === "cheque",
-    then: (schema) =>
-      schema.required("Reference number is required for this payment mode"),
+    then: (schema) => schema.required("Reference number is required for this payment mode"),
     otherwise: (schema) => schema.notRequired(),
   }),
 });
 
-
-function BootstrapDialogTitle(props) {
-  const { children, onClose, ...other } = props;
-  return (
-    <DialogTitle sx={{ m: 0, p: 2 }} {...other}>
-      {children}
-      {onClose && (
-        <IconButton
-          aria-label="close"
-          onClick={onClose}
-          sx={{
-            position: "absolute",
-            right: 8,
-            top: 8,
-            color: (theme) => theme.palette.grey[500],
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      )}
-    </DialogTitle>
-  );
-}
-
-BootstrapDialogTitle.propTypes = {
-  children: PropTypes.node,
-  onClose: PropTypes.func.isRequired,
+// Status Configuration
+const STATUS_CONFIG = {
+  0: { label: "Pending", color: "warning" },
+  1: { label: "Partially Paid", color: "info" },
+  2: { label: "Paid", color: "success" },
 };
 
-// ✅ Status colors
+// Helper Functions
 const getStatusChip = (status) => {
-  switch (status) {
-    case "Pending":
-      return <Chip label="Pending" color="warning" size="small" />;
-    case "Paid":
-      return <Chip label="Paid" color="success" size="small" />;
-    case "Partially Paid":
-      return <Chip label="Partially Paid" color="info" size="small" />;
-    default:
-      return <Chip label="Unknown" size="small" />;
+  const config = STATUS_CONFIG[status] || { label: "Unknown", color: "default" };
+  return <Chip label={config.label} color={config.color} size="small" />;
+};
+
+const getItemCount = (materialItems) => {
+  if (!materialItems) return 0;
+  try {
+    const items = JSON.parse(materialItems);
+    return Array.isArray(items) ? items.length : 0;
+  } catch {
+    return 0;
   }
 };
 
-
-// ✅ Initial invoices
-const invoices = [
-  {
-    id: 1,
-    poNumber: "PO-1001",
-    vendorInvoice: "INV-5678",
-    dated: "2025-09-10",
-    vendorName: "ABC Suppliers",
-    orderDated: "2025-09-05",
-    qcPassed: 120,
-    receivedTotal: 150,
-    status: "Pending",
-  },
-  {
-    id: 2,
-    poNumber: "PO-1002",
-    vendorInvoice: "INV-9876",
-    dated: "2025-09-12",
-    vendorName: "XYZ Traders",
-    orderDated: "2025-09-08",
-    qcPassed: 200,
-    receivedTotal: 200,
-    status: "Paid",
-  },
-  {
-    id: 3,
-    poNumber: "PO-1003",
-    vendorInvoice: "INV-9876",
-    dated: "2025-09-12",
-    vendorName: "XYZ Traders",
-    orderDated: "2025-09-08",
-    qcPassed: 200,
-    receivedTotal: 200,
-    status: "Partially Paid",
-  },
-];
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+};
 
 const VendorInvoice = () => {
-  const [openDelete, setOpenDelete] = useState(false);
-  const [tableData, setTableData] = useState(invoices);
-  const tableContainerRef = useRef(null);
-
   const navigate = useNavigate();
-  const handleViewClick = () => {
-    navigate('/vendor/invoice/view');
-  };
+  const tableContainerRef = useRef(null);
+  const dispatch = useDispatch();
 
-   const [open, setOpen] = React.useState(false);
-  
-    const handleClickOpen = () => {
+  // Redux State
+  const { data: tableData = [], total: totalRows = 0, loading = false } = useSelector((state) => state.vendorInvoice);
+  const { payments = [], paymentLoading = false } = useSelector((state) => state.vendorInvoice);
+
+  // Local State
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [open, setOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [dueAmount, setDueAmount] = useState(null);
+
+  // Fetch Data
+  const fetchData = useCallback(() => {
+    dispatch(
+      fetchVendorInvoices({
+        page: pagination.pageIndex + 1,
+        per_page: pagination.pageSize,
+      })
+    );
+  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Modal Handlers
+  const handleClickOpen = useCallback(
+    (invoice) => {
+      setSelectedInvoice(invoice);
+      setDueAmount(invoice.due_amount ?? invoice.grand_total);
+      dispatch(fetchPaymentRecord({ id: invoice?.id }));
       setOpen(true);
-    };
-    const handleClose = () => {
-      setOpen(false);
-    };
-  // ✅ Table columns
+    },
+    [dispatch]
+  );
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    setSelectedInvoice(null);
+    dispatch(clearPayments());
+  }, []);
+
+  // Navigation Handler
+  const handleViewClick = useCallback(
+    (id) => {
+      navigate(`/vendor/invoice/view/${id}`);
+    },
+    [navigate]
+  );
+
+  // Payment Submission
+  const handlePaymentSubmit = useCallback(
+    async (values, { setSubmitting, resetForm }) => {
+      try {
+        const result = await dispatch(
+          recordPayment({
+            invoice_id: selectedInvoice?.id,
+            payment_mode: values.paymentMode,
+            amount: values.amount,
+            reference_no: values.referenceNo,
+          })
+        ).unwrap();
+
+        // Update due amount
+        setDueAmount(result?.due_amount);
+        
+        // Refresh payment records
+        await dispatch(fetchPaymentRecord({ id: selectedInvoice?.id }));
+
+        // Update selected invoice
+        if (result?.due_amount !== undefined) {
+          setSelectedInvoice((prev) => ({
+            ...prev,
+            due_amount: result.remaining_due,
+            paid_amount: result.total_paid || prev.paid_amount,
+          }));
+        }
+
+        // Refresh main table
+        fetchData();
+
+        // Reset form
+        resetForm();
+      } catch (error) {
+        console.error("Payment error:", error);
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [dispatch, selectedInvoice, fetchData]
+  );
+
+  // Table Columns
   const columns = useMemo(
     () => [
-      { accessorKey: "poNumber", header: "PO NO." },
-      { accessorKey: "vendorInvoice", header: "Vendor Invoice NO." },
-      { accessorKey: "dated", header: "Dated" },
-      { accessorKey: "vendorName", header: "Vendor Name" },
-      { accessorKey: "orderDated", header: "Order Dated" },
-      { accessorKey: "qcPassed", header: "QC Passed Item" },
-      { accessorKey: "receivedTotal", header: "Received Total" },
+      {
+        accessorKey: "poNumber",
+        header: "PO NO.",
+        Cell: ({ row }) => row.original.purchase_order?.purchase_no || "-",
+      },
+      {
+        accessorKey: "vendorInvoice",
+        header: "Vendor Invoice",
+        Cell: ({ row }) => row.original.vendor_invoice_no || "-",
+      },
+      {
+        accessorKey: "date",
+        header: "Date",
+        Cell: ({ row }) => formatDate(row.original.vendor_invoice_date),
+      },
+      {
+        accessorKey: "vendorName",
+        header: "Vendor Name",
+        Cell: ({ row }) => row.original.purchase_order?.vendor?.name || "-",
+      },
+      {
+        accessorKey: "orderDated",
+        header: "Order Dated",
+        Cell: ({ row }) => formatDate(row.original.purchase_order?.order_date),
+      },
+      {
+        accessorKey: "qcPassed",
+        header: "QC",
+        Cell: ({ row }) => getItemCount(row.original.material_items),
+      },
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ cell }) => getStatusChip(cell.getValue()),
+        Cell: ({ row }) => getStatusChip(row.original.status),
       },
       {
         id: "actions",
@@ -188,17 +229,14 @@ const VendorInvoice = () => {
             <Tooltip title="View Invoice">
               <IconButton
                 color="warning"
-                onClick={handleViewClick}
+                onClick={() => handleViewClick(row.original.purchase_order?.id)}
+                size="small"
               >
                 <MdOutlineRemoveRedEye size={16} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Make Payment">
-              <IconButton
-                aria-label="payment"
-                color="success"
-                onClick={handleClickOpen}
-              >
+              <IconButton color="success" onClick={() => handleClickOpen(row.original)} size="small">
                 <GrCurrency size={16} />
               </IconButton>
             </Tooltip>
@@ -206,241 +244,312 @@ const VendorInvoice = () => {
         ),
       },
     ],
-    []
+    [handleViewClick, handleClickOpen]
   );
 
-  // ✅ CSV export using tableData
-  const downloadCSV = () => {
-    const headers = columns
-      .filter((col) => col.accessorKey && col.accessorKey !== "actions")
-      .map((col) => col.header);
-    const rows = tableData.map((row) =>
-      columns
-        .filter((col) => col.accessorKey && col.accessorKey !== "actions")
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
-        .join(",")
-    );
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "VendorInvoices.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  // CSV Export
+  const downloadCSV = useCallback(() => {
+    try {
+      const headers = ["PO NO.", "Vendor Invoice", "Date", "Vendor Name", "Order Dated", "QC", "Status"];
+      const rows = tableData.map((row) => [
+        row.purchase_order?.purchase_no || "",
+        row.vendor_invoice_no || "",
+        formatDate(row.vendor_invoice_date),
+        row.purchase_order?.vendor?.name || "",
+        formatDate(row.purchase_order?.order_date),
+        getItemCount(row.material_items),
+        STATUS_CONFIG[row.status]?.label || "Unknown",
+      ]);
 
-  // ✅ Print handler
-  const handlePrint = () => {
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `VendorInvoices_${new Date().toISOString().split("T")[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("CSV download error:", error);
+    }
+  }, [tableData]);
+
+  // Print Handler
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
-  };
+    try {
+      const printWindow = window.open("", "", "height=600,width=1200");
+      if (!printWindow) return;
+      printWindow.document.write(tableContainerRef.current.innerHTML);
+      printWindow.document.close();
+      printWindow.print();
+    } catch (error) {
+      console.error("Print error:", error);
+    }
+  }, []);
 
   return (
     <>
-      {/* Header Row */}
+      {/* Header */}
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Grid>
+        <Grid item>
           <Typography variant="h6">Vendor Invoices</Typography>
         </Grid>
-        <Grid>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            component={Link}
-            to="/vendor/purchase-order/create"   // your route path
-          >
+        <Grid item>
+          <Button variant="contained" startIcon={<AddIcon />} component={Link} to="/vendor/purchase-order/create">
             Create PO
           </Button>
         </Grid>
       </Grid>
 
-      {/* Invoice Table */}
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          ref={tableContainerRef}
-          sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff", px: 2, py: 1 }}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={tableData}
-            enableTopToolbar
-            enableColumnFilters
-            enableSorting
-            enablePagination
-            enableBottomToolbar
-            enableGlobalFilter
-            enableDensityToggle={false}
-            enableColumnActions={false}
-            enableColumnVisibilityToggle={false}
-            initialState={{ density: "compact" }}
-            muiTableContainerProps={{
-              sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto", minWidth: "1200px" },
-            }}
-            muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-            muiTableBodyRowProps={({ row }) => ({
-                hover: false,
-                sx: row.original.status === "inactive"
-                  ? { "&:hover": { backgroundColor: "transparent" } }
-                  : {},
-              })}
-            renderTopToolbar={({ table }) => (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  p: 1,
-                }}
-              >
-                <Typography variant="h6" fontWeight={400}>
-                  Vendor Invoices/Payments
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print">
-                    <IconButton onClick={handlePrint}>
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download CSV">
-                    <IconButton onClick={downloadCSV}>
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
+      {/* Table */}
+      <Paper
+        elevation={0}
+        ref={tableContainerRef}
+        sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff", px: 2, py: 1 }}
+      >
+        <MaterialReactTable
+          columns={columns}
+          data={tableData}
+          manualPagination
+          rowCount={totalRows}
+          state={{ pagination, isLoading: loading }}
+          onPaginationChange={setPagination}
+          enableTopToolbar
+          enableColumnFilters
+          enableSorting
+          enableBottomToolbar
+          enableGlobalFilter
+          enableDensityToggle={false}
+          enableColumnActions={false}
+          enableColumnVisibilityToggle={false}
+          initialState={{ density: "compact" }}
+          muiTableContainerProps={{
+            sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto", minWidth: "1200px" },
+          }}
+          muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
+          renderTopToolbar={({ table }) => (
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", p: 1 }}>
+              <Typography variant="h6" fontWeight={400}>
+                Vendor Invoices/Payments
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <MRT_GlobalFilterTextField table={table} />
+                <MRT_ToolbarInternalButtons table={table} />
+                <Tooltip title="Print">
+                  <IconButton onClick={handlePrint} size="small">
+                    <FiPrinter size={20} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Download CSV">
+                  <IconButton onClick={downloadCSV} size="small">
+                    <BsCloudDownload size={20} />
+                  </IconButton>
+                </Tooltip>
               </Box>
-            )}
-          />
-        </Paper>
-      </Grid>
-      {/* Modal make payment start */}
-     <BootstrapDialog
-      onClose={handleClose}
-      aria-labelledby="customized-dialog-title"
-      open={open}
-      fullWidth
-      maxWidth="xs"
-    >
-      <DialogTitle sx={{ m: 0, p: 1.5 }} id="customized-dialog-title">
-        Collect Payment
-      </DialogTitle>
+            </Box>
+          )}
+        />
+      </Paper>
 
-      <IconButton
-        aria-label="close"
-        onClick={handleClose}
-        sx={(theme) => ({
-          position: "absolute",
-          right: 8,
-          top: 8,
-          color: theme.palette.grey[500],
-        })}
-      >
-        <CloseIcon />
-      </IconButton>
+      {/* Payment Modal */}
+      <Dialog onClose={handleClose} open={open} fullWidth maxWidth={selectedInvoice?.due_amount > 0 || payments == [] ? "lg" : "md"}>
+        <DialogTitle sx={{ m: 0, p: 1.5 }}>Collect Payment</DialogTitle>
+        <IconButton
+          aria-label="close"
+          onClick={handleClose}
+          sx={{ position: "absolute", right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+        >
+          <CloseIcon />
+        </IconButton>
 
-      <Formik
-        initialValues={{
-          amountToPay: "₹15000",
-          paymentMode: "",
-          amount: "",
-          referenceNo: "",
-        }}
-        validationSchema={validationSchema}
-        onSubmit={(values) => {
-          console.log("Form Submitted:", values);
-          handleClose();
-        }}
-      >
-        {({ values, errors, touched, handleChange }) => (
-          <Form>
-            <DialogContent dividers>
-              {/* Amount to Pay (read-only) */}
-              <TextField
-                fullWidth
-                size="small"
-                margin="dense"
-                label="Amount to Pay"
-                name="amountToPay"
-                value={values.amountToPay}
-                InputProps={{ readOnly: true }}
-                sx={{ mb: 1 }}
-              />
+        <Formik
+          initialValues={{
+            amountToPay: dueAmount ?? 0,
+            paymentMode: "",
+            amount: "",
+            referenceNo: "",
+          }}
+          validationSchema={validationSchema}
+          onSubmit={handlePaymentSubmit}
+          enableReinitialize
+        >
+          {({ values, errors, touched, handleChange, isSubmitting }) => (
+            <Form>
+              <DialogContent dividers>
+                <Grid container spacing={2}>
+                  {/* Payment Form */}
+                  {selectedInvoice?.due_amount > 0 &&(
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+                      Payment Details
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      margin="dense"
+                      label="Amount to Pay"
+                      name="amountToPay"
+                      value={`₹${Number(values.amountToPay || 0).toLocaleString("en-IN")}`}
+                      InputProps={{ readOnly: true }}
+                      sx={{ mb: 1 }}
+                    />
+                    <TextField
+                      fullWidth
+                      select
+                      margin="dense"
+                      label="Payment Mode"
+                      name="paymentMode"
+                      size="small"
+                      value={values.paymentMode}
+                      onChange={handleChange}
+                      error={touched.paymentMode && Boolean(errors.paymentMode)}
+                      helperText={touched.paymentMode && errors.paymentMode}
+                      sx={{ mb: 1 }}
+                    >
+                      <MenuItem value="cash">Cash</MenuItem>
+                      <MenuItem value="upi">UPI</MenuItem>
+                      <MenuItem value="cheque">Cheque</MenuItem>
+                    </TextField>
+                    {(values.paymentMode === "upi" || values.paymentMode === "cheque") && (
+                      <TextField
+                        fullWidth
+                        size="small"
+                        margin="dense"
+                        label="Reference Number"
+                        name="referenceNo"
+                        value={values.referenceNo}
+                        onChange={handleChange}
+                        error={touched.referenceNo && Boolean(errors.referenceNo)}
+                        helperText={touched.referenceNo && errors.referenceNo}
+                        sx={{ mb: 1 }}
+                      />
+                    )}
+                    <TextField
+                      fullWidth
+                      size="small"
+                      margin="dense"
+                      label="Amount"
+                      name="amount"
+                      type="number"
+                      value={values.amount}
+                      onChange={handleChange}
+                      error={touched.amount && Boolean(errors.amount)}
+                      helperText={touched.amount && errors.amount}
+                      sx={{ mb: 1 }}
+                    />
+                  </Grid>
+                  )}
 
-              {/* Payment Mode */}
-              <TextField
-                fullWidth
-                select
-                margin="dense"
-                label="Payment Mode"
-                name="paymentMode"
-                size="small"
-                value={values.paymentMode}
-                onChange={handleChange}
-                error={touched.paymentMode && Boolean(errors.paymentMode)}
-                helperText={touched.paymentMode && errors.paymentMode}
-                sx={{ mb: 1 }}
-              >
-                <MenuItem value="cash">Cash</MenuItem>
-                <MenuItem value="upi">UPI</MenuItem>
-                <MenuItem value="cheque">Cheque</MenuItem>
-              </TextField>
+                  {/* Payment History */}
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
+                      Payment History
+                    </Typography>
+                    <Box
+                      sx={{
+                        border: "1px solid #e0e0e0",
+                        borderRadius: 1,
+                        overflow: "hidden",
+                        maxHeight: 320,
+                        bgcolor: "background.paper",
+                      }}
+                    >
+                      {paymentLoading ? (
+                        <Box sx={{ p: 4, textAlign: "center" }}>
+                          <CircularProgress size={32} />
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                            Loading payment history...
+                          </Typography>
+                        </Box>
+                      ) : payments && payments.length > 0 ? (
+                        <TableContainer sx={{ maxHeight: 300 }}>
+                          <Table stickyHeader size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>
+                                  Date
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>
+                                  Paid (₹)
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>
+                                  Mode
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>
+                                  Reference No
+                                </TableCell>
+                                <TableCell
+                                  sx={{ fontWeight: 600, fontSize: "13px", textAlign: "right", bgcolor: "grey.100" }}
+                                >
+                                  Due (₹)
+                                </TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {payments.map((payment, index) => (
+                                <TableRow
+                                  key={payment.id || index}
+                                  hover
+                                  sx={{ "&:nth-of-type(even)": { backgroundColor: "grey.50" } }}
+                                >
+                                  <TableCell sx={{ fontSize: "13px" }}>
+                                    {payment.date ? new Date(payment.date).toLocaleDateString("en-IN") : "-"}
+                                  </TableCell>
+                                  <TableCell sx={{ fontSize: "13px", fontWeight: 500 }}>
+                                    ₹{Number(payment.paid_amount || 0).toLocaleString("en-IN")}
+                                  </TableCell>
+                                  <TableCell sx={{ fontSize: "13px", textTransform: "capitalize" }}>
+                                    {payment.payment_mode || "-"}
+                                  </TableCell>
+                                  <TableCell sx={{ fontSize: "13px" }}>{payment.reference_no || "-"}</TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontSize: "13px",
+                                      textAlign: "right",
+                                      fontWeight: 600,
+                                      color: Number(payment.due || 0) === 0 ? "success.main" : "warning.main",
+                                    }}
+                                  >
+                                    ₹{Number(payment.due || 0).toLocaleString("en-IN")}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      ) : (
+                        <Box sx={{ p: 3, textAlign: "center" }}>
+                          <Typography variant="body2" color="text.secondary">
+                            No payment history available
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </Grid>
+                </Grid>
+              </DialogContent>
 
-              {/* Reference Number - conditional field */}
-              {(values.paymentMode === "upi" ||
-                values.paymentMode === "cheque") && (
-                <TextField
-                  fullWidth
-                  size="small"
-                  margin="dense"
-                  label="Reference Number"
-                  name="referenceNo"
-                  value={values.referenceNo}
-                  onChange={handleChange}
-                  error={touched.referenceNo && Boolean(errors.referenceNo)}
-                  helperText={touched.referenceNo && errors.referenceNo}
-                  sx={{ mb: 1 }}
-                />
-              )}
-
-              {/* Amount */}
-              <TextField
-                fullWidth
-                size="small"
-                margin="dense"
-                label="Amount"
-                name="amount"
-                value={values.amount}
-                onChange={handleChange}
-                error={touched.amount && Boolean(errors.amount)}
-                helperText={touched.amount && errors.amount}
-                sx={{ mb: 1 }}
-              />
-            </DialogContent>
-
-            <DialogActions sx={{ gap: 1, mb: 1 }}>
-              <Button variant="outlined" color="error" onClick={handleClose}>
-                Close
-              </Button>
-              <Button type="submit" variant="contained" color="primary">
-                Submit
-              </Button>
-            </DialogActions>
-          </Form>
-        )}
-      </Formik>
-    </BootstrapDialog>
-     {/* Modal make payment end */}
-     
+              <DialogActions sx={{ gap: 1, mb: 1 }}>
+                <Button variant="outlined" color="error" onClick={handleClose} disabled={isSubmitting}>
+                  Close
+                </Button>
+                {selectedInvoice?.due_amount > 0 && (
+                  <Button type="submit" variant="contained" color="primary" disabled={isSubmitting}>
+                    {isSubmitting ? "Submitting..." : "Submit"}
+                  </Button>
+                )}
+              </DialogActions>
+            </Form>
+          )}
+        </Formik>
+      </Dialog>
     </>
   );
 };

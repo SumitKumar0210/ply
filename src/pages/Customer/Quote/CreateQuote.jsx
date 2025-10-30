@@ -77,15 +77,15 @@ const CreateQuote = () => {
   const [openDelete, setOpenDelete] = useState(false);
 
   const [items, setItems] = useState([
-    { id: 1, area: "Area 1", name: "Cement Bags", itemCode: "CEM-001", qty: 50, size: "50kg", documents: "Invoice #1001", cost: 25000, naration: "Delivered on site" },
-    { id: 2, area: "Area 1", name: "Steel Rods", itemCode: "STL-010", qty: 100, size: "12mm", documents: "Challan #2345", cost: 50000, naration: "Used for foundation" },
-    { id: 3, area: "Area 2", name: "Bricks", itemCode: "BRK-020", qty: 1000, size: "9x4x3", documents: "Invoice #1010", cost: 15000, naration: "For wall construction" },
-    { id: 4, area: "Area 2", name: "Sand", itemCode: "SND-005", qty: 200, size: "Ton", documents: "Gate Pass #567", cost: 12000, naration: "Delivered by local vendor" },
-    { id: 5, area: "Area 2", name: "Paint", itemCode: "PNT-030", qty: 25, size: "20L", documents: "Invoice #1122", cost: 18000, naration: "For interior finishing" },
-    { id: 6, area: "Area 1", name: "Brush Set", itemCode: "BRH-011", qty: 40, size: "Standard", documents: "Receipt #778", cost: 4000, naration: "For paint work" },
+    { id: 1, group: "Group 1", name: "Cement Bags", itemCode: "CEM-001", qty: 50, size: "50kg", documents: "Invoice #1001", cost: 25000, naration: "Delivered on site" },
+    { id: 2, group: "Group 1", name: "Steel Rods", itemCode: "STL-010", qty: 100, size: "12mm", documents: "Challan #2345", cost: 50000, naration: "Used for foundation" },
+    { id: 3, group: "Group 2", name: "Bricks", itemCode: "BRK-020", qty: 1000, size: "9x4x3", documents: "Invoice #1010", cost: 15000, naration: "For wall construction" },
+    { id: 4, group: "Group 2", name: "Sand", itemCode: "SND-005", qty: 200, size: "Ton", documents: "Gate Pass #567", cost: 12000, naration: "Delivered by local vendor" },
+    { id: 5, group: "Group 2", name: "Paint", itemCode: "PNT-030", qty: 25, size: "20L", documents: "Invoice #1122", cost: 18000, naration: "For interior finishing" },
+    { id: 6, group: "Group 1", name: "Brush Set", itemCode: "BRH-011", qty: 40, size: "Standard", documents: "Receipt #778", cost: 4000, naration: "For paint work" },
   ]);
 
-  const uniqueAreas = [...new Set(items.map((item) => item.area))];
+  const uniqueGroups = [...new Set(items.map((item) => item.group))];
 
   const customers = [
     { id: 1, label: "Customer 1" },
@@ -109,7 +109,7 @@ const CreateQuote = () => {
     itemCode: Yup.string().required("Item code is required"),
     quantity: Yup.string().required("Quantity is required"),
     itemName: Yup.string().required("Item name is required"),
-    area: Yup.string().required("Area is required"),
+    group: Yup.string().required("Group is required"),
     size: Yup.string().required("Size is required"),
     // narration: Yup.string().required("Narration is required"),
     document: Yup.mixed().required("Please upload a document"),
@@ -128,7 +128,7 @@ const CreateQuote = () => {
   });
 
   const formik = useFormik({
-    initialValues: { itemCode: "", area: "", quantity: "", itemName: "", size: "", narration: "", document: null },
+    initialValues: { itemCode: "", group: "", quantity: "", itemName: "", size: "", narration: "", document: null },
     validationSchema,
     onSubmit: (values) => {
       console.log("Form Data:", values);
@@ -187,14 +187,14 @@ const CreateQuote = () => {
               {/* Form Section */}
               <form onSubmit={formik.handleSubmit}>
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 3, mt:3 }}>
-                  <TextField label="Area" 
+                  <TextField label="Group" 
                     variant="outlined" 
                     size="small" 
-                    name="area" 
-                    value={formik.values.area} 
+                    name="group" 
+                    value={formik.values.group} 
                     onChange={formik.handleChange} 
-                    error={formik.touched.area && Boolean(formik.errors.area)} 
-                    helperText={formik.touched.area && formik.errors.area} 
+                    error={formik.touched.group && Boolean(formik.errors.group)} 
+                    helperText={formik.touched.group && formik.errors.group} 
                   />
 
                   <Autocomplete
@@ -253,10 +253,10 @@ const CreateQuote = () => {
               </form>
 
               {/* Table Section */}
-              {uniqueAreas.map((area) => (
-                <Box key={area} sx={{ mb: 3 }}>
+              {uniqueGroups.map((group) => (
+                <Box key={group} sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                    {area}
+                    {group}
                   </Typography>
                   <Table>
                     <Thead>
@@ -273,7 +273,7 @@ const CreateQuote = () => {
                     </Thead>
                     <Tbody>
                       {items
-                        .filter((item) => item.area === area)
+                        .filter((item) => item.group === group)
                         .map((item) => (
                           <Tr key={item.id}>
                             <Td>{item.name}</Td>

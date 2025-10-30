@@ -195,10 +195,10 @@ const CreatePurchaseOrder = () => {
         return false;
       }
 
-      // if (!values.edd_date) {
-      //   errorMessage("Please choose edd data");
-      //   return false;
-      // }
+      if (!values.eddDate) {
+        errorMessage("Please choose edd data");
+        return false;
+      }
 
       return true;
     },
@@ -256,11 +256,10 @@ const CreatePurchaseOrder = () => {
     setIsSubmitting(true);
     try {
       const poData = preparePOData(values, isDraft);
-      console.log(poData)
       const res = await dispatch(addPO(poData));
 
       if (res.meta.requestStatus === "fulfilled") {
-        successMessage(isDraft ? "Draft saved successfully" : "Purchase Order saved");
+        // successMessage(isDraft ? "Draft saved successfully" : "Purchase Order saved");
         setTimeout(() => navigate("/vendor/purchase-order"), 1500);
       } else {
         errorMessage(res.error?.message || "Failed to save Purchase Order");
@@ -271,6 +270,14 @@ const CreatePurchaseOrder = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (vendorLoading) {
+      return (
+        <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
+          <CircularProgress />
+        </Box>
+      );
+    }
 
   return (
     <>

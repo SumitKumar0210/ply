@@ -42,6 +42,7 @@ import OrderDetailsView from "../pages/Customer/Order/OrderDetailsView";
 import CreateOrder from "../pages/Customer/Order/CreateOrder";
 import EditOrder from "../pages/Customer/Order/EditOrder";
 import CustomerLedger from "../pages/Customer/Ledger/Ledger";
+import Vendor from "../pages/Vendor/Ledger/vendor";
 
 
 import Error404 from "../pages/error/404";
@@ -74,9 +75,10 @@ const AppRoutes = () => {
       <Route path="/vendor/purchase-order/print/:id" element={<ProtectedRoute><MainLayout><PrintPurchaseOrder /></MainLayout></ProtectedRoute>} />
 
       <Route path="/vendor/invoice" element={<ProtectedRoute><MainLayout><VendorInvoice /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/invoice/view" element={<ProtectedRoute><MainLayout><InvoiceDetail /></MainLayout></ProtectedRoute>} />
+      <Route path="/vendor/invoice/view/:id" element={<ProtectedRoute><MainLayout><InvoiceDetail /></MainLayout></ProtectedRoute>} />
       <Route path="/vendor/payment" element={<ProtectedRoute><MainLayout><Payment /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/ledger" element={<ProtectedRoute><MainLayout><Ledger /></MainLayout></ProtectedRoute>} />
+      <Route path="/vendor/ledger/:id" element={<ProtectedRoute><MainLayout><Ledger /></MainLayout></ProtectedRoute>} />
+      <Route path="/vendor/list" element={<ProtectedRoute><MainLayout><Vendor /></MainLayout></ProtectedRoute>} />
       <Route path="/vendor/create-vendor" element={<ProtectedRoute><MainLayout><CreateVendor /></MainLayout></ProtectedRoute>} />
 
       {/* Customer */}

@@ -2,6 +2,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your API file
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
+
 // ✅ Fetch all customers
 export const fetchPOs = createAsyncThunk(
   "purchaseOrder/fetchAll",
@@ -95,7 +96,7 @@ export const statusUpdate = createAsyncThunk(
   async ({ id, status }, { rejectWithValue }) => {
     try {
       const res = await api.post("admin/purchase-order/status-update", { id, status });
-      successMessage(res.data.message);
+        successMessage(res.data.message);
       return { id, status };
     } catch (error) {
       const errMsg = getErrorMessage(error);

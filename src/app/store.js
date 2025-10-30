@@ -19,6 +19,8 @@ import labourReducer from '../pages/Users/slices/labourSlice';
 import purchaseOrderReducer from '../pages/Vendor/slice/purchaseOrderSlice';
 import taxSlabReducer from '../pages/settings/slices/taxSlabSlice';
 import purchaseInwardReducer from '../pages/Vendor/slice/purchaseInwardSlice';
+import vendorInvoiceReducer from '../pages/Vendor/slice/vendorInvoiceSlice';
+import ledgerReducer from '../pages/Vendor/slice/ledgerSlice';
 export const store = configureStore({
     reducer : {
          userType: userTypeReducer,
@@ -41,5 +43,7 @@ export const store = configureStore({
          generalSetting: generalSettingReducer,
          taxSlab: taxSlabReducer,
          purchaseInward: purchaseInwardReducer,
+         vendorInvoice: vendorInvoiceReducer,
+         ledger: ledgerReducer,
     }
 })

@@ -1,14 +1,30 @@
-import React, { useRef, useState } from "react";
-import { Grid, Button, Typography, Card, CardContent } from "@mui/material";
+import React, { useRef, useEffect } from "react";
+import { Grid, Button, Typography, Card, CardContent, CircularProgress, Box } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { AiOutlinePrinter } from "react-icons/ai";
 import { useReactToPrint } from "react-to-print";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchVendorInvoiceById } from "../slice/vendorInvoiceSlice";
+import { useParams } from "react-router-dom";
 
 const InvoiceDetail = () => {
+  const dispatch = useDispatch();
   const contentRef = useRef(null);
+  const { id } = useParams();
+  
+  const { selected: invoice, loading: dataLoading } = useSelector(
+    (state) => state.vendorInvoice
+  );
+
+  // Fetch invoice data on component mount or when id changes
+  useEffect(() => {
+    if (id) {
+      dispatch(fetchVendorInvoiceById(id));
+    }
+  }, [dispatch, id]);
 
   const handlePrint = useReactToPrint({
-    contentRef, // ✅ v3.2.0 requires contentRef instead of content()
+    contentRef,
     documentTitle: "Invoice Detail Report",
     pageStyle: `
       @page {
@@ -23,28 +39,40 @@ const InvoiceDetail = () => {
       }
     `,
   });
-  const [items, setItems] = useState([
-    {
-      id: 1,
-      name: "Item Name",
-      code: "Item Code",
-      qty: 10,
-      size: "10x20x40",
-      uom: "in",
-      rate: 2000,
-      total: 2000,
-    },
-    {
-      id: 2,
-      name: "Another Item",
-      code: "IC-002",
-      qty: 5,
-      size: "20x30",
-      uom: "cm",
-      rate: 1500,
-      total: 7500,
-    },
-  ]);
+
+  // Parse material items from invoice data
+  const items = (() => {
+    if (!invoice?.material_items) return [];
+    
+    try {
+      return typeof invoice.material_items === "string"
+        ? JSON.parse(invoice.material_items)
+        : invoice.material_items;
+    } catch (e) {
+      console.error("Invalid material_items JSON:", e);
+      return [];
+    }
+  })();
+
+  // Show loading state
+  if (dataLoading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Show message if no invoice found
+  if (!invoice) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <Typography variant="h6" color="text.secondary">
+          No invoice data found
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <>
@@ -64,6 +92,7 @@ const InvoiceDetail = () => {
             color="secondary"
             startIcon={<AiOutlinePrinter />}
             onClick={handlePrint}
+            disabled={!invoice}
           >
             Print
           </Button>
@@ -73,23 +102,18 @@ const InvoiceDetail = () => {
       <div ref={contentRef} style={{ background: "#fff", padding: "20px" }}>
         <Card>
           <CardContent>
-            <Typography variant="body2" sx={{ lineHeight: 1.8, mb:2 }}>
-              <strong>TECHIE SQUAD PRIVATE LIMITED</strong>
+            <Typography variant="body2" sx={{ lineHeight: 1.8, mb: 2 }}>
+              <strong>{invoice.vendor?.name || "-"}</strong>
               <br />
-              CIN: U72900BR2019PTC042431
+             {invoice.vendor?.address || "-"}
               <br />
-              RK NIWAS, GOLA ROAD MOR, BAILEY ROAD
-              <br />
-              DANAPUR, PATNA-801503, BIHAR, INDIA
-              <br />
-              GSTIN: 10AAHCT3899A1ZI
+              GSTIN: {invoice.vendor?.gst || "-"}
             </Typography>
 
             <Table>
               <Thead>
                 <Tr>
                   <Th>Item Name</Th>
-                  <Th>Item Code</Th>
                   <Th>Qty</Th>
                   <Th>Size</Th>
                   <Th>UOM</Th>
@@ -98,20 +122,79 @@ const InvoiceDetail = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                  {items.map((item) => (
-                    <Tr key={item.id}>
-                      <Td>{item.name}</Td>
-                      <Td>{item.code}</Td>
-                      <Td>{item.qty}</Td>
-                      <Td>{item.size}</Td>
-                      <Td>{item.uom}</Td>
-                      <Td>{item.rate}</Td>
-                      <Td>{item.total}</Td>
+                {items.length > 0 ? (
+                  items.map((item, index) => (
+                    <Tr key={item.id || index}>
+                      <Td>{item.name || "-"}</Td>
+                      <Td>{item.qty || 0}</Td>
+                      <Td>{item.size || "-"}</Td>
+                      <Td>{item.uom || "-"}</Td>
+                      <Td>{item.rate || 0}</Td>
+                      <Td>{item.total || 0}</Td>
                     </Tr>
-                  ))}
-                </Tbody>
-
+                  ))
+                ) : (
+                  <Tr>
+                    <Td colSpan="7" style={{ textAlign: "center" }}>
+                      No items found
+                    </Td>
+                  </Tr>
+                )}
+              </Tbody>
             </Table>
+
+            <Grid size={12} sx={{ mt: 3 }}>
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 1,
+                                  width: '300px',
+                                  marginLeft: 'auto',
+                                }}
+                              >
+                                <Box
+                                  className="fs-15"
+                                  sx={{
+                                    display: 'flex',
+                                    borderBottom: '1px solid #ccc',
+                                    pb: 0.5,
+                                  }}
+                                >
+                                  <span>Sub Total</span>
+                                  <span style={{ marginLeft: 'auto' }}>{invoice.subtotal || 0}</span>
+                                </Box>
+            
+                                <Box className="fs-15" sx={{ display: 'flex' }}>
+                                  <span>Discount</span>
+                                  <span style={{ marginLeft: 'auto' }}>{invoice.discount || 0}</span>
+                                </Box>
+            
+                                <Box className="fs-15" sx={{ display: 'flex' }}>
+                                  <span>Additional Charges</span>
+                                  <span style={{ marginLeft: 'auto' }}>{invoice.carriage_amount || 0}</span>
+                                </Box>
+            
+                                <Box className="fs-15" sx={{ display: 'flex' }}>
+                                  <span>GST ({parseInt(invoice.gst_per) || 0}%)</span>
+                                  <span style={{ marginLeft: 'auto' }}>{invoice.gst_amount || 0}</span>
+                                </Box>
+            
+                                <Box
+                                  className="fs-15"
+                                  sx={{
+                                    display: 'flex',
+                                    borderTop: '1px solid #222',
+                                    mt: 1,
+                                    pt: 0.5,
+                                    fontWeight: 600,
+                                  }}                
+                                >
+                                  <span>Grand Total</span>
+                                  <span style={{ marginLeft: 'auto' }}>{invoice.grand_total || 0}</span>
+                                </Box>
+                              </Box>
+                            </Grid>
           </CardContent>
         </Card>
       </div>
