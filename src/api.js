@@ -5,7 +5,7 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL,
 });
 
-// ✅ Attach token to every request
+//  Attach token to every request
 // api.interceptors.request.use((config) => {
 //   const token = localStorage.getItem("token");
 //   if (token) {
@@ -29,7 +29,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ✅ Handle expired token globally
+//  Handle expired token globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {

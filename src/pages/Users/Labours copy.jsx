@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
-import * as Yup from "yup"; // ✅ Yup for validation
+import * as Yup from "yup"; //  Yup for validation
 import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -34,7 +34,7 @@ import { BsCloudDownload } from "react-icons/bs";
 import Profile from "../../assets/images/profile.jpg";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 
-// ✅ Styled Dialog
+//  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -73,7 +73,7 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// ✅ Dropdown options
+//  Dropdown options
 const usertype = [
   { value: "Admin", label: "Admin" },
   { value: "Production", label: "Production" },
@@ -84,7 +84,7 @@ const usertype = [
 
 const department = [{ value: "Polish", label: "Polish" }];
 
-// ✅ Validation schema
+//  Validation schema
 const validationSchema = Yup.object({
   name: Yup.string().required("Name is required"),
   email: Yup.string().email("Invalid email format").required("E-mail is required"),
@@ -95,7 +95,7 @@ const validationSchema = Yup.object({
   image: Yup.mixed().required("Image is required"),
 });
 
-// ✅ Initial labours
+//  Initial labours
 const labours = [
   {
     id: 1,
@@ -123,7 +123,7 @@ const Labours = () => {
   const [tableData, setTableData] = useState(labours);
   const tableContainerRef = useRef(null);
 
-  // ✅ Table columns
+  //  Table columns
   const columns = useMemo(
     () => [
       {
@@ -201,7 +201,7 @@ const Labours = () => {
     []
   );
 
-  // ✅ CSV export using tableData
+  //  CSV export using tableData
   const downloadCSV = () => {
     const headers = columns
       .filter((col) => col.accessorKey && col.accessorKey !== "action")
@@ -223,7 +223,7 @@ const Labours = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print handler
+  //  Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

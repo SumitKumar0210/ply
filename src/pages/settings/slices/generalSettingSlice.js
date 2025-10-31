@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
 import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 
-// ✅ Thunks
+//  Thunks
 export const fetchSettings = createAsyncThunk('setting/fetchAll', async () => {
   const res = await api.get("admin/setting/get-data");
   return res.data.data;
@@ -24,7 +24,7 @@ export const updateSetting = createAsyncThunk(
 );
 
 
-// ✅ Slice
+//  Slice
 const generalSettingSlice = createSlice({
   name: "setting",
   initialState: {

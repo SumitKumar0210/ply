@@ -33,7 +33,7 @@ import { addTaxSlab, updateTaxSlab, deleteTaxSlab, statusUpdate } from "../slice
 import { useDispatch } from "react-redux";
 import api from "../../../api";
 
-// ✅ Error Boundary
+//  Error Boundary
 class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
@@ -66,7 +66,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 const TaxSlab = () => {
     const dispatch = useDispatch();
 
-    // ✅ Validation Schema
+    //  Validation Schema
     const validationSchema = Yup.object({
         percentage: Yup.number()
             .moreThan(0, "Percentage must be greater than 0")
@@ -88,7 +88,7 @@ const TaxSlab = () => {
     });
     const [loading, setLoading] = useState(false);
 
-    // ✅ Fetch data function that uses current pagination state
+    //  Fetch data function that uses current pagination state
     const fetchData = async (customPagination = null) => {
         setLoading(true);
         const currentPagination = customPagination || pagination;
@@ -109,12 +109,12 @@ const TaxSlab = () => {
         }
     };
 
-    // ✅ Fetch when pagination changes
+    //  Fetch when pagination changes
     useEffect(() => {
         fetchData();
     }, [pagination.pageIndex, pagination.pageSize]);
 
-    // ✅ Add handler - goes to first page after adding
+    //  Add handler - goes to first page after adding
     const handleAdd = async (value, resetForm) => {
         const res = await dispatch(addTaxSlab(value));
         if (res.error) return;
@@ -125,7 +125,7 @@ const TaxSlab = () => {
         handleClose();
     };
 
-    // ✅ Delete handler - stays on current page
+    //  Delete handler - stays on current page
     const handleDelete = async (id) => {
         await dispatch(deleteTaxSlab(id));
         
@@ -155,7 +155,7 @@ const TaxSlab = () => {
         setEditData(null);
     };
 
-    // ✅ Update handler - stays on current page after update
+    //  Update handler - stays on current page after update
     const handleEditSubmit = async (values, resetForm) => {
         try {
             const res = await dispatch(updateTaxSlab({ id: editData.id, ...values }));
@@ -173,7 +173,7 @@ const TaxSlab = () => {
         }
     };
 
-    // ✅ Status update handler - stays on current page
+    //  Status update handler - stays on current page
     const handleStatusChange = async (row, newStatus) => {
         await dispatch(statusUpdate({ ...row, status: newStatus }));
         
@@ -225,10 +225,10 @@ const TaxSlab = () => {
         [pagination] // Add pagination as dependency
     );
 
-    // ✅ Tell MRT which field is the unique row id
+    //  Tell MRT which field is the unique row id
     const getRowId = (originalRow) => originalRow.id;
 
-    // ✅ Download CSV
+    //  Download CSV
     const downloadCSV = () => {
         if (!tableData.length) return;
         const headers = columns
@@ -253,7 +253,7 @@ const TaxSlab = () => {
         document.body.removeChild(link);
     };
 
-    // ✅ Better Print
+    //  Better Print
     const handlePrint = () => {
         if (!tableContainerRef.current) return;
         const printContents = tableContainerRef.current.innerHTML;

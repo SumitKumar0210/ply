@@ -2,7 +2,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your API file
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
-// ✅ Fetch all customers
+//  Fetch all customers
 export const fetchPOs = createAsyncThunk(
   "purchaseOrder/fetchAll",
   async (_, { rejectWithValue }) => {
@@ -15,7 +15,7 @@ export const fetchPOs = createAsyncThunk(
   }
 );
 
-// ✅ Add customer
+//  Add customer
 export const addPO = createAsyncThunk(
   "purchaseOrder/add",
   async (newCustomer, { rejectWithValue }) => {
@@ -31,7 +31,7 @@ export const addPO = createAsyncThunk(
   }
 );
 
-// ✅ Update customer
+//  Update customer
 export const updatePO = createAsyncThunk(
   "purchaseOrder/update",
   async ({ updated }, { rejectWithValue }) => {
@@ -47,7 +47,7 @@ export const updatePO = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "purchaseOrder/statusUpdate",
   async ({ id, status }, { rejectWithValue }) => {
@@ -63,7 +63,7 @@ export const statusUpdate = createAsyncThunk(
   }
 );
 
-// ✅ Delete customer
+//  Delete customer
 export const deletePO = createAsyncThunk(
   "purchaseOrder/delete",
   async (id, { rejectWithValue }) => {
@@ -79,7 +79,7 @@ export const deletePO = createAsyncThunk(
   }
 );
 
-// ✅ Customer slice
+//  Customer slice
 const purchaseOrderSlice = createSlice({
   name: "purchaseOrder",
   initialState: {

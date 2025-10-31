@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
 import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 
-// ✅ Thunks
+//  Thunks
 export const fetchTaxSlabs = createAsyncThunk('taxSlab/fetchAll', async () => {
   const res = await api.get("admin/tax-slab/get-data");
   return res.data.data;
@@ -77,7 +77,7 @@ export const deleteTaxSlab = createAsyncThunk(
   }
 );
 
-// ✅ Slice
+//  Slice
 const taxSlabSlice = createSlice({
   name: "taxSlab",
   initialState: {

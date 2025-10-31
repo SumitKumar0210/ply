@@ -58,7 +58,7 @@ const data = [
 ];
 
 const Department = () => {
-   // ✅ Validation Schema
+   //  Validation Schema
   const validationSchema = Yup.object({
     department: Yup.string().required("Department is required"),
   });

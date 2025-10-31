@@ -8,7 +8,7 @@ const Ledger = () => {
   const contentRef = useRef(null);
 
   const handlePrint = useReactToPrint({
-    contentRef, // ✅ v3.2.0 requires contentRef instead of content()
+    contentRef, //  v3.2.0 requires contentRef instead of content()
     documentTitle: "Ledger Report",
     pageStyle: `
       @page {

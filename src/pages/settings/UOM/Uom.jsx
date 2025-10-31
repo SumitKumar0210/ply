@@ -37,7 +37,7 @@ import {
 } from "../slices/unitOfMeasurementsSlice";
 import { useDispatch, useSelector } from "react-redux";
 
-// ✅ Error Boundary
+//  Error Boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -70,7 +70,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 const UOM = () => {
   const dispatch = useDispatch();
 
-  // ✅ Validation Schema
+  //  Validation Schema
   const validationSchema = Yup.object({
     name: Yup.string()
     .min(2, "UOM must be at least 2 characters")
@@ -95,7 +95,7 @@ const UOM = () => {
     dispatch(deleteUnitOfMeasurement(id));
   };
 
-  // ✅ FIX: Use correct slice (unitOfMeasurements)
+  //  FIX: Use correct slice (unitOfMeasurements)
   const { data: tableData = [], loading, error } = useSelector(
     (state) => state.unitOfMeasurement
   );
@@ -104,7 +104,7 @@ const UOM = () => {
     dispatch(fetchUnitOfMeasurements());
   }, [dispatch]);
 
-  // ✅ Edit Modal
+  //  Edit Modal
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
 
@@ -134,7 +134,7 @@ const UOM = () => {
     }
   };
 
-  // ✅ Columns
+  //  Columns
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "UOM" },
@@ -187,7 +187,7 @@ const UOM = () => {
 
   const getRowId = (originalRow) => originalRow.id;
 
-  // ✅ CSV Export
+  //  CSV Export
   const downloadCSV = () => {
     if (!tableData.length) return;
     const headers = columns
@@ -210,7 +210,7 @@ const UOM = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print
+  //  Print
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

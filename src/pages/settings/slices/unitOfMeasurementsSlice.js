@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
 import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 
-// ✅ Thunks
+//  Thunks
 export const fetchUnitOfMeasurements = createAsyncThunk(
   'unitOfMeasurement/fetchAll',
   async () => {
@@ -83,7 +83,7 @@ export const deleteUnitOfMeasurement = createAsyncThunk(
   }
 );
 
-// ✅ Slice
+//  Slice
 const unitOfMeasurementsSlice = createSlice({
   name: "unitOfMeasurement",
   initialState: {

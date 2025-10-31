@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Grid,
   Button,
@@ -17,21 +17,32 @@ import {
   TextareaAutosize,
   TextField,
   MenuItem,
+  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { styled } from "@mui/material/styles";
-import { useFormik, Formik, Form } from "formik";
+import { Formik, Form } from "formik";
 import * as Yup from "yup";
-import { AiOutlinePrinter } from "react-icons/ai";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { Autocomplete } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { BiSolidUserPlus } from "react-icons/bi";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  addCustomer,
+  fetchActiveCustomers,
+} from "../../Users/slices/customerSlice";
+import { fetchStates } from "../../settings/slices/stateSlice";
+import { fetchActiveProducts } from "../../settings/slices/productSlice";
+import { fetchActiveTaxSlabs } from "../../settings/slices/taxSlabSlice";
+import { addQuotation } from "../slice/quotationSlice";
+import { successMessage, errorMessage } from "../../../toast";
+import { useNavigate } from "react-router-dom";
 
-// ✅ Styled Dialog
+// Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -42,8 +53,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   },
 }));
 
-function BootstrapDialogTitle(props) {
-  const { children, onClose, ...other } = props;
+function BootstrapDialogTitle({ children, onClose, ...other }) {
   return (
     <DialogTitle sx={{ m: 0, p: 2 }} {...other}>
       {children}
@@ -65,80 +75,277 @@ function BootstrapDialogTitle(props) {
   );
 }
 
-const states = [
-  { value: "Bihar", label: "Bihar" },
-  { value: "Delhi", label: "Delhi" },
-  { value: "Maharashtra", label: "Maharashtra" },
-];
+// Validation Schemas
+const itemValidationSchema = Yup.object({
+  group: Yup.string().required("Group is required"),
+  product_id: Yup.string().required("Product is required"),
+  quantity: Yup.number()
+    .required("Quantity is required")
+    .positive("Quantity must be positive")
+    .integer("Quantity must be a whole number"),
+  narration: Yup.string(),
+  document: Yup.mixed(),
+});
+
+const customerValidationSchema = Yup.object({
+  name: Yup.string()
+    .min(2, "Name must be at least 2 characters")
+    .required("Name is required"),
+  mobile: Yup.string()
+    .matches(/^[0-9]{10}$/, "Mobile must be 10 digits")
+    .required("Mobile is required"),
+  email: Yup.string()
+    .email("Invalid email format")
+    .required("E-mail is required"),
+  address: Yup.string().required("Address is required"),
+  alternate_mobile: Yup.string().matches(
+    /^[0-9]{10}$/,
+    "Alternate Mobile must be 10 digits"
+  ),
+  city: Yup.string().required("City is required"),
+  state_id: Yup.string().required("State is required"),
+  zip_code: Yup.string()
+    .matches(/^[0-9]{6}$/, "ZIP must be 6 digits")
+    .required("ZIP code is required"),
+  note: Yup.string(),
+});
+
+const quoteValidationSchema = Yup.object({
+  orderTerms: Yup.string().max(500, "Order terms cannot exceed 500 characters"),
+  discount: Yup.number().min(0, "Discount cannot be negative"),
+  additionalCharges: Yup.number().min(0, "Additional charges cannot be negative"),
+  gstRate: Yup.number().required("GST rate is required"),
+});
 
 const CreateQuote = () => {
-  const [creationDate, setCreationDate] = useState(null);
-  const [openAdd, setOpenAdd] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
+  const [creationDate, setCreationDate] = useState(new Date());
+  const [deliveryDate, setDeliveryDate] = useState(null);
+  const [priority, setPriority] = useState("Normal");
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [openAddCustomer, setOpenAddCustomer] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({
+    open: false,
+    itemId: null,
+  });
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
-  const [items, setItems] = useState([
-    { id: 1, group: "Group 1", name: "Cement Bags", itemCode: "CEM-001", qty: 50, size: "50kg", documents: "Invoice #1001", cost: 25000, naration: "Delivered on site" },
-    { id: 2, group: "Group 1", name: "Steel Rods", itemCode: "STL-010", qty: 100, size: "12mm", documents: "Challan #2345", cost: 50000, naration: "Used for foundation" },
-    { id: 3, group: "Group 2", name: "Bricks", itemCode: "BRK-020", qty: 1000, size: "9x4x3", documents: "Invoice #1010", cost: 15000, naration: "For wall construction" },
-    { id: 4, group: "Group 2", name: "Sand", itemCode: "SND-005", qty: 200, size: "Ton", documents: "Gate Pass #567", cost: 12000, naration: "Delivered by local vendor" },
-    { id: 5, group: "Group 2", name: "Paint", itemCode: "PNT-030", qty: 25, size: "20L", documents: "Invoice #1122", cost: 18000, naration: "For interior finishing" },
-    { id: 6, group: "Group 1", name: "Brush Set", itemCode: "BRH-011", qty: 40, size: "Standard", documents: "Receipt #778", cost: 4000, naration: "For paint work" },
-  ]);
+  const { data: customerData = [], loading: customersLoading } = useSelector(
+    (state) => state.customer
+  );
+  const { data: states = [] } = useSelector((state) => state.state);
+  const { data: products = [], loading: productsLoading } = useSelector(
+    (state) => state.product
+  );
+  const { data: gsts = [], loading: gstsLoading } = useSelector(
+    (state) => state.taxSlab
+  );
 
+  const dispatch = useDispatch();
+
+  // Load initial data
+  useEffect(() => {
+    const loadData = async () => {
+      await Promise.all([
+        dispatch(fetchActiveCustomers()),
+        dispatch(fetchActiveProducts()),
+        dispatch(fetchActiveTaxSlabs()),
+      ]);
+    };
+    loadData();
+  }, [dispatch]);
+
+  // Open customer modal and load states
+  const openCustomerModal = async () => {
+    await dispatch(fetchStates());
+    setOpenAddCustomer(true);
+  };
+
+  // Handle add customer
+  const handleAddCustomer = async (values, { resetForm }) => {
+    try {
+      const res = await dispatch(addCustomer(values));
+      if (res.error) return;
+      resetForm();
+      setOpenAddCustomer(false);
+      // Reload customers after adding
+      await dispatch(fetchActiveCustomers());
+    } catch (error) {
+      console.error("Add customer failed:", error);
+    }
+  };
+
+  const isDuplicateItem = useCallback(
+    (product_id, group) => {
+      return items.some(
+        (item) => item.product_id === product_id && item.group === group
+      );
+    },
+    [items]
+  );
+
+  const generateCode = (model) => {
+    return model + '@' + Math.floor(1000 + Math.random() * 9000);
+  }
+
+  const handleAddItem = (values, { resetForm }) => {
+    const { product_id, quantity, group, narration, document } = values;
+
+    if (!product_id) {
+      errorMessage("Please select a product before adding.");
+      return;
+    }
+
+    if (!quantity || isNaN(quantity) || quantity <= 0) {
+      errorMessage("Please enter a valid quantity greater than 0.");
+      return;
+    }
+
+    const product = products.find((p) => p.id === product_id);
+    if (!product) {
+      errorMessage("Selected product not found in the list.");
+      return;
+    }
+
+    if (isDuplicateItem(product_id, group)) {
+      errorMessage("This material is already added. Update quantity in the table instead.");
+      return;
+    }
+
+    // Construct new item - Store the actual File object
+    const newItem = {
+      id: Date.now(),
+      group,
+      product_id,
+      name: product.name,
+      model: product.model,
+      unique_code: generateCode(product.model),
+      qty: parseInt(quantity, 10),
+      size: product.size,
+      cost: parseFloat(product.rrp) * parseInt(quantity, 10),
+      unitPrice: parseFloat(product.rrp),
+      narration,
+      documentFile: document || null, // Store the File object
+      document: document ? document.name : "", // Store the filename for display
+    };
+
+    setItems((prev) => [...prev, newItem]);
+    setSelectedProduct(null);
+    resetForm();
+  };
+
+  // Handle delete item
+  const confirmDeleteItem = () => {
+    setItems((prev) => prev.filter((item) => item.id !== deleteDialog.itemId));
+    setDeleteDialog({ open: false, itemId: null });
+  };
+
+  // Calculate totals
+  const calculateTotals = (values) => {
+    const subTotal = items.reduce((sum, item) => sum + item.cost, 0);
+    const discountAmount = parseFloat(values.discount || 0);
+    const additionalChargesAmount = parseFloat(values.additionalCharges || 0);
+    const afterDiscount = subTotal - discountAmount + additionalChargesAmount;
+    const gstAmount = (afterDiscount * parseFloat(values.gstRate || 0)) / 100;
+    const grandTotal = afterDiscount + gstAmount;
+
+    return {
+      subTotal,
+      discountAmount,
+      additionalChargesAmount,
+      gstAmount,
+      grandTotal,
+    };
+  };
+
+  // Get unique groups
   const uniqueGroups = [...new Set(items.map((item) => item.group))];
 
-  const customers = [
-    { id: 1, label: "Customer 1" },
-    { id: 2, label: "Customer 2" },
-    { id: 3, label: "Customer 3" },
-  ];
+  // Handle final quote submission with FormData
+  const handleSubmitQuote = async (values, isDraft = false) => {
+    if (!selectedCustomer) {
+      alert("Please select a customer");
+      return;
+    }
 
-  const itemCode = [
-    { id: 1, label: "Item_001" },
-    { id: 2, label: "Item_002" },
-    { id: 3, label: "Item_003" },
-  ];
+    if (items.length === 0) {
+      alert("Please add at least one item");
+      return;
+    }
 
-  const itemquantity = [
-    { id: 1, label: "1" },
-    { id: 2, label: "2" },
-    { id: 3, label: "3" },
-  ];
+    setSubmitting(true);
 
-  const validationSchema = Yup.object({
-    itemCode: Yup.string().required("Item code is required"),
-    quantity: Yup.string().required("Quantity is required"),
-    itemName: Yup.string().required("Item name is required"),
-    group: Yup.string().required("Group is required"),
-    size: Yup.string().required("Size is required"),
-    // narration: Yup.string().required("Narration is required"),
-    document: Yup.mixed().required("Please upload a document"),
-  });
+    try {
+      const totals = calculateTotals(values);
+      
+      // Create FormData object
+      const formData = new FormData();
+      
+      // Add basic quote data
+      formData.append('customer_id', selectedCustomer.id);
+      formData.append('quote_date', creationDate.toISOString());
+      formData.append('priority', priority);
+      if (deliveryDate) {
+        formData.append('delivery_date', deliveryDate.toISOString());
+      }
+      formData.append('order_terms', values.orderTerms);
+      formData.append('discount', values.discount);
+      formData.append('additional_charges', values.additionalCharges);
+      formData.append('gst_rate', values.gstRate);
+      formData.append('sub_total', totals.subTotal);
+      formData.append('grand_total', totals.grandTotal);
+      formData.append('is_draft', isDraft ? 1 : 0);
+      
+      // Add items data and files
+      items.forEach((item, index) => {
+        formData.append(`items[${index}][id]`, item.id);
+        formData.append(`items[${index}][group]`, item.group);
+        formData.append(`items[${index}][product_id]`, item.product_id);
+        formData.append(`items[${index}][name]`, item.name);
+        formData.append(`items[${index}][model]`, item.model);
+        formData.append(`items[${index}][unique_code]`, item.unique_code);
+        formData.append(`items[${index}][qty]`, item.qty);
+        formData.append(`items[${index}][size]`, item.size);
+        formData.append(`items[${index}][cost]`, item.cost);
+        formData.append(`items[${index}][unitPrice]`, item.unitPrice);
+        formData.append(`items[${index}][narration]`, item.narration || '');
+        
+        // Append the file if it exists
+        if (item.documentFile) {
+          formData.append(`items[${index}][document]`, item.documentFile);
+        }
+      });
 
-  const validationSchemaCustomer = Yup.object({
-    name: Yup.string().required("Name is required"),
-    mobile: Yup.string().matches(/^[0-9]{10}$/, "Mobile must be 10 digits").required("Mobile is required"),
-    email: Yup.string().email("Invalid email format").required("E-mail is required"),
-    address: Yup.string().required("Address is required"),
-    alternateMobile: Yup.string().matches(/^[0-9]{10}$/, "Alternate Mobile must be 10 digits"),
-    city: Yup.string().required("City is required"),
-    state: Yup.string().required("State is required"),
-    zip: Yup.string().matches(/^[0-9]{6}$/, "ZIP must be 6 digits").required("ZIP code is required"),
-    note: Yup.string(),
-  });
+      // Dispatch your quote creation action with FormData
+      await dispatch(addQuotation(formData));
+      
+      successMessage(`Quote ${isDraft ? "saved as draft" : "submitted"} successfully!`);
+      
+      // Optional: Reset form or redirect
+      resetForm();
+      navigate('/customer/quote');
+      
+    } catch (error) {
+      console.error("Submit quote failed:", error);
+      errorMessage("Failed to submit quote");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-  const formik = useFormik({
-    initialValues: { itemCode: "", group: "", quantity: "", itemName: "", size: "", narration: "", document: null },
-    validationSchema,
-    onSubmit: (values) => {
-      console.log("Form Data:", values);
-      alert("Form submitted successfully!");
-    },
-  });
+  const isLoading = customersLoading || productsLoading || gstsLoading;
 
   return (
     <>
-      <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+      <Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 2 }}
+      >
         <Grid size={12}>
           <Typography variant="h6">Create Quote</Typography>
         </Grid>
@@ -148,17 +355,50 @@ const CreateQuote = () => {
         <Grid size={12}>
           <Card>
             <CardContent>
+              {isLoading && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    py: 3,
+                  }}
+                >
+                  <CircularProgress />
+                </Box>
+              )}
+
               {/* Header Row */}
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2, mb: 2 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 2,
+                  mb: 2,
+                }}
+              >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Autocomplete
-                    options={customers}
+                    options={customerData}
                     size="small"
-                    getOptionLabel={(option) => option.label}
-                    renderInput={(params) => <TextField {...params} label="Select Customer" variant="outlined" sx={{ width: 300 }} />}
+                    getOptionLabel={(option) => option?.name || ""}
+                    value={selectedCustomer}
+                    onChange={(e, value) => setSelectedCustomer(value)}
+                    loading={customersLoading}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Select Customer"
+                        variant="outlined"
+                        sx={{ width: 300 }}
+                        required
+                      />
+                    )}
                   />
+
                   <Tooltip title="Add New Customer">
-                    <IconButton color="primary" onClick={() => setOpenAdd(true)}>
+                    <IconButton color="primary" onClick={openCustomerModal}>
                       <BiSolidUserPlus size={22} />
                     </IconButton>
                   </Tooltip>
@@ -173,173 +413,472 @@ const CreateQuote = () => {
                       textField: { size: "small", sx: { width: 250 } },
                     }}
                   />
+                  <DatePicker
+                    label="Delivery Date"
+                    value={deliveryDate}
+                    onChange={(newValue) => setDeliveryDate(newValue)}
+                    slotProps={{
+                      textField: { size: "small", sx: { width: 250 } },
+                    }}
+                  />
+                  <Autocomplete
+                    options={["Normal", "High", "Slow"]}
+                    size="small"
+                    value={priority}
+                    onChange={(e, value) => {
+                      setPriority(value);
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Priority"
+                        variant="outlined"
+                        sx={{ width: 150 }}
+                      />
+                    )}
+                  />
                 </LocalizationProvider>
               </Box>
 
-              <Typography variant="body2" sx={{ mb: 2 }}>
-                TECHIE SQUAD PRIVATE LIMITED <br />
-                CIN: U72900BR2019PTC042431 <br />
-                RK NIWAS, GOLA ROAD MOR, BAILEY ROAD <br />
-                DANAPUR, PATNA-801503, BIHAR, INDIA <br />
-                GSTIN: 10AAHCT3899A1ZI
-              </Typography>
+              {/* Customer Details */}
+              {selectedCustomer && (
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                  <strong>{selectedCustomer.name}</strong>
+                  <br />
+                  {selectedCustomer.address}
+                  <br />
+                  {selectedCustomer.city}, {selectedCustomer.state?.name}{" "}
+                  {selectedCustomer.zip_code}
+                  <br />
+                  Mobile: {selectedCustomer.mobile}
+                  <br />
+                  Email: {selectedCustomer.email}
+                </Typography>
+              )}
 
-              {/* Form Section */}
-              <form onSubmit={formik.handleSubmit}>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 3, mt:3 }}>
-                  <TextField label="Group" 
-                    variant="outlined" 
-                    size="small" 
-                    name="group" 
-                    value={formik.values.group} 
-                    onChange={formik.handleChange} 
-                    error={formik.touched.group && Boolean(formik.errors.group)} 
-                    helperText={formik.touched.group && formik.errors.group} 
-                  />
+              {/* Add Item Form */}
+              <Formik
+                initialValues={{
+                  group: "",
+                  product_id: "",
+                  quantity: "",
+                  narration: "",
+                  document: null,
+                }}
+                validationSchema={itemValidationSchema}
+                onSubmit={handleAddItem}
+              >
+                {({
+                  handleChange,
+                  handleSubmit,
+                  values,
+                  touched,
+                  errors,
+                  setFieldValue,
+                }) => (
+                  <Form onSubmit={handleSubmit}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 2,
+                        mb: 3,
+                        mt: 3,
+                      }}
+                    >
+                      <TextField
+                        label="Group"
+                        variant="outlined"
+                        size="small"
+                        name="group"
+                        value={values.group}
+                        onChange={handleChange}
+                        error={touched.group && Boolean(errors.group)}
+                        helperText={touched.group && errors.group}
+                        sx={{ minWidth: 150 }}
+                      />
 
-                  <Autocomplete
-                    options={itemCode}
-                    size="small"
-                    getOptionLabel={(option) => option.label}
-                    onChange={(e, value) => formik.setFieldValue("itemCode", value ? value.label : "")}
-                    renderInput={(params) => (
-                      <TextField {...params} label="Item Code" variant="outlined" sx={{ width: 150 }} error={formik.touched.itemCode && Boolean(formik.errors.itemCode)} helperText={formik.touched.itemCode && formik.errors.itemCode} />
-                    )}
-                  />
+                      <Autocomplete
+                        options={products}
+                        size="small"
+                        getOptionLabel={(option) => option.model || ""}
+                        value={selectedProduct}
+                        onChange={(e, value) => {
+                          setSelectedProduct(value);
+                          setFieldValue("product_id", value?.id || "");
+                        }}
+                        loading={productsLoading}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Model Code"
+                            variant="outlined"
+                            sx={{ width: 150 }}
+                            error={touched.product_id && Boolean(errors.product_id)}
+                            helperText={touched.product_id && errors.product_id}
+                          />
+                        )}
+                      />
 
-                  <TextField label="Item Name" variant="outlined" size="small" name="itemName" value={formik.values.itemName} onChange={formik.handleChange} error={formik.touched.itemName && Boolean(formik.errors.itemName)} helperText={formik.touched.itemName && formik.errors.itemName} />
+                      <TextField
+                        label="Item Name"
+                        variant="outlined"
+                        size="small"
+                        value={selectedProduct?.name || ""}
+                        disabled
+                        sx={{ minWidth: 200 }}
+                      />
 
-                  <Autocomplete
-                    options={itemquantity}
-                    size="small"
-                    getOptionLabel={(option) => option.label}
-                    onChange={(e, value) => formik.setFieldValue("quantity", value ? value.label : "")}
-                    renderInput={(params) => (
-                      <TextField {...params} label="Qty" variant="outlined" sx={{ width: 100 }} error={formik.touched.quantity && Boolean(formik.errors.quantity)} helperText={formik.touched.quantity && formik.errors.quantity} />
-                    )}
-                  />
+                      <TextField
+                        label="Qty"
+                        variant="outlined"
+                        size="small"
+                        type="number"
+                        name="quantity"
+                        value={values.quantity}
+                        onChange={handleChange}
+                        error={touched.quantity && Boolean(errors.quantity)}
+                        helperText={touched.quantity && errors.quantity}
+                        sx={{ width: 100 }}
+                        inputProps={{ min: 1 }}
+                      />
 
-                  <TextField label="Size" variant="outlined" size="small" name="size" value={formik.values.size} onChange={formik.handleChange} error={formik.touched.size && Boolean(formik.errors.size)} helperText={formik.touched.size && formik.errors.size} />
+                      <TextField
+                        label="Size"
+                        variant="outlined"
+                        size="small"
+                        value={selectedProduct?.size || ""}
+                        disabled
+                        sx={{ minWidth: 100 }}
+                      />
 
-                  <TextareaAutosize
-                    minRows={1}
-                    placeholder="Narration"
-                    name="narration"
-                    value={formik.values.narration}
-                    onChange={formik.handleChange}
-                    style={{
-                      width: "250px",
-                      padding: "8px",
-                      borderColor: formik.touched.narration && formik.errors.narration ? "red" : "#ccc",
-                    }}
-                  />
+                      <TextareaAutosize
+                        minRows={1}
+                        placeholder="Narration"
+                        name="narration"
+                        value={values.narration}
+                        onChange={handleChange}
+                        style={{
+                          width: "250px",
+                          padding: "8px",
+                          borderColor:
+                            touched.narration && errors.narration
+                              ? "red"
+                              : "#ccc",
+                          borderRadius: "4px",
+                          fontFamily: "inherit",
+                        }}
+                      />
 
-                  <TextField 
-                    type="file" 
-                    name="document" 
-                    size="small" 
-                    variant="outlined" 
-                    onChange={(event) => formik.setFieldValue("document", event.currentTarget.files[0])} error={formik.touched.document && Boolean(formik.errors.document)} 
-                    helperText={formik.touched.document && formik.errors.document} 
-                     style={{
-                      width: "250px",
-                    }}
-                  />
+                      <TextField
+                        type="file"
+                        name="document"
+                        size="small"
+                        variant="outlined"
+                        onChange={(event) =>
+                          setFieldValue("document", event.currentTarget.files[0])
+                        }
+                        error={touched.document && Boolean(errors.document)}
+                        helperText={touched.document && errors.document}
+                        sx={{ width: 250 }}
+                      />
 
-                  <Button type="submit" variant="contained" color="primary"sx={{mt:0}}>
-                    Add
-                  </Button>
-                </Box>
-              </form>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        disabled={!selectedProduct}
+                        sx={{ mt: 0 }}
+                      >
+                        Add
+                      </Button>
+                    </Box>
+                  </Form>
+                )}
+              </Formik>
 
-              {/* Table Section */}
-              {uniqueGroups.map((group) => (
-                <Box key={group} sx={{ mb: 3 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                    {group}
-                  </Typography>
-                  <Table>
-                    <Thead>
-                      <Tr>
-                        <Th>Item Name</Th>
-                        <Th>Item Code</Th>
-                        <Th>Qty</Th>
-                        <Th>Size</Th>
-                        <Th>Documents</Th>
-                        <Th>Item Cost</Th>
-                        <Th>Narration</Th>
-                        <Th>Action</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {items
-                        .filter((item) => item.group === group)
-                        .map((item) => (
-                          <Tr key={item.id}>
-                            <Td>{item.name}</Td>
-                            <Td>{item.itemCode}</Td>
-                            <Td>{item.qty}</Td>
-                            <Td>{item.size}</Td>
-                            <Td>{item.documents}</Td>
-                            <Td>{item.cost}</Td>
-                            <Td>{item.naration}</Td>
-                            <Td>
-                              <Tooltip title="Delete">
-                                <IconButton color="error" onClick={() => setOpenDelete(true)}>
-                                  <RiDeleteBinLine size={16} />
-                                </IconButton>
-                              </Tooltip>
-                            </Td>
+              {/* Items Table */}
+              {items.length > 0 && (
+                <>
+                  {uniqueGroups.map((group) => (
+                    <Box key={group} sx={{ mb: 3 }}>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{ fontWeight: 600, mb: 1 }}
+                      >
+                        {group}
+                      </Typography>
+                      <Table>
+                        <Thead>
+                          <Tr>
+                            <Th>Item Name</Th>
+                            <Th>Item Code</Th>
+                            <Th>Qty</Th>
+                            <Th>Size</Th>
+                            <Th>Unit Price</Th>
+                            <Th>Total Cost</Th>
+                            <Th>Documents</Th>
+                            <Th>Narration</Th>
+                            <Th>Action</Th>
                           </Tr>
-                        ))}
-                    </Tbody>
-                  </Table>
-                </Box>
-              ))}
+                        </Thead>
+                        <Tbody>
+                          {items
+                            .filter((item) => item.group === group)
+                            .map((item) => (
+                              <Tr key={item.id}>
+                                <Td>{item.name}</Td>
+                                <Td>{item.model}</Td>
+                                <Td>{item.qty}</Td>
+                                <Td>{item.size}</Td>
+                                <Td>₹{item.unitPrice.toLocaleString("en-IN")}</Td>
+                                <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
+                                <Td>{item.document || "-"}</Td>
+                                <Td>{item.narration || "-"}</Td>
+                                <Td>
+                                  <Tooltip title="Delete">
+                                    <IconButton
+                                      color="error"
+                                      onClick={() =>
+                                        setDeleteDialog({
+                                          open: true,
+                                          itemId: item.id,
+                                        })
+                                      }
+                                    >
+                                      <RiDeleteBinLine size={16} />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Td>
+                              </Tr>
+                            ))}
+                        </Tbody>
+                      </Table>
+                    </Box>
+                  ))}
+                </>
+              )}
 
               {/* Totals Section */}
-              <Box sx={{ display: "flex", justifyContent: "space-between", mt: 3, flexWrap: "wrap", gap: 2 }}>
-                <TextareaAutosize aria-label="minimum height" minRows={3} placeholder="Order Terms" style={{ width: "50%", padding: "8px" }} />
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, width: "25%" }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #ccc" }}>
-                    <span>Sub Total</span>
-                    <span>8000</span>
-                  </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Discount</span>
-                    <span>1000</span>
-                  </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Additional Charges</span>
-                    <span>2000</span>
-                  </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>GST (18%)</span>
-                    <span>800</span>
-                  </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #000", pt: 0.5, fontWeight: "600" }}>
-                    <span>Grand Total</span>
-                    <span>10000</span>
-                  </Box>
-                </Box>
-              </Box>
+              <Formik
+                initialValues={{
+                  orderTerms: "",
+                  discount: 0,
+                  additionalCharges: 0,
+                  gstRate: 18 || 0,
+                }}
+                validationSchema={quoteValidationSchema}
+                onSubmit={(values) => handleSubmitQuote(values, false)}
+              >
+                {({ handleChange, values, touched, errors, handleSubmit }) => {
+                  const totals = calculateTotals(values);
 
-              <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 4 }}>
-                <Button variant="contained" color="secondary">
-                  Save as Draft
-                </Button>
-                <Button variant="contained" color="primary">
-                  Save
-                </Button>
-              </Stack>
+                  return (
+                    <Form>
+                      <Grid size={12} sx={{ mt: 3 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            width: "100%",
+                            gap: 2,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <TextareaAutosize
+                            minRows={3}
+                            maxRows={6}
+                            placeholder="Order Terms (max 500 characters)"
+                            name="orderTerms"
+                            value={values.orderTerms}
+                            onChange={handleChange}
+                            style={{
+                              width: "48%",
+                              minWidth: "300px",
+                              padding: "8px",
+                              fontFamily: "inherit",
+                              borderRadius: "4px",
+                              border: "1px solid #ccc",
+                            }}
+                          />
+
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 1,
+                              minWidth: "300px",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                borderBottom: "1px solid #ccc",
+                                pb: 0.5,
+                              }}
+                            >
+                              <span>Sub Total</span>
+                              <span>
+                                ₹{totals.subTotal.toLocaleString("en-IN")}
+                              </span>
+                            </Box>
+
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: 1,
+                                alignItems: "center",
+                              }}
+                            >
+                              <TextField
+                                label="Discount"
+                                type="number"
+                                size="small"
+                                name="discount"
+                                value={values.discount}
+                                onChange={handleChange}
+                                error={touched.discount && !!errors.discount}
+                                helperText={touched.discount && errors.discount}
+                                sx={{ width: "55%" }}
+                                inputProps={{ min: 0 }}
+                              />
+                              <span>
+                                ₹
+                                {(
+                                  totals.subTotal - totals.discountAmount
+                                ).toLocaleString("en-IN")}
+                              </span>
+                            </Box>
+
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: 1,
+                                alignItems: "center",
+                              }}
+                            >
+                              <TextField
+                                label="Add Charges"
+                                type="number"
+                                size="small"
+                                name="additionalCharges"
+                                value={values.additionalCharges}
+                                onChange={handleChange}
+                                error={
+                                  touched.additionalCharges &&
+                                  !!errors.additionalCharges
+                                }
+                                helperText={
+                                  touched.additionalCharges &&
+                                  errors.additionalCharges
+                                }
+                                sx={{ width: "55%" }}
+                                inputProps={{ min: 0 }}
+                              />
+                              <span>
+                                ₹
+                                {totals.additionalChargesAmount.toLocaleString(
+                                  "en-IN"
+                                )}
+                              </span>
+                            </Box>
+
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: 1,
+                                alignItems: "center",
+                              }}
+                            >
+                              <TextField
+                                select
+                                label="GST %"
+                                size="small"
+                                name="gstRate"
+                                value={values.gstRate}
+                                onChange={handleChange}
+                                error={touched.gstRate && !!errors.gstRate}
+                                helperText={touched.gstRate && errors.gstRate}
+                                sx={{ width: "55%" }}
+                              >
+                                {gsts.map((item) => (
+                                  <MenuItem key={item.id} value={item.percentage}>
+                                    {item.percentage}%
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                              <span>
+                                ₹{totals.gstAmount.toLocaleString("en-IN")}
+                              </span>
+                            </Box>
+
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                borderTop: "2px solid #222",
+                                mt: 1,
+                                pt: 0.5,
+                                fontWeight: "600",
+                              }}
+                            >
+                              <span>Grand Total</span>
+                              <span>
+                                ₹{totals.grandTotal.toLocaleString("en-IN")}
+                              </span>
+                            </Box>
+                          </Box>
+                        </Box>
+                      </Grid>
+
+                      <Stack
+                        direction="row"
+                        spacing={2}
+                        justifyContent="flex-end"
+                        sx={{ mt: 4 }}
+                      >
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          onClick={() => handleSubmitQuote(values, true)}
+                          disabled={submitting || items.length === 0}
+                        >
+                          {submitting ? (
+                            <CircularProgress size={24} />
+                          ) : (
+                            "Save as Draft"
+                          )}
+                        </Button>
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          color="primary"
+                          disabled={submitting || items.length === 0}
+                        >
+                          {submitting ? <CircularProgress size={24} /> : "Save"}
+                        </Button>
+                      </Stack>
+                    </Form>
+                  );
+                }}
+              </Formik>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-     {/* Add Customer Modal */}
-      <BootstrapDialog open={openAdd} onClose={() => setOpenAdd(false)} fullWidth maxWidth="xs">
-        <BootstrapDialogTitle onClose={() => setOpenAdd(false)}>
+      {/* Add Customer Modal */}
+      <BootstrapDialog
+        open={openAddCustomer}
+        onClose={() => setOpenAddCustomer(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <BootstrapDialogTitle onClose={() => setOpenAddCustomer(false)}>
           Add Customer
         </BootstrapDialogTitle>
         <Formik
@@ -348,22 +887,19 @@ const CreateQuote = () => {
             mobile: "",
             email: "",
             address: "",
-            alternateMobile: "",
+            alternate_mobile: "",
             city: "",
-            state: "",
-            zip: "",
+            state_id: "",
+            zip_code: "",
             note: "",
           }}
-          validationSchema={validationSchemaCustomer}
-          onSubmit={(values) => {
-            setTableData((prev) => [...prev, { id: prev.length + 1, ...values }]);
-            setOpenAdd(false);
-          }}
+          validationSchema={customerValidationSchema}
+          onSubmit={handleAddCustomer}
         >
-          {({ handleChange, handleSubmit, values, touched, errors }) => (
-            <Form onSubmit={handleSubmit}>
+          {({ handleChange, values, touched, errors }) => (
+            <Form>
               <DialogContent dividers>
-                <Grid container  rowSpacing={1} columnSpacing={3}>
+                <Grid container rowSpacing={1} columnSpacing={3}>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       name="name"
@@ -372,6 +908,7 @@ const CreateQuote = () => {
                       margin="dense"
                       variant="outlined"
                       size="small"
+                      value={values.name}
                       onChange={handleChange}
                       error={touched.name && Boolean(errors.name)}
                       helperText={touched.name && errors.name}
@@ -385,6 +922,7 @@ const CreateQuote = () => {
                       margin="dense"
                       variant="outlined"
                       size="small"
+                      value={values.mobile}
                       onChange={handleChange}
                       error={touched.mobile && Boolean(errors.mobile)}
                       helperText={touched.mobile && errors.mobile}
@@ -392,16 +930,22 @@ const CreateQuote = () => {
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
-                      name="alternateMobile"
+                      name="alternate_mobile"
                       label="Alternate Mobile"
                       fullWidth
                       margin="dense"
                       variant="outlined"
                       size="small"
+                      value={values.alternate_mobile}
                       onChange={handleChange}
-                      error={touched.alternateMobile && Boolean(errors.alternateMobile)}
-                      helperText={touched.alternateMobile && errors.alternateMobile}
-                    /> 
+                      error={
+                        touched.alternate_mobile &&
+                        Boolean(errors.alternate_mobile)
+                      }
+                      helperText={
+                        touched.alternate_mobile && errors.alternate_mobile
+                      }
+                    />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
@@ -411,12 +955,13 @@ const CreateQuote = () => {
                       margin="dense"
                       variant="outlined"
                       size="small"
+                      value={values.email}
                       onChange={handleChange}
                       error={touched.email && Boolean(errors.email)}
                       helperText={touched.email && errors.email}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 12 }}>
+                  <Grid size={12}>
                     <TextField
                       name="address"
                       label="Address"
@@ -424,28 +969,29 @@ const CreateQuote = () => {
                       margin="dense"
                       variant="outlined"
                       size="small"
+                      value={values.address}
                       onChange={handleChange}
                       error={touched.address && Boolean(errors.address)}
                       helperText={touched.address && errors.address}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 12 }}>
+                  <Grid size={12}>
                     <TextField
-                      name="state"
+                      name="state_id"
                       label="State"
                       select
                       fullWidth
                       margin="dense"
                       variant="outlined"
                       size="small"
-                      value={values.state}
+                      value={values.state_id}
                       onChange={handleChange}
-                      error={touched.state && Boolean(errors.state)}
-                      helperText={touched.state && errors.state}
+                      error={touched.state_id && Boolean(errors.state_id)}
+                      helperText={touched.state_id && errors.state_id}
                     >
                       {states.map((s) => (
-                        <MenuItem key={s.value} value={s.value}>
-                          {s.label}
+                        <MenuItem key={s.id} value={s.id}>
+                          {s.name}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -458,6 +1004,7 @@ const CreateQuote = () => {
                       margin="dense"
                       variant="outlined"
                       size="small"
+                      value={values.city}
                       onChange={handleChange}
                       error={touched.city && Boolean(errors.city)}
                       helperText={touched.city && errors.city}
@@ -465,18 +1012,19 @@ const CreateQuote = () => {
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
-                      name="zip"
-                      label="ZIP Code"
+                      name="zip_code"
+                      label="Zip Code"
                       fullWidth
                       margin="dense"
                       variant="outlined"
                       size="small"
+                      value={values.zip_code}
                       onChange={handleChange}
-                      error={touched.zip && Boolean(errors.zip)}
-                      helperText={touched.zip && errors.zip}
+                      error={touched.zip_code && Boolean(errors.zip_code)}
+                      helperText={touched.zip_code && errors.zip_code}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 12 }}>
+                  <Grid size={12}>
                     <TextField
                       name="note"
                       label="Note"
@@ -486,13 +1034,18 @@ const CreateQuote = () => {
                       margin="dense"
                       variant="outlined"
                       size="small"
+                      value={values.note}
                       onChange={handleChange}
                     />
                   </Grid>
                 </Grid>
               </DialogContent>
               <DialogActions>
-                <Button onClick={() => setOpenAdd(false)} variant="outlined" color="error">
+                <Button
+                  onClick={() => setOpenAddCustomer(false)}
+                  variant="outlined"
+                  color="error"
+                >
                   Cancel
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
@@ -504,15 +1057,24 @@ const CreateQuote = () => {
         </Formik>
       </BootstrapDialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
+      {/* Delete Item Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, itemId: null })}
+      >
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          <DialogContentText>Are you sure you want to delete this item?</DialogContentText>
+          <DialogContentText>
+            Are you sure you want to delete this item from the quote?
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
-          <Button color="error" onClick={() => setOpenDelete(false)}>
+          <Button
+            onClick={() => setDeleteDialog({ open: false, itemId: null })}
+          >
+            Cancel
+          </Button>
+          <Button color="error" onClick={confirmDeleteItem} variant="contained">
             Delete
           </Button>
         </DialogActions>

@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your api file
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
-// ✅ Fetch all users
+//  Fetch all users
 export const fetchUsers = createAsyncThunk(
   "users/fetchAll",
   async (_, { rejectWithValue }) => {
@@ -14,7 +14,7 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
-// ✅ Add user
+//  Add user
 export const addUser = createAsyncThunk(
   "users/add",
   async (newUser, { rejectWithValue }) => {
@@ -30,7 +30,7 @@ export const addUser = createAsyncThunk(
   }
 );
 
-// ✅ Update user
+//  Update user
 export const updateUser = createAsyncThunk(
   "users/update",
   async ({ id, ...updated }, { rejectWithValue }) => {
@@ -46,7 +46,7 @@ export const updateUser = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "users/statusUpdate",
   async ({ id, status }, { rejectWithValue }) => {
@@ -62,7 +62,7 @@ export const statusUpdate = createAsyncThunk(
   }
 );
 
-// ✅ Delete user
+//  Delete user
 export const deleteUser = createAsyncThunk(
   "users/delete",
   async (id, { rejectWithValue }) => {

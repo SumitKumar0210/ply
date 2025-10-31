@@ -35,11 +35,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
   fetchVendors,
-} from "../../settings/slices/vendorSlice"; // ✅ new slice
+} from "../../settings/slices/vendorSlice"; //  new slice
 
 import { fetchActiveCategories } from "../../settings/slices/categorySlice";
 
-// ✅ Error Boundary
+//  Error Boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -86,7 +86,7 @@ const Vendor = () => {
     navigate('/vendor/ledger/'+ id)
   }
 
-  // ✅ Table columns
+  //  Table columns
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "Vendor Name" },
@@ -116,7 +116,7 @@ const Vendor = () => {
     []
   );
 
-  // ✅ CSV download
+  //  CSV download
   const downloadCSV = () => {
     const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
     const rows = vendorData.map((row) =>
@@ -136,7 +136,7 @@ const Vendor = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print
+  //  Print
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

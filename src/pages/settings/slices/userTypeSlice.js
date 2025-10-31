@@ -3,7 +3,7 @@ import axios from 'axios';
 import api from '../../../api';
 import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 
-// ✅ Thunks
+//  Thunks
 export const fetchUserTypes = createAsyncThunk('userType/fetchAll', async () => {
 
   const res = await api.get("admin/userType/get-data");
@@ -92,11 +92,11 @@ export const deleteUserType = createAsyncThunk(
 );
 
 
-// ✅ Slice
+//  Slice
 const userTypeSlice = createSlice({
   name: "userType",
   initialState: {
-    data: [], // ✅ keep only array here
+    data: [], //  keep only array here
     loading: false,
     error: null,
   },
@@ -109,7 +109,7 @@ const userTypeSlice = createSlice({
       })
       .addCase(fetchUserTypes.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload; // ✅ array only
+        state.data = action.payload; //  array only
       })
       .addCase(fetchUserTypes.rejected, (state, action) => {
         state.loading = false;
@@ -118,7 +118,7 @@ const userTypeSlice = createSlice({
 
       // Add
       .addCase(addUserType.fulfilled, (state, action) => {
-        state.data.unshift(action.payload); // ✅ add new row
+        state.data.unshift(action.payload); //  add new row
       })
 
       // Update

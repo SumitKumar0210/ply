@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
 import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 
-// ✅ Thunks
+//  Thunks
 export const fetchDepartments = createAsyncThunk('department/fetchAll', async () => {
   const res = await api.get("admin/department/get-data");
   return res.data.data;
@@ -77,7 +77,7 @@ export const deleteDepartment = createAsyncThunk(
   }
 );
 
-// ✅ Slice
+//  Slice
 const departmentSlice = createSlice({
   name: "department",
   initialState: {

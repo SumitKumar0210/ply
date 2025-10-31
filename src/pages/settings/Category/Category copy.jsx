@@ -57,7 +57,7 @@ const data = [
 ];
 
 const Category = () => {
-   // ✅ Validation Schema
+   //  Validation Schema
   const validationSchema = Yup.object({
     category: Yup.string().required("Category is required"),
   });

@@ -31,7 +31,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogActions-root": { padding: theme.spacing(1) },
 }));
 
-// ✅ Give each row a unique id and an initial status
+//  Give each row a unique id and an initial status
 const seed = [
   { id: "1", name: "Admin", status: true },
   { id: "2", name: "Manager", status: false },
@@ -55,7 +55,7 @@ const UserType = () => {
 
   const tableContainerRef = useRef(null);
   // const [open, setOpen] = useState(false);
-  // const [tableData, setTableData] = useState(seed); // ✅ controlled data
+  // const [tableData, setTableData] = useState(seed); //  controlled data
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -186,7 +186,7 @@ const handleEditSubmit = async (values, resetForm) => {
     ],
     [dispatch]
   );
-  // ✅ Tell MRT which field is the unique row id
+  //  Tell MRT which field is the unique row id
   const getRowId = (originalRow) => originalRow.id;
 
   // CSV (now includes status)
@@ -298,7 +298,7 @@ const handleEditSubmit = async (values, resetForm) => {
           initialValues={{ userType: "" }}
           validationSchema={validationSchema}
           onSubmit={async (values, { resetForm }) => {
-            // ✅ add a new row with a unique id and default status
+            //  add a new row with a unique id and default status
             // const newRow = {
             //   id: `u-${Date.now()}`, // simple unique id
             //   name: values.userType,
@@ -355,7 +355,7 @@ const handleEditSubmit = async (values, resetForm) => {
         </IconButton>
 
         <Formik
-          enableReinitialize // ✅ makes sure form updates when editData changes
+          enableReinitialize //  makes sure form updates when editData changes
           initialValues={{ userType: editData?.name || "" }}
           validationSchema={validationSchema}
           onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}

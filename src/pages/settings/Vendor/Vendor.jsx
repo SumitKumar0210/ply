@@ -37,11 +37,11 @@ import {
   deleteVendor,
   updateVendor,
   statusUpdate
-} from "../slices/vendorSlice"; // ✅ new slice
+} from "../slices/vendorSlice"; //  new slice
 
 import { fetchActiveCategories } from "../slices/categorySlice";
 
-// ✅ Error Boundary
+//  Error Boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -82,7 +82,7 @@ const Vendor = () => {
   const { data: vendorData = [] } = useSelector((state) => state.vendor);
   const { data: categories = [] } = useSelector((state) => state.category);
 
-  // ✅ Validation Schema
+  //  Validation Schema
   const validationSchema = Yup.object({
     name: Yup.string()
     .min(2, "Vendor must be at least 2 characters")
@@ -135,7 +135,7 @@ const Vendor = () => {
     handleEditClose();
   };
 
-  // ✅ Table columns
+  //  Table columns
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "Vendor Name" },
@@ -180,7 +180,7 @@ const Vendor = () => {
     []
   );
 
-  // ✅ CSV download
+  //  CSV download
   const downloadCSV = () => {
     const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
     const rows = vendorData.map((row) =>
@@ -200,7 +200,7 @@ const Vendor = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print
+  //  Print
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

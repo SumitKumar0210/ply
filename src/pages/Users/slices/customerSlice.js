@@ -2,7 +2,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your API file
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
-// ✅ Fetch all customers
+//  Fetch all customers
 export const fetchCustomers = createAsyncThunk(
   "customer/fetchAll",
   async (_, { rejectWithValue }) => {
@@ -15,7 +15,19 @@ export const fetchCustomers = createAsyncThunk(
   }
 );
 
-// ✅ Add customer
+export const fetchActiveCustomers = createAsyncThunk(
+  "customer/fetchActiveCustomers",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get("admin/customer/get-data?status=1");
+      return res.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || "Fetch failed");
+    }
+  }
+);
+
+//  Add customer
 export const addCustomer = createAsyncThunk(
   "customer/add",
   async (newCustomer, { rejectWithValue }) => {
@@ -31,7 +43,7 @@ export const addCustomer = createAsyncThunk(
   }
 );
 
-// ✅ Update customer
+//  Update customer
 export const updateCustomer = createAsyncThunk(
   "customer/update",
   async ({ updated }, { rejectWithValue }) => {
@@ -47,7 +59,7 @@ export const updateCustomer = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "customer/statusUpdate",
   async ({ id, status }, { rejectWithValue }) => {
@@ -63,7 +75,7 @@ export const statusUpdate = createAsyncThunk(
   }
 );
 
-// ✅ Delete customer
+//  Delete customer
 export const deleteCustomer = createAsyncThunk(
   "customer/delete",
   async (id, { rejectWithValue }) => {
@@ -79,11 +91,14 @@ export const deleteCustomer = createAsyncThunk(
   }
 );
 
-// ✅ Customer slice
+//  Customer slice
 const customerSlice = createSlice({
   name: "customer",
   initialState: {
     data: [],
+    totalCount: 0,
+    currentPage: 1,
+    pageSize: 10,
     loading: false,
     error: null,
   },
@@ -91,9 +106,34 @@ const customerSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // Fetch
-      .addCase(fetchCustomers.pending, (state) => { state.loading = true; })
-      .addCase(fetchCustomers.fulfilled, (state, action) => { state.loading = false; state.data = action.payload; })
-      .addCase(fetchCustomers.rejected, (state, action) => { state.loading = false; state.error = action.payload || action.error.message; })
+      .addCase(fetchCustomers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCustomers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload.data;
+        state.totalCount = action.payload.totalCount;
+        state.currentPage = action.payload.currentPage;
+        state.pageSize = action.payload.pageSize;
+      })
+      .addCase(fetchCustomers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(fetchActiveCustomers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchActiveCustomers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload || [];
+      })
+      .addCase(fetchActiveCustomers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
       // Add
       .addCase(addCustomer.fulfilled, (state, action) => { state.data.unshift(action.payload); })

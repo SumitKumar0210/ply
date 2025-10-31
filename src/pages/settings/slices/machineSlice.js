@@ -1,13 +1,13 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
-// ✅ Fetch all branches
+//  Fetch all branches
 export const fetchMachines = createAsyncThunk("machine/fetchAll", async () => {
   const res = await api.get("admin/machine/get-data");
   return res.data.data;
 });
 
-// ✅ Add branch
+//  Add branch
 export const addMachine = createAsyncThunk(
   "machine/add",
   async (newData, { rejectWithValue }) => {
@@ -23,7 +23,7 @@ export const addMachine = createAsyncThunk(
   }
 );
 
-// ✅ Update branch
+//  Update branch
 export const updateMachine = createAsyncThunk(
   "machine/update",
   async (updated, { rejectWithValue }) => {
@@ -39,7 +39,7 @@ export const updateMachine = createAsyncThunk(
   }
 );
 
-// ✅ Delete branch
+//  Delete branch
 export const deleteMachine = createAsyncThunk("machine/delete", async (id) => {
   try{
     const res = await api.post(`admin/machine/delete/${id}`);
@@ -52,7 +52,7 @@ export const deleteMachine = createAsyncThunk("machine/delete", async (id) => {
   }
 });
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "machine/statusUpdate",
   async (updated) => {

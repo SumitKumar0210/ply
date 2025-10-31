@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 
-// ✅ Fetch vendor invoices with pagination
+//  Fetch vendor invoices with pagination
 export const fetchVendorInvoices = createAsyncThunk(
   "vendorInvoice/fetchAll",
   async ({ page = 1, per_page = 10 } = {}, { rejectWithValue }) => {
@@ -24,7 +24,7 @@ export const fetchVendorInvoices = createAsyncThunk(
   }
 );
 
-// ✅ Fetch single invoice by ID
+//  Fetch single invoice by ID
 export const fetchVendorInvoiceById = createAsyncThunk(
   "vendorInvoice/fetchById",
   async (id, { rejectWithValue }) => {
@@ -40,7 +40,7 @@ export const fetchVendorInvoiceById = createAsyncThunk(
   }
 );
 
-// ✅ Update vendor invoice
+//  Update vendor invoice
 export const updateVendorInvoice = createAsyncThunk(
   "vendorInvoice/update",
   async ({ id, data }, { rejectWithValue }) => {
@@ -56,7 +56,7 @@ export const updateVendorInvoice = createAsyncThunk(
   }
 );
 
-// ✅ Delete vendor invoice
+//  Delete vendor invoice
 export const deleteVendorInvoice = createAsyncThunk(
   "vendorInvoice/delete",
   async (id, { rejectWithValue }) => {
@@ -72,7 +72,7 @@ export const deleteVendorInvoice = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const updateInvoiceStatus = createAsyncThunk(
   "vendorInvoice/statusUpdate",
   async ({ id, status }, { rejectWithValue }) => {
@@ -88,7 +88,7 @@ export const updateInvoiceStatus = createAsyncThunk(
   }
 );
 
-// ✅ Record payment
+//  Record payment
 export const recordPayment = createAsyncThunk(
   "vendorInvoice/recordPayment",
   async (paymentData, { rejectWithValue }) => {
@@ -119,7 +119,7 @@ export const fetchPaymentRecord = createAsyncThunk(
   }
 );
 
-// ✅ Vendor Invoice Slice
+//  Vendor Invoice Slice
 const vendorInvoiceSlice = createSlice({
   name: "vendorInvoice",
   initialState: {

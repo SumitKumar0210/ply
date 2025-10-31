@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust your API path
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
-// ✅ Thunks
+//  Thunks
 
 // Fetch all vendors
 export const fetchVendors = createAsyncThunk("vendor/fetchAll", async () => {
@@ -63,7 +63,7 @@ export const deleteVendor = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "vendor/statusUpdate",
   async (updated) => {

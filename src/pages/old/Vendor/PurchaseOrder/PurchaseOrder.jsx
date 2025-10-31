@@ -32,7 +32,7 @@ import {
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 
-// ✅ Styled Dialog
+//  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -71,7 +71,7 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// ✅ Status colors
+//  Status colors
 const getStatusChip = (status) => {
   switch (status) {
     case "Pending":
@@ -85,7 +85,7 @@ const getStatusChip = (status) => {
   }
 };
 
-// ✅ Initial purchaseOrder (updated)
+//  Initial purchaseOrder (updated)
 const purchaseOrder = [
   {
     id: 1,
@@ -136,7 +136,7 @@ const PurchaseOrder = () => {
     navigate('/vendor/purchase-order/edit');
   };
 
-  // ✅ Table columns (updated)
+  //  Table columns (updated)
   const columns = useMemo(
     () => [
       { accessorKey: "poNumber", header: "Po No." },
@@ -193,7 +193,7 @@ const PurchaseOrder = () => {
     []
   );
 
-  // ✅ CSV export using tableData
+  //  CSV export using tableData
   const downloadCSV = () => {
     const headers = columns
       .filter((col) => col.accessorKey && col.accessorKey !== "actions")
@@ -215,7 +215,7 @@ const PurchaseOrder = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print handler
+  //  Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

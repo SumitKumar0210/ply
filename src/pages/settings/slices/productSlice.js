@@ -10,6 +10,15 @@ export const fetchProducts = createAsyncThunk(
   }
 );
 
+
+export const fetchActiveProducts = createAsyncThunk(
+  "product/fetchAll",
+  async () => {
+    const res = await api.get("admin/product/get-data?status=1");
+    return res.data.data;
+  }
+);
+
 // Add product
 export const addProduct = createAsyncThunk(
   "product/add",
@@ -47,7 +56,7 @@ export const updateProduct = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "product/update",
   async (updated) => {

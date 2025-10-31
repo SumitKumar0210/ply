@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
 import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
-// ✅ Thunks
+//  Thunks
 export const fetchCategories = createAsyncThunk('category/fetchAll', async () => {
   const res = await api.get("admin/category/get-data");
   // console.log(res.data.data)
@@ -78,7 +78,7 @@ export const deleteCategory = createAsyncThunk(
   }
 );
 
-// ✅ Slice
+//  Slice
 const categorySlice = createSlice({
   name: "category",
   initialState: {

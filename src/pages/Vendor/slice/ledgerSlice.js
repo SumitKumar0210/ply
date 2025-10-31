@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 
-// ✅ Corrected: Action name and payload structure
+//  Corrected: Action name and payload structure
 export const fetchLedgerData = createAsyncThunk(
   "ledger/fetchLedgerData",
   async (id, { rejectWithValue }) => {

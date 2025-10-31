@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your API helper
 
-// ✅ Fetch all states
+//  Fetch all states
 export const fetchStates = createAsyncThunk(
   "states/fetchAll",
   async (_, { rejectWithValue }) => {

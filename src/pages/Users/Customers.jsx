@@ -32,10 +32,16 @@ import { BsCloudDownload } from "react-icons/bs";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 
 import { useDispatch, useSelector } from "react-redux";
-import { addCustomer, fetchCustomers, statusUpdate, updateCustomer, deleteCustomer } from "../Users/slices/customerSlice";
+import {
+  addCustomer,
+  fetchCustomers,
+  statusUpdate,
+  updateCustomer,
+  deleteCustomer,
+} from "../Users/slices/customerSlice";
 import { fetchStates } from "../settings/slices/stateSlice";
 
-// ✅ Styled Dialog
+// Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -46,8 +52,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   },
 }));
 
-function BootstrapDialogTitle(props) {
-  const { children, onClose, ...other } = props;
+function BootstrapDialogTitle({ children, onClose, ...other }) {
   return (
     <DialogTitle sx={{ m: 0, p: 2 }} {...other}>
       {children}
@@ -69,46 +74,29 @@ function BootstrapDialogTitle(props) {
   );
 }
 
-// ✅ Dropdown options for states
-// const states = [
-//   { value: "Bihar", label: "Bihar" },
-//   { value: "Delhi", label: "Delhi" },
-//   { value: "Maharashtra", label: "Maharashtra" },
-//   { value: "Karnataka", label: "Karnataka" },
-// ];
-
-// ✅ Validation schema
+// Validation schema
 const validationSchema = Yup.object({
   name: Yup.string()
-  .min(2, "Name must be at least 2 characters")
-  .required("Name is required"),
+    .min(2, "Name must be at least 2 characters")
+    .required("Name is required"),
   mobile: Yup.string()
     .matches(/^[0-9]{10}$/, "Mobile must be 10 digits")
     .required("Mobile is required"),
-  email: Yup.string().email("Invalid email format").required("E-mail is required"),
+  email: Yup.string()
+    .email("Invalid email format")
+    .required("E-mail is required"),
   address: Yup.string().required("Address is required"),
-  alternate_mobile: Yup.string().matches(/^[0-9]{10}$/, "Alternate Mobile must be 10 digits"),
+  alternate_mobile: Yup.string().matches(
+    /^[0-9]{10}$/,
+    "Alternate Mobile must be 10 digits"
+  ),
   city: Yup.string().required("City is required"),
   state_id: Yup.string().required("State is required"),
-  zip_code: Yup.string().matches(/^[0-9]{6}$/, "ZIP must be 6 digits").required("ZIP code is required"),
+  zip_code: Yup.string()
+    .matches(/^[0-9]{6}$/, "ZIP must be 6 digits")
+    .required("ZIP code is required"),
   note: Yup.string(),
 });
-
-// ✅ Initial Customers
-const customersList = [
-  {
-    id: 1,
-    name: "Customer One",
-    mobile: "9876543210",
-    email: "customer1@gmail.com",
-    address: "Patna",
-    city: "Patna",
-    state: "Bihar",
-    zip: "800001",
-    note: "First customer",
-    status: true,
-  }
-];
 
 const Customers = () => {
   const [open, setOpen] = useState(false);
@@ -118,30 +106,42 @@ const Customers = () => {
     name: "",
     loading: false,
   });
-  const [tableData, setTableData] = useState(customersList);
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
   const tableContainerRef = useRef(null);
 
-
-  const { data: customerData = [], loading, error } = useSelector((state) => state.customer);
-  const { data: states = []} = useSelector((state) => state.state);
+  const { data: customerData = [], loading, totalCount = 0 } = useSelector(
+    (state) => state.customer
+  );
+  const { data: states = [] } = useSelector((state) => state.state);
 
   const dispatch = useDispatch();
-  
-  
-  useEffect(() => {
-    dispatch(fetchCustomers());
-  }, [dispatch]);
 
+  // Fetch customers with pagination
   useEffect(() => {
-    dispatch(fetchStates());
-  }, [open, editOpen]);
+    dispatch(
+      fetchCustomers({
+        page: pagination.pageIndex + 1, // API pages usually start at 1
+        limit: pagination.pageSize,
+      })
+    );
+  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
 
-  const handleAdd = async (values, resetForm) => {
+  // Fetch states once on mount or when modals open
+  useEffect(() => {
+    if (open || editOpen) {
+      dispatch(fetchStates());
+    }
+  }, [dispatch, open, editOpen]);
+
+  const handleAdd = async (values, { resetForm }) => {
     try {
       const res = await dispatch(addCustomer(values));
-      if(res.error) return ;
+      if (res.error) return;
       resetForm();
       setOpen(false);
     } catch (error) {
@@ -153,7 +153,7 @@ const Customers = () => {
     setDeleteDialog({
       open: true,
       id: row.id,
-      name: row.name, // 👈 Pass customer name here
+      name: row.name,
       loading: false,
     });
   };
@@ -164,41 +164,47 @@ const Customers = () => {
     setDeleteDialog((prev) => ({ ...prev, loading: true }));
 
     try {
-      await dispatch(deleteCustomer(deleteDialog.id)).unwrap(); 
-      // ✅ If API returns success, close modal
+      await dispatch(deleteCustomer(deleteDialog.id)).unwrap();
     } catch (error) {
       console.error("Delete failed:", error);
-      // show snackbar/toast error
     } finally {
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
     }
   };
-  
+
   const handleUpdate = (row) => {
     setEditData(row);
     setEditOpen(true);
   };
+
   const handleEditClose = () => {
     setEditOpen(false);
     setEditData(null);
   };
-  const handleEditSubmit = async (values, resetForm) => {
-    
-    const res = await dispatch(updateCustomer({updated :{ id: editData.id, ...values }}));
-    if(res.error) return ;
+
+  const handleEditSubmit = async (values, { resetForm }) => {
+    const res = await dispatch(
+      updateCustomer({ updated: { id: editData.id, ...values } })
+    );
+    if (res.error) return;
     resetForm();
     handleEditClose();
   };
 
-  // ✅ Table Columns
+  // Table Columns
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "Name" },
-      { accessorKey: "mobile", header: "Mobile", size: 70  },
+      { accessorKey: "mobile", header: "Mobile", size: 70 },
       { accessorKey: "email", header: "E-mail" },
       { accessorKey: "address", header: "Address" },
       { accessorKey: "city", header: "City", size: 50 },
-      { accessorKey: "state_id", header: "State", size: 50, Cell: ({ row }) => row.original.state?.name || "", },
+      {
+        accessorKey: "state_id",
+        header: "State",
+        size: 50,
+        Cell: ({ row }) => row.original.state?.name || "",
+      },
       { accessorKey: "zip_code", header: "ZIP", size: 50 },
       { accessorKey: "note", header: "Note" },
       {
@@ -244,16 +250,17 @@ const Customers = () => {
         ),
       },
     ],
-    []
+    [dispatch]
   );
-// ✅ CSV export using tableData
+
+  // CSV export
   const downloadCSV = () => {
     const headers = columns
-      .filter((col) => col.accessorKey && col.accessorKey !== "action")
+      .filter((col) => col.accessorKey && col.id !== "actions")
       .map((col) => col.header);
     const rows = customerData.map((row) =>
       columns
-        .filter((col) => col.accessorKey && col.accessorKey !== "action")
+        .filter((col) => col.accessorKey && col.id !== "actions")
         .map((col) => `"${row[col.accessorKey] ?? ""}"`)
         .join(",")
     );
@@ -262,13 +269,13 @@ const Customers = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "Users.csv");
+    link.setAttribute("download", "Customers.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // ✅ Print handler
+  // Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
@@ -278,10 +285,16 @@ const Customers = () => {
     document.body.innerHTML = originalContents;
     window.location.reload();
   };
+
   return (
     <>
       {/* Header */}
-      <Grid container justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+      <Grid
+        container
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
         <Typography variant="h6">Customers</Typography>
         <Button
           variant="contained"
@@ -293,16 +306,29 @@ const Customers = () => {
       </Grid>
 
       {/* Table */}
-        <Grid size={12}>
+      <Grid size={12}>
         <Paper
           elevation={0}
           ref={tableContainerRef}
-          sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff", px: 2, py: 1 }}
+          sx={{
+            width: "100%",
+            overflow: "hidden",
+            backgroundColor: "#fff",
+            px: 2,
+            py: 1,
+          }}
         >
           <MaterialReactTable
             columns={columns}
             data={customerData}
             getRowId={(row) => row.id}
+            rowCount={totalCount}
+            manualPagination
+            onPaginationChange={setPagination}
+            state={{
+              isLoading: loading,
+              pagination,
+            }}
             enableTopToolbar
             enableColumnFilters
             enableSorting
@@ -314,13 +340,18 @@ const Customers = () => {
             enableColumnVisibilityToggle={false}
             initialState={{ density: "compact" }}
             muiTableContainerProps={{
-              sx: { width: "100%", backgroundColor: "#fff", overflowX: "hidden", minWidth: "1200px" },
+              sx: {
+                width: "100%",
+                backgroundColor: "#fff",
+                overflowX: "hidden",
+                minWidth: "1200px",
+              },
             }}
-            muiTableBodyCellProps={{ sx: { whiteSpace: "wrap", width: "100px" } }}
+            muiTableBodyCellProps={{
+              sx: { whiteSpace: "wrap", width: "100px" },
+            }}
             muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-            muiTableBodyRowProps={() => ({
-              hover: false,
-            })}
+            muiTableBodyRowProps={{ hover: false }}
             renderTopToolbar={({ table }) => (
               <Box
                 sx={{
@@ -355,7 +386,12 @@ const Customers = () => {
       </Grid>
 
       {/* Add Customer Modal */}
-      <BootstrapDialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+      <BootstrapDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
         <BootstrapDialogTitle onClose={() => setOpen(false)}>
           Add Customer
         </BootstrapDialogTitle>
@@ -372,14 +408,12 @@ const Customers = () => {
             note: "",
           }}
           validationSchema={validationSchema}
-          onSubmit={(values, { resetForm }) => {
-            handleAdd(values, resetForm)
-          }}
+          onSubmit={handleAdd}
         >
           {({ handleChange, handleSubmit, values, touched, errors }) => (
             <Form onSubmit={handleSubmit}>
               <DialogContent dividers>
-                <Grid container  rowSpacing={1} columnSpacing={3}>
+                <Grid container rowSpacing={1} columnSpacing={3}>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       name="name"
@@ -415,9 +449,14 @@ const Customers = () => {
                       variant="standard"
                       value={values.alternate_mobile}
                       onChange={handleChange}
-                      error={touched.alternate_mobile && Boolean(errors.alternate_mobile)}
-                      helperText={touched.alternate_mobile && errors.alternate_mobile}
-                    /> 
+                      error={
+                        touched.alternate_mobile &&
+                        Boolean(errors.alternate_mobile)
+                      }
+                      helperText={
+                        touched.alternate_mobile && errors.alternate_mobile
+                      }
+                    />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
@@ -491,7 +530,7 @@ const Customers = () => {
                       helperText={touched.zip_code && errors.zip_code}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 12 }}>
+                  <Grid size={{ xs: 12 }}>
                     <TextField
                       name="note"
                       label="Note"
@@ -507,7 +546,11 @@ const Customers = () => {
                 </Grid>
               </DialogContent>
               <DialogActions>
-                <Button onClick={() => setOpen(false)} variant="outlined" color="error">
+                <Button
+                  onClick={() => setOpen(false)}
+                  variant="outlined"
+                  color="error"
+                >
                   Close
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
@@ -520,11 +563,17 @@ const Customers = () => {
       </BootstrapDialog>
 
       {/* Edit Customer Modal */}
-      <BootstrapDialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
-        <BootstrapDialogTitle onClose={() => setEditOpen(false)}>
+      <BootstrapDialog
+        open={editOpen}
+        onClose={handleEditClose}
+        fullWidth
+        maxWidth="sm"
+      >
+        <BootstrapDialogTitle onClose={handleEditClose}>
           Edit Customer
         </BootstrapDialogTitle>
         <Formik
+          enableReinitialize
           initialValues={{
             name: editData?.name || "",
             mobile: editData?.mobile || "",
@@ -537,14 +586,12 @@ const Customers = () => {
             note: editData?.note || "",
           }}
           validationSchema={validationSchema}
-          onSubmit={(values, { resetForm }) => {
-            handleEditSubmit(values, resetForm)
-          }}
+          onSubmit={handleEditSubmit}
         >
           {({ handleChange, handleSubmit, values, touched, errors }) => (
             <Form onSubmit={handleSubmit}>
               <DialogContent dividers>
-                <Grid container  rowSpacing={1} columnSpacing={3}>
+                <Grid container rowSpacing={1} columnSpacing={3}>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       name="name"
@@ -580,9 +627,14 @@ const Customers = () => {
                       variant="standard"
                       value={values.alternate_mobile}
                       onChange={handleChange}
-                      error={touched.alternate_mobile && Boolean(errors.alternate_mobile)}
-                      helperText={touched.alternate_mobile && errors.alternate_mobile}
-                    /> 
+                      error={
+                        touched.alternate_mobile &&
+                        Boolean(errors.alternate_mobile)
+                      }
+                      helperText={
+                        touched.alternate_mobile && errors.alternate_mobile
+                      }
+                    />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
@@ -656,7 +708,7 @@ const Customers = () => {
                       helperText={touched.zip_code && errors.zip_code}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 12 }}>
+                  <Grid size={{ xs: 12 }}>
                     <TextField
                       name="note"
                       label="Note"
@@ -672,7 +724,11 @@ const Customers = () => {
                 </Grid>
               </DialogContent>
               <DialogActions>
-                <Button onClick={() => setEditOpen(false)} variant="outlined" color="error">
+                <Button
+                  onClick={handleEditClose}
+                  variant="outlined"
+                  color="error"
+                >
                   Close
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
@@ -702,7 +758,12 @@ const Customers = () => {
         <DialogActions>
           <Button
             onClick={() =>
-              setDeleteDialog({ open: false, id: null, name: "", loading: false })
+              setDeleteDialog({
+                open: false,
+                id: null,
+                name: "",
+                loading: false,
+              })
             }
             disabled={deleteDialog.loading}
           >
@@ -718,7 +779,6 @@ const Customers = () => {
           </Button>
         </DialogActions>
       </Dialog>
-
     </>
   );
 };

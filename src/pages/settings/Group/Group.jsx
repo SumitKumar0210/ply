@@ -35,7 +35,7 @@ import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import { addGroup, fetchGroups, statusUpdate, deleteGroup, updateGroup } from "../slices/groupSlice";
 import { useDispatch, useSelector } from "react-redux";
 
-// ✅ Error Boundary
+//  Error Boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -68,7 +68,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 const Group = () => {
   const dispatch = useDispatch();
 
-  // ✅ Validation Schema
+  //  Validation Schema
   const validationSchema = Yup.object({
     name: Yup.string()
     .min(2, "Group must be at least 2 characters")
@@ -176,7 +176,7 @@ const Group = () => {
     ],
     [dispatch]
   );
-  // ✅ Tell MRT which field is the unique row id
+  //  Tell MRT which field is the unique row id
   const getRowId = (originalRow) => originalRow.id;
 
 
@@ -229,7 +229,7 @@ const Group = () => {
           >
             <MaterialReactTable
               columns={columns}
-              data={groupData}   // ✅ direct array
+              data={groupData}   //  direct array
               getRowId={(row) => row.id}
               enableTopToolbar
               enableColumnFilters

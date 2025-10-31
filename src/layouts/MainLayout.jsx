@@ -28,7 +28,7 @@ const MainLayout = ({ children }) => {
           transition: "all 0.3s ease",
           display: "flex",
           flexDirection: "column",
-          width: "100%",          // ✅ ensure it never overflows
+          width: "100%",          //  ensure it never overflows
           overflowX: "hidden", 
           background: "#eff1f9"
         }}

@@ -59,7 +59,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 
 // ];
 
-// ✅ Error Boundary
+//  Error Boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -84,7 +84,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// ✅ Validation schema
+//  Validation schema
 const validationSchema = Yup.object({
   name: Yup.string()
     .min(2, "Name must be at least 2 characters")

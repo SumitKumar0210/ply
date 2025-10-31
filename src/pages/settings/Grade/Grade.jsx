@@ -36,7 +36,7 @@ import { addGrade, fetchGrades, statusUpdate,
   deleteGrade, updateGrade } from "../slices/gradeSlice";
 import { useDispatch, useSelector } from "react-redux";
 
-// ✅ Error Boundary
+//  Error Boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -69,7 +69,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 const Grade = () => {
   const dispatch = useDispatch();
 
-  // ✅ Validation Schema
+  //  Validation Schema
   const validationSchema = Yup.object({
     name: Yup.string()
     .min(2, "Grade must be at least 2 characters")
@@ -176,7 +176,7 @@ const Grade = () => {
     ],
     [dispatch]
   );
-  // ✅ Tell MRT which field is the unique row id
+  //  Tell MRT which field is the unique row id
   const getRowId = (originalRow) => originalRow.id;
 
 
@@ -229,7 +229,7 @@ const Grade = () => {
           >
             <MaterialReactTable
               columns={columns}
-              data={gradeData}   // ✅ direct array
+              data={gradeData}   //  direct array
               getRowId={(row) => row.id}
               enableTopToolbar
               enableColumnFilters

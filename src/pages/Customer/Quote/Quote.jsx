@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -31,8 +31,10 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import { fetchQuotation } from "../slice/quotationSlice";
+import { useDispatch, useSelector } from "react-redux";
 
-// ✅ Styled Dialog
+//  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -71,7 +73,7 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// ✅ Status colors
+//  Status colors
 const getStatusChip = (status) => {
   switch (status) {
     case "Draft":
@@ -85,7 +87,7 @@ const getStatusChip = (status) => {
   }
 };
 
-// ✅ Initial Quote (updated)
+//  Initial Quote (updated)
 const QuoteList = [
   {
     id: 1,
@@ -186,6 +188,13 @@ const Quote = () => {
   const [tableData, setTableData] = useState(QuoteList);
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const { data = [], loading, error } = useSelector((state) => state.quotation);
+console.log(data)
+useEffect(() => {
+  dispatch(fetchQuotation());
+}, [dispatch]);
 
   const handleViewClick = () => {
     navigate('/customer/quote/view');
@@ -194,7 +203,7 @@ const Quote = () => {
     navigate('/customer/quote/edit');
   };
 
-  // ✅ Table columns (updated)
+  //  Table columns (updated)
   const columns = useMemo(
     () => [
       { accessorKey: "quoteNumber", header: "Quote No." },
@@ -249,7 +258,7 @@ const Quote = () => {
     []
   );
 
-  // ✅ CSV export using tableData
+  //  CSV export using tableData
   const downloadCSV = () => {
     const headers = columns
       .filter((col) => col.accessorKey && col.accessorKey !== "actions")
@@ -271,7 +280,7 @@ const Quote = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print handler
+  //  Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

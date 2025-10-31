@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your API file
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 
-// ✅ Fetch all customers
+//  Fetch all customers
 export const fetchPOs = createAsyncThunk(
   "purchaseOrder/fetchAll",
   async (_, { rejectWithValue }) => {
@@ -21,13 +21,13 @@ export const getApprovePOData = createAsyncThunk(
   "purchaseOrder/getApprovePOData",
   async ({ page = 1, per_page = 10 }, { rejectWithValue }) => {
     try {
-      // ✅ Pass pagination to backend (in POST body)
+      //  Pass pagination to backend (in POST body)
       const res = await api.post("admin/purchase-order/getApprovePOData", {
         page,
         per_page,
       });
 
-      // ✅ Expect backend response like: { data: [...], total: 123 }
+      //  Expect backend response like: { data: [...], total: 123 }
       return {
         data: res.data.data || [],
         total: res.data.total || 0,
@@ -39,7 +39,7 @@ export const getApprovePOData = createAsyncThunk(
 );
 
 
-// ✅ Add customer
+//  Add customer
 export const addPO = createAsyncThunk(
   "purchaseOrder/add",
   async (newCustomer, { rejectWithValue }) => {
@@ -55,7 +55,7 @@ export const addPO = createAsyncThunk(
   }
 );
 
-// ✅ Update customer
+//  Update customer
 export const updatePO = createAsyncThunk(
   "purchaseOrder/update",
   async (poData, { rejectWithValue }) => {
@@ -72,7 +72,7 @@ export const updatePO = createAsyncThunk(
   }
 );
 
-// ✅ Update customer
+//  Update customer
 export const editPO = createAsyncThunk(
   "purchaseOrder/edit",
   async (id, { rejectWithValue }) => {
@@ -90,7 +90,7 @@ export const editPO = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "purchaseOrder/statusUpdate",
   async ({ id, status }, { rejectWithValue }) => {
@@ -106,7 +106,7 @@ export const statusUpdate = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const approvePO = createAsyncThunk(
   "purchaseOrder/approvePO",
   async (id, { rejectWithValue }) => {
@@ -122,7 +122,7 @@ export const approvePO = createAsyncThunk(
   }
 );
 
-// ✅ Delete customer
+//  Delete customer
 export const deletePO = createAsyncThunk(
   "purchaseOrder/delete",
   async (id, { rejectWithValue }) => {
@@ -138,7 +138,7 @@ export const deletePO = createAsyncThunk(
   }
 );
 
-// ✅ Customer slice
+//  Customer slice
 const purchaseOrderSlice = createSlice({
   name: "purchaseOrder",
   initialState: {

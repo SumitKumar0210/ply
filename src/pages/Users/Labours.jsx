@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
-import * as Yup from "yup"; // ✅ Yup for validation
+import * as Yup from "yup"; //  Yup for validation
 import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -39,7 +39,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { addLabour, deleteLabour, fetchLabours, updateLabour, statusUpdate } from "./slices/labourSlice";
 import { fetchActiveDepartments } from "../settings/slices/departmentSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
-// ✅ Styled Dialog
+//  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -78,7 +78,7 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// ✅ Dropdown options
+//  Dropdown options
 const usertype = [
   { value: "Admin", label: "Admin" },
   { value: "Production", label: "Production" },
@@ -88,7 +88,7 @@ const usertype = [
 ];
 
 
-// ✅ Initial labours
+//  Initial labours
 const labours = [
   {
     id: 1,
@@ -112,7 +112,7 @@ const labours = [
 
 const department = [{ value: "Polish", label: "Polish" }];
 
-// ✅ Validation schema
+//  Validation schema
 const validationSchema = Yup.object({
   name: Yup.string()
     .min(2, "Name must be at least 2 characters")
@@ -128,7 +128,7 @@ const validationSchema = Yup.object({
   department_id: Yup.string().required("Please select a department"),
   image: Yup.mixed().required("Image is required"),
 });
-// ✅ Validation schema
+//  Validation schema
 const editValidationSchema = Yup.object({
   name: Yup.string().required("Name is required"),
   per_hour_cost: Yup.number()
@@ -200,7 +200,7 @@ const Labours = () => {
 
     try {
       await dispatch(deleteLabour(deleteDialog.id)).unwrap();
-      // ✅ If API returns success, close modal
+      //  If API returns success, close modal
     } catch (error) {
       console.error("Delete failed:", error);
       // show snackbar/toast error
@@ -236,7 +236,7 @@ const Labours = () => {
     handleEditClose();
   };
 
-  // ✅ Table columns
+  //  Table columns
   const columns = useMemo(
     () => [
       {
@@ -309,7 +309,7 @@ const Labours = () => {
     []
   );
 
-  // ✅ CSV export using tableData
+  //  CSV export using tableData
   const downloadCSV = () => {
     const headers = columns
       .filter((col) => col.accessorKey && col.accessorKey !== "action")
@@ -331,7 +331,7 @@ const Labours = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print handler
+  //  Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

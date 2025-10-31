@@ -1,13 +1,13 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
 import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
-// ✅ Fetch all grades
+//  Fetch all grades
 export const fetchGrades = createAsyncThunk("grade/fetchAll", async () => {
   const res = await api.get("admin/grade/get-data");
   return res.data.data;
 });
 
-// ✅ Add new grade
+//  Add new grade
 export const addGrade = createAsyncThunk(
   "grade/add",
   async (newData, { rejectWithValue }) => {
@@ -23,7 +23,7 @@ export const addGrade = createAsyncThunk(
   }
 );
 
-// ✅ Update grade
+//  Update grade
 export const updateGrade = createAsyncThunk(
   "grade/update",
   async (updated, { rejectWithValue }) => {
@@ -57,7 +57,7 @@ export const statusUpdate = createAsyncThunk(
   }
 );
 
-// ✅ Delete grade
+//  Delete grade
 export const deleteGrade = createAsyncThunk("grade/delete", async (id) => {
   try{
     const res = await api.post(`admin/grade/delete/${id}`);
@@ -70,7 +70,7 @@ export const deleteGrade = createAsyncThunk("grade/delete", async (id) => {
   }
 });
 
-// ✅ Slice
+//  Slice
 const gradeSlice = createSlice({
   name: "grade",
   initialState: {

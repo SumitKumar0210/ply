@@ -177,7 +177,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                           key={sub.text}
                           component={NavLink}
                           to={sub.to}
-                          onClick={handleItemClick} // ✅ close only on mobile
+                          onClick={handleItemClick} //  close only on mobile
                           className="menu-item"
                           sx={{
                             pl: 4,

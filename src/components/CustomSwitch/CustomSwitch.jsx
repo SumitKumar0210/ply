@@ -14,7 +14,7 @@ const CustomSwitch = styled(Switch)(({ theme }) => ({
       transform: "translateX(14px)",   // move thumb to right
       color: "#fff",
       "& + .MuiSwitch-track": {
-        backgroundColor: "#2196f3",    // ✅ active blue color
+        backgroundColor: "#2196f3",    //  active blue color
         opacity: 1,
       },
     },

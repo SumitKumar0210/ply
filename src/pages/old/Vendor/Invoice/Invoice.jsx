@@ -90,7 +90,7 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// ✅ Status colors
+//  Status colors
 const getStatusChip = (status) => {
   switch (status) {
     case "Pending":
@@ -105,7 +105,7 @@ const getStatusChip = (status) => {
 };
 
 
-// ✅ Initial invoices
+//  Initial invoices
 const invoices = [
   {
     id: 1,
@@ -160,7 +160,7 @@ const VendorInvoice = () => {
     const handleClose = () => {
       setOpen(false);
     };
-  // ✅ Table columns
+  //  Table columns
   const columns = useMemo(
     () => [
       { accessorKey: "poNumber", header: "PO NO." },
@@ -209,7 +209,7 @@ const VendorInvoice = () => {
     []
   );
 
-  // ✅ CSV export using tableData
+  //  CSV export using tableData
   const downloadCSV = () => {
     const headers = columns
       .filter((col) => col.accessorKey && col.accessorKey !== "actions")
@@ -231,7 +231,7 @@ const VendorInvoice = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print handler
+  //  Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

@@ -32,7 +32,7 @@ import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import { addDepartment, fetchDepartments, statusUpdate, deleteDepartment, updateDepartment } from "../slices/departmentSlice";
 import { useDispatch, useSelector } from "react-redux";
 
-// ✅ Error Boundary
+//  Error Boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -65,7 +65,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 const Department = () => {
   const dispatch = useDispatch();
 
-  // ✅ Validation Schema
+  //  Validation Schema
   const validationSchema = Yup.object({
     name: Yup.string()
     .min(2, "Department must be at least 2 characters")
@@ -172,10 +172,10 @@ const Department = () => {
     ],
     [dispatch]
   );
-  // ✅ Tell MRT which field is the unique row id
+  //  Tell MRT which field is the unique row id
   const getRowId = (originalRow) => originalRow.id;
 
-  // ✅ Download CSV
+  //  Download CSV
   const downloadCSV = () => {
     if (!tableData.length) return;
     const headers = columns
@@ -200,7 +200,7 @@ const Department = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Better Print
+  //  Better Print
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
@@ -222,7 +222,7 @@ const Department = () => {
             <MaterialReactTable
               columns={columns}
               data={tableData}
-              getRowId={getRowId} // ✅ FIXED
+              getRowId={getRowId} //  FIXED
               enableTopToolbar
               enableColumnFilters
               enableSorting

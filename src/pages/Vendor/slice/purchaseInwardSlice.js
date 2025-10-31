@@ -2,7 +2,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your API file
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
-// ✅ Fetch all customers
+//  Fetch all customers
 export const fetchInwards = createAsyncThunk(
   "purchaseInward/fetchAll",
   async (_, { rejectWithValue }) => {
@@ -15,7 +15,7 @@ export const fetchInwards = createAsyncThunk(
   }
 );
 
-// ✅ Add customer
+//  Add customer
 export const addInward = createAsyncThunk(
   "purchaseInward/add",
   async (newCustomer, { rejectWithValue }) => {
@@ -31,7 +31,7 @@ export const addInward = createAsyncThunk(
   }
 );
 
-// ✅ Update customer
+//  Update customer
 export const updateInward = createAsyncThunk(
   "purchaseInward/update",
   async (poData, { rejectWithValue }) => {
@@ -48,7 +48,7 @@ export const updateInward = createAsyncThunk(
   }
 );
 
-// ✅ Update customer
+//  Update customer
 export const editInward = createAsyncThunk(
   "purchaseInward/edit",
   async (id, { rejectWithValue }) => {
@@ -66,7 +66,7 @@ export const editInward = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "purchaseInward/statusUpdate",
   async ({ id, status }, { rejectWithValue }) => {
@@ -83,7 +83,7 @@ export const statusUpdate = createAsyncThunk(
 );
 
 
-// ✅ Delete customer
+//  Delete customer
 export const deleteInward = createAsyncThunk(
   "purchaseInward/delete",
   async (id, { rejectWithValue }) => {
@@ -99,7 +99,7 @@ export const deleteInward = createAsyncThunk(
   }
 );
 
-// ✅ Customer slice    
+//  Customer slice    
 const purchaseInwardSlice = createSlice({
   name: "purchaseInward",
   initialState: {

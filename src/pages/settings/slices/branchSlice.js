@@ -2,13 +2,13 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 
-// ✅ Fetch all branches
+//  Fetch all branches
 export const fetchBranches = createAsyncThunk("branch/fetchAll", async () => {
   const res = await api.get("admin/branch/get-data");
   return res.data.data;
 });
 
-// ✅ Add branch
+//  Add branch
 export const addBranch = createAsyncThunk(
   "branch/add",
   async (newData, { rejectWithValue }) => {
@@ -24,7 +24,7 @@ export const addBranch = createAsyncThunk(
   }
 );
 
-// ✅ Update branch
+//  Update branch
 export const updateBranch = createAsyncThunk(
   "branch/update",
   async (updated, { rejectWithValue }) => {
@@ -40,7 +40,7 @@ export const updateBranch = createAsyncThunk(
   }
 );
 
-// ✅ Delete branch
+//  Delete branch
 export const deleteBranch = createAsyncThunk("branch/delete", async (id) => {
   try{
     const res = await api.post(`admin/branch/delete/${id}`);
@@ -53,7 +53,7 @@ export const deleteBranch = createAsyncThunk("branch/delete", async (id) => {
   }
 });
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "branch/statusUpdate",
   async (updated) => {

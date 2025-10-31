@@ -129,7 +129,7 @@ function SettingsPage() {
                 maxWidth: "100%",
                  borderRight: "none",
                  '& .MuiTabs-scroller': {
-                    display: "block", // ✅ force block so children can fill width
+                    display: "block", //  force block so children can fill width
                     width: "100%",
                 },
                 '& .MuiTab-root': {

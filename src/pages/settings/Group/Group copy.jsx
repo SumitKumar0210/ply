@@ -57,7 +57,7 @@ const data = [
 ];
 
 const Group = () => {
-   // ✅ Validation Schema
+   //  Validation Schema
   const validationSchema = Yup.object({
     group: Yup.string().required("Group is required"),
   });

@@ -35,9 +35,9 @@ import {
   deleteBranch,
   statusUpdate ,
   updateBranch,
-} from "../slices/branchSlice"; // ✅ you’ll create this slice
+} from "../slices/branchSlice"; //  you’ll create this slice
 
-// ✅ Error Boundary
+//  Error Boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -77,7 +77,7 @@ const Branch = () => {
 
   const { data: branchData = [] } = useSelector((state) => state.branch);
 
-  // ✅ Validation Schema
+  //  Validation Schema
   const validationSchema = Yup.object({
     name: Yup.string()
     .min(2, "Branch name must be at least 2 characters")
@@ -124,7 +124,7 @@ const Branch = () => {
     handleEditClose();
   };
 
-  // ✅ Table columns
+  //  Table columns
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "Branch Name" },
@@ -167,7 +167,7 @@ const Branch = () => {
     []
   );
 
-  // ✅ CSV download
+  //  CSV download
   const downloadCSV = () => {
     const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
     const rows = branchData.map((row) =>
@@ -187,7 +187,7 @@ const Branch = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print
+  //  Print
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

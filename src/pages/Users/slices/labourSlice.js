@@ -2,7 +2,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api"; // adjust the path to your API file
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
-// ✅ Fetch all labours
+//  Fetch all labours
 export const fetchLabours = createAsyncThunk(
   "labour/fetchAll",
   async (_, { rejectWithValue }) => {
@@ -15,7 +15,7 @@ export const fetchLabours = createAsyncThunk(
   }
 );
 
-// ✅ Add labour
+//  Add labour
 export const addLabour = createAsyncThunk(
   "labour/add",
   async (newlabour, { rejectWithValue }) => {
@@ -31,7 +31,7 @@ export const addLabour = createAsyncThunk(
   }
 );
 
-// ✅ Update labour
+//  Update labour
 export const updateLabour = createAsyncThunk(
   "labour/update",
   async ({ updated }, { rejectWithValue }) => {
@@ -47,7 +47,7 @@ export const updateLabour = createAsyncThunk(
   }
 );
 
-// ✅ Status update
+//  Status update
 export const statusUpdate = createAsyncThunk(
   "labour/statusUpdate",
   async ({ id, status }, { rejectWithValue }) => {
@@ -63,7 +63,7 @@ export const statusUpdate = createAsyncThunk(
   }
 );
 
-// ✅ Delete labour
+//  Delete labour
 export const deleteLabour = createAsyncThunk(
   "labour/delete",
   async (id, { rejectWithValue }) => {
@@ -79,7 +79,7 @@ export const deleteLabour = createAsyncThunk(
   }
 );
 
-// ✅ labour slice
+//  labour slice
 const labourSlice = createSlice({
   name: "labour",
   initialState: {

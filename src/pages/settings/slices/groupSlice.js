@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../../api';
 import { successMessage, errorMessage, getErrorMessage } from '../../../toast';
 
-// ✅ Thunks
+//  Thunks
 export const fetchGroups = createAsyncThunk('group/fetchAll', async () => {
   const res = await api.get("admin/group/get-data");
   // console.log(res.data.data)
@@ -82,7 +82,7 @@ export const deleteGroup = createAsyncThunk(
 );
 
 
-// ✅ Slice
+//  Slice
 const groupSlice = createSlice({
   name: "group",
   initialState: {

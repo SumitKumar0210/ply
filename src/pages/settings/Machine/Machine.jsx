@@ -84,12 +84,12 @@ const Machine = () => {
 
   const { data: machines = [] } = useSelector((state) => state.machine);
 
-  // ✅ fetch machine data on mount
+  //  fetch machine data on mount
   useEffect(() => {
     dispatch(fetchMachines());
   }, [dispatch]);
 
-  // ✅ modal handlers
+  //  modal handlers
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
@@ -121,7 +121,7 @@ const Machine = () => {
     handleEditClose();
   };
 
-  // ✅ table columns
+  //  table columns
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "Name" },
@@ -176,7 +176,7 @@ const Machine = () => {
     []
   );
 
-  // ✅ CSV download
+  //  CSV download
   const downloadCSV = () => {
     const headers = columns
       .filter((col) => col.accessorKey)
@@ -201,7 +201,7 @@ const Machine = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print
+  //  Print
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;

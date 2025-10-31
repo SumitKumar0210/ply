@@ -4,7 +4,7 @@ import { successMessage, errorMessage, getErrorMessage } from "../../toast";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-// ✅ Login Thunk
+//  Login Thunk
 export const authLogin = createAsyncThunk(
   "auth/login",
   async (credentials, { rejectWithValue }) => {
@@ -25,7 +25,7 @@ export const authLogin = createAsyncThunk(
   }
 );
 
-// ✅ Logout Thunk
+//  Logout Thunk
 export const authLogout = createAsyncThunk(
   "auth/logout",
   async (_, { rejectWithValue }) => {
@@ -48,7 +48,7 @@ export const authLogout = createAsyncThunk(
   }
 );
 
-// ✅ Forgot Password Thunk
+//  Forgot Password Thunk
 export const forgotPassword = createAsyncThunk(
   "auth/forgotPassword",
   async (payload, { rejectWithValue }) => {
@@ -64,11 +64,11 @@ export const forgotPassword = createAsyncThunk(
   }
 );
 
-// ✅ Auth Slice
+//  Auth Slice
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    isAuthenticated: !!localStorage.getItem("token"), // ✅ auto-login if token exists
+    isAuthenticated: !!localStorage.getItem("token"), //  auto-login if token exists
     user: null,
     token: localStorage.getItem("token") || null,
     loading: false,
@@ -96,7 +96,7 @@ const authSlice = createSlice({
         state.token = action.payload.access_token ?? action.payload.token ?? null;
 
         if (state.token) {
-          state.isAuthenticated = true; // ✅ user is logged in
+          state.isAuthenticated = true; //  user is logged in
         }
       })
       .addCase(authLogin.rejected, (state, action) => {
@@ -121,6 +121,6 @@ const authSlice = createSlice({
   },
 });
 
-// ✅ Export
+//  Export
 export const { logout } = authSlice.actions;
 export default authSlice.reducer;

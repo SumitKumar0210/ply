@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
-import * as Yup from "yup"; // ✅ Yup for validation
+import * as Yup from "yup"; //  Yup for validation
 import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -39,7 +39,7 @@ import { addUser, fetchUsers, updateUser, statusUpdate, deleteUser } from "./sli
 import {fetchStates} from "../settings/slices/stateSlice";
 import { fetchActiveUserTypes } from "../settings/slices/userTypeSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
-// ✅ Styled Dialog
+//  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -78,7 +78,7 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-// ✅ Dropdown options
+//  Dropdown options
 const usertype = [
   { value: "Admin", label: "Admin" },
   { value: "Production", label: "Production" },
@@ -89,7 +89,7 @@ const usertype = [
 
 const department = [{ value: "Polish", label: "Polish" }];
 
-// ✅ Validation schema
+//  Validation schema
 const validationSchema = Yup.object({
   name: Yup.string()
   .min(2, "Name must be at least 2 characters")
@@ -106,7 +106,7 @@ const validationSchema = Yup.object({
   image: Yup.mixed().required("Image is required"),
 });
 
-// ✅ Validation schema
+//  Validation schema
 const editValidationSchema = Yup.object({
   name: Yup.string()
   .min(2, "Name must be at least 2 characters")
@@ -122,7 +122,7 @@ const editValidationSchema = Yup.object({
  image: Yup.mixed().nullable(),
 });
 
-// ✅ Initial users
+//  Initial users
 const users = [
   {
     id: 1,
@@ -205,7 +205,7 @@ const Users = () => {
 
     try {
       await dispatch(deleteUser(deleteDialog.id)).unwrap(); 
-      // ✅ If API returns success, close modal
+      //  If API returns success, close modal
     } catch (error) {
       console.error("Delete failed:", error);
       // show snackbar/toast error
@@ -229,7 +229,7 @@ const Users = () => {
     handleEditClose();
   };
 
-  // ✅ Table columns
+  //  Table columns
   const columns = useMemo(
     () => [
       {
@@ -304,7 +304,7 @@ const Users = () => {
     []
   );
 
-  // ✅ CSV export using tableData
+  //  CSV export using tableData
   const downloadCSV = () => {
     const headers = columns
       .filter((col) => col.accessorKey && col.accessorKey !== "action")
@@ -326,7 +326,7 @@ const Users = () => {
     document.body.removeChild(link);
   };
 
-  // ✅ Print handler
+  //  Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
@@ -624,7 +624,7 @@ const Users = () => {
             initialValues={{
               name: editData?.name || "",
               email: editData?.email || "",
-              mobile: editData?.mobile || "", // ✅ fixed typo: was "mbile"
+              mobile: editData?.mobile || "", //  fixed typo: was "mbile"
               state_id: editData?.state_id || "",
               city: editData?.city || "",
               address: editData?.address || "",
