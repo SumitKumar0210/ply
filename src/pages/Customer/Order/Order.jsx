@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -31,6 +31,8 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import { fetchOrder, deleteOrder } from "../slice/orderSlice";
+import { useDispatch, useSelector } from "react-redux";
 
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -74,62 +76,117 @@ BootstrapDialogTitle.propTypes = {
 //  Status colors
 const getStatusChip = (status) => {
   switch (status) {
-    case "Pending":
+    case 1:
       return <Chip label="Pending" color="warning" size="small" />;
-    case "Delivered":
+    case 3:
       return <Chip label="Delivered" color="success" size="small" />;
-    case "Production":
+    case 2:
       return <Chip label="Production" color="info" size="small" />;
     default:
       return <Chip label="Unknown" size="small" />;
   }
 };
 
-//  Initial Quote (updated)
-const QuoteList = [
-  {
-    id: 1,
-    orderNumber: "PO-1001",
-    customerName: "ABC Suppliers",
-    dated: "2025-09-10",
-    orderTotal: 50000,
-    itemOrdered: 50000,
-    qcPassedItem: 150,
-    deliveredTotal: 150,
-    status: "Pending",
-  },
-  
-];
-
-
 const Order = () => {
   const [openDelete, setOpenDelete] = useState(false);
+  const [deleteRow, setDeleteRow] = useState(null);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
   
-  const [tableData, setTableData] = useState(QuoteList);
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  
+  const { data: tableData = [], loading, error, totalRecords = 0 } = useSelector((state) => state.order);
 
-  const handleViewClick = () => {
-    navigate('/customer/order/view');
+  useEffect(() => {
+    dispatch(fetchOrder({ 
+      pageIndex: pagination.pageIndex, 
+      pageLimit: pagination.pageSize 
+    }));
+  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+
+  const handleViewClick = (id) => {
+    navigate('/customer/order/view/' + id);
   };
-  const handleEditClick = () => {
-    navigate('/customer/order/edit');
+  
+  const handleEditClick = (id) => {
+    navigate('/customer/order/edit/' + id);
+  };
+  
+  const handleDelete = (row) => {
+    setDeleteRow(row);
+    setOpenDelete(true);
   };
 
-  //  Table columns (updated)
+  const deleteData = async(id) => {
+    await dispatch(deleteOrder(id));
+    setOpenDelete(false);
+    // Refresh data after deletion
+    dispatch(fetchOrder({ 
+      pageIndex: pagination.pageIndex, 
+      pageLimit: pagination.pageSize 
+    }));
+  };
+
+  const handleDateFormate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const handleIQtyCount = (items) => {
+    try {
+      const parsed = JSON.parse(items); 
+      if (!Array.isArray(parsed)) return 0;
+      return parsed.reduce((total, item) => total + Number(item.qty || 0), 0);
+    } catch (e) {
+      console.error("Invalid product_ids format:", e);
+      return 0;
+    }
+  };
+
+  const calculateQCPassed = (items) => {
+    try {
+      const parsed = JSON.parse(items); 
+      if (!Array.isArray(parsed)) return 0;
+      return parsed.reduce((total, item) => total + Number(item.qc_passed || 0), 0);
+    } catch (e) {
+      console.error("Invalid product_ids format:", e);
+      return 0;
+    }
+  };
+
+  const calculateDelivered = (items) => {
+    try {
+      const parsed = JSON.parse(items); 
+      if (!Array.isArray(parsed)) return 0;
+      return parsed.reduce((total, item) => total + Number(item.delivered || 0), 0);
+    } catch (e) {
+      console.error("Invalid product_ids format:", e);
+      return 0;
+    }
+  };
+
+  //  Table columns
   const columns = useMemo(
     () => [
-      { accessorKey: "orderNumber", header: "Order No." },
-      { accessorKey: "customerName", header: "Customer Name" },
-      { accessorKey: "dated", header: "Dated" },
-      { accessorKey: "orderTotal", header: "Order Total" },
-      { accessorKey: "itemOrdered", header: "Item Ordered" },
-      { accessorKey: "qcPassedItem", header: "QC Passed Item" },
-      { accessorKey: "deliveredTotal", header: "Delivered Total" },
+      { accessorKey: "orderNumber", header: "Order No.", Cell: ({row}) => row.original?.order_number ?? '' },
+      { accessorKey: "customerName", header: "Customer Name", Cell: ({row}) => row.original?.customer?.name ?? '' },
+      { accessorKey: "dated", header: "Dated", Cell: ({row}) => handleDateFormate(row.original.created_at) },
+      { accessorKey: "orderTotal", header: "Order Total", Cell: ({row}) => row.original?.grand_total ? parseInt(row.original?.grand_total) : '' },
+      { accessorKey: "itemOrdered", header: "Item Ordered", Cell: ({row}) => handleIQtyCount(row.original?.product_ids) },
+      { accessorKey: "qcPassedItem", header: "QC Passed Item", Cell: ({row}) => calculateQCPassed(row.original?.product_ids) },
+      { accessorKey: "deliveredTotal", header: "Delivered Total", Cell: ({row}) => calculateDelivered(row.original?.product_ids) },
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ cell }) => getStatusChip(cell.getValue()),
+        Cell: ({ row }) => getStatusChip(row.original?.status),
       },
       {
         id: "actions",
@@ -144,7 +201,7 @@ const Order = () => {
             <Tooltip title="View">
               <IconButton
                 color="warning"
-                onClick={handleViewClick}
+                onClick={() => handleViewClick(row.original.id)}
               >
                 <MdOutlineRemoveRedEye size={16} />
               </IconButton>
@@ -152,20 +209,20 @@ const Order = () => {
             <Tooltip title="Edit">
               <IconButton
                 color="primary"
-                onClick={handleEditClick}
+                onClick={() => handleEditClick(row.original.id)}
               >
                 <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Delete">
+            {/* <Tooltip title="Delete">
               <IconButton
                 aria-label="delete"
                 color="error"
-                onClick={() => setOpenDelete(true)}
+                onClick={() => handleDelete(row.original)}
               >
                 <RiDeleteBinLine size={16} />
               </IconButton>
-            </Tooltip>
+            </Tooltip> */}
           </Box>
         ),
       },
@@ -189,7 +246,7 @@ const Order = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "Quote.csv");
+    link.setAttribute("download", "Order.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -224,14 +281,14 @@ const Order = () => {
             variant="contained"
             startIcon={<AddIcon />}
             component={Link}
-            to="/customer/order/create" // your route path
+            to="/customer/order/create"
           >
             Create Order
           </Button>
         </Grid>
       </Grid>
 
-      {/* Invoice Table */}
+      {/* Order Table */}
       <Grid size={12}>
         <Paper
           elevation={0}
@@ -247,6 +304,13 @@ const Order = () => {
           <MaterialReactTable
             columns={columns}
             data={tableData}
+            manualPagination
+            rowCount={totalRecords}
+            state={{ 
+              isLoading: loading,
+              pagination: pagination,
+            }}
+            onPaginationChange={setPagination}
             enableTopToolbar
             enableColumnFilters
             enableSorting
@@ -310,14 +374,14 @@ const Order = () => {
       
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>{"Delete this purchas order?"}</DialogTitle>
+        <DialogTitle>{"Delete this order?"}</DialogTitle>
         <DialogContent style={{ width: "300px" }}>
           <DialogContentText>This action cannot be undone</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
           <Button
-            onClick={() => setOpenDelete(false)}
+            onClick={() => deleteData(deleteRow?.id)}
             variant="contained"
             color="error"
             autoFocus

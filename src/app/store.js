@@ -22,6 +22,7 @@ import purchaseInwardReducer from '../pages/Vendor/slice/purchaseInwardSlice';
 import vendorInvoiceReducer from '../pages/Vendor/slice/vendorInvoiceSlice';
 import ledgerReducer from '../pages/Vendor/slice/ledgerSlice';
 import quotationReducer from '../pages/Customer/slice/quotationSlice';
+import orderReducer from '../pages/Customer/slice/orderSlice';
 export const store = configureStore({
     reducer: {
         userType: userTypeReducer,
@@ -47,5 +48,6 @@ export const store = configureStore({
         vendorInvoice: vendorInvoiceReducer,
         ledger: ledgerReducer,
         quotation: quotationReducer,
+        order: orderReducer,
     }
 })

@@ -31,7 +31,7 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
-import { fetchQuotation } from "../slice/quotationSlice";
+import { fetchQuotation, deleteQuotation } from "../slice/quotationSlice";
 import { useDispatch, useSelector } from "react-redux";
 
 //  Styled Dialog
@@ -76,145 +76,93 @@ BootstrapDialogTitle.propTypes = {
 //  Status colors
 const getStatusChip = (status) => {
   switch (status) {
-    case "Draft":
+    case 0:
       return <Chip label="Draft" color="warning" size="small" />;
-    case "Production":
+    case 2:
       return <Chip label="Production" color="success" size="small" />;
-    case "Ordered":
+    case 1:
       return <Chip label="Ordered" color="info" size="small" />;
     default:
       return <Chip label="Unknown" size="small" />;
   }
 };
 
-//  Initial Quote (updated)
-const QuoteList = [
-  {
-    id: 1,
-    quoteNumber: "PO-1001",
-    customerName: "ABC Suppliers",
-    dated: "2025-09-10",
-    quoteTotal: 50000,
-    totalItems: 150,
-    status: "Draft",
-  },
-  {
-    id: 2,
-    quoteNumber: "PO-1002",
-    customerName: "Global Traders",
-    dated: "2025-09-12",
-    quoteTotal: 76400,
-    totalItems: 230,
-    status: "Production",
-  },
-  {
-    id: 3,
-    quoteNumber: "PO-1003",
-    customerName: "Sunrise Distributors",
-    dated: "2025-09-15",
-    quoteTotal: 32500,
-    totalItems: 120,
-    status: "Ordered",
-  },
-  {
-    id: 4,
-    quoteNumber: "PO-1004",
-    customerName: "MegaBuild Co.",
-    dated: "2025-09-18",
-    quoteTotal: 129000,
-    totalItems: 480,
-    status: "Draft",
-  },
-  {
-    id: 5,
-    quoteNumber: "PO-1005",
-    customerName: "Brightway Industries",
-    dated: "2025-09-20",
-    quoteTotal: 94000,
-    totalItems: 350,
-    status: "Production",
-  },
-  {
-    id: 6,
-    quoteNumber: "PO-1006",
-    customerName: "NextGen Hardware",
-    dated: "2025-09-23",
-    quoteTotal: 157500,
-    totalItems: 520,
-    status: "Production",
-  },
-  {
-    id: 7,
-    quoteNumber: "PO-1007",
-    customerName: "Prime Equipments",
-    dated: "2025-09-25",
-    quoteTotal: 67500,
-    totalItems: 245,
-    status: "Draft",
-  },
-  {
-    id: 8,
-    quoteNumber: "PO-1008",
-    customerName: "Universal Engineering",
-    dated: "2025-09-28",
-    quoteTotal: 110300,
-    totalItems: 410,
-    status: "Ordered",
-  },
-  {
-    id: 9,
-    quoteNumber: "PO-1009",
-    customerName: "Ace Components",
-    dated: "2025-10-02",
-    quoteTotal: 45600,
-    totalItems: 180,
-    status: "Production",
-  },
-  {
-    id: 10,
-    quoteNumber: "PO-1010",
-    customerName: "Vertex Solutions",
-    dated: "2025-10-05",
-    quoteTotal: 83000,
-    totalItems: 300,
-    status: "Draft",
-  },
-];
-
-
 const Quote = () => {
   const [openDelete, setOpenDelete] = useState(false);
+  const [deleteRow, setDeleteRow] = useState(null);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
   
-  const [tableData, setTableData] = useState(QuoteList);
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  
+  const { data: tableData = [], loading, error, totalRecords = 0 } = useSelector((state) => state.quotation);
 
-  const { data = [], loading, error } = useSelector((state) => state.quotation);
-console.log(data)
-useEffect(() => {
-  dispatch(fetchQuotation());
-}, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchQuotation({ 
+      pageIndex: pagination.pageIndex, 
+      pageLimit: pagination.pageSize 
+    }));
+  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
 
-  const handleViewClick = () => {
-    navigate('/customer/quote/view');
+  const handleViewClick = (id) => {
+    navigate('/customer/quote/view/' + id);
   };
-  const handleEditClick = () => {
-    navigate('/customer/quote/edit');
+  
+  const handleEditClick = (id) => {
+    navigate('/customer/quote/edit/' + id);
+  };
+  
+  const handlDelete = (row) => {
+    setDeleteRow(row);
+    setOpenDelete(true);
   };
 
-  //  Table columns (updated)
+  const deleteData = async(id) => {
+    await dispatch(deleteQuotation(id));
+    setOpenDelete(false);
+    // Refresh data after deletion
+    dispatch(fetchQuotation({ 
+      pageIndex: pagination.pageIndex, 
+      pageLimit: pagination.pageSize 
+    }));
+  };
+
+  const handleDateFormate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const handleIQtyCount = (items) => {
+    try {
+      const parsed = JSON.parse(items); 
+      if (!Array.isArray(parsed)) return 0;
+      return parsed.reduce((total, item) => total + Number(item.qty || 0), 0);
+    } catch (e) {
+      console.error("Invalid product_ids format:", e);
+      return 0;
+    }
+  };
+
+  //  Table columns
   const columns = useMemo(
     () => [
-      { accessorKey: "quoteNumber", header: "Quote No." },
-      { accessorKey: "customerName", header: "Customer Name" },
-      { accessorKey: "dated", header: "Dated" },
-      { accessorKey: "quoteTotal", header: "Quote Total" },
-      { accessorKey: "totalItems", header: "Total Items" },
+      { accessorKey: "quoteNumber", header: "Quote No.", Cell: ({row}) => row.original?.quote_number ?? '' },
+      { accessorKey: "customerName", header: "Customer Name", Cell: ({row}) => row.original?.customer?.name ?? '' },
+      { accessorKey: "dated", header: "Dated",  Cell: ({row}) => handleDateFormate(row.original.created_at) },
+      { accessorKey: "quoteTotal", header: "Quote Total", Cell: ({row}) => row.original?.grand_total ? parseInt(row.original?.grand_total) : ''  },
+      { accessorKey: "totalItems", header: "Total Items", Cell: ({row}) => handleIQtyCount(row.original?.product_ids) },
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ cell }) => getStatusChip(cell.getValue()),
+        Cell: ({ row }) => getStatusChip(row.original?.status),
       },
       {
         id: "actions",
@@ -229,7 +177,7 @@ useEffect(() => {
             <Tooltip title="View">
               <IconButton
                 color="warning"
-                onClick={handleViewClick}
+                onClick={() => handleViewClick(row.original.id)}
               >
                 <MdOutlineRemoveRedEye size={16} />
               </IconButton>
@@ -237,7 +185,7 @@ useEffect(() => {
             <Tooltip title="Edit">
               <IconButton
                 color="primary"
-                onClick={handleEditClick}
+                onClick={() => handleEditClick(row.original.id)}
               >
                 <BiSolidEditAlt size={16} />
               </IconButton>
@@ -246,7 +194,7 @@ useEffect(() => {
               <IconButton
                 aria-label="delete"
                 color="error"
-                onClick={() => setOpenDelete(true)}
+                onClick={() => handlDelete(row.original)}
               >
                 <RiDeleteBinLine size={16} />
               </IconButton>
@@ -309,7 +257,7 @@ useEffect(() => {
             variant="contained"
             startIcon={<AddIcon />}
             component={Link}
-            to="/customer/quote/create" // your route path
+            to="/customer/quote/create"
           >
             Create Quote
           </Button>
@@ -332,6 +280,13 @@ useEffect(() => {
           <MaterialReactTable
             columns={columns}
             data={tableData}
+            manualPagination
+            rowCount={totalRecords}
+            state={{ 
+              isLoading: loading,
+              pagination: pagination,
+            }}
+            onPaginationChange={setPagination}
             enableTopToolbar
             enableColumnFilters
             enableSorting
@@ -395,14 +350,14 @@ useEffect(() => {
       
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>{"Delete this purchas order?"}</DialogTitle>
+        <DialogTitle>{"Delete this purchase order?"}</DialogTitle>
         <DialogContent style={{ width: "300px" }}>
           <DialogContentText>This action cannot be undone</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
           <Button
-            onClick={() => setOpenDelete(false)}
+            onClick={() => deleteData(deleteRow.id)}
             variant="contained"
             color="error"
             autoFocus

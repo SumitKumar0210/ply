@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import {
   Button,
@@ -7,106 +7,133 @@ import {
   CardContent,
   TextareaAutosize,
   Box,
+  CircularProgress,
+  Avatar,
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from "react-router-dom";
 import { AiOutlinePrinter } from "react-icons/ai";
 import { useReactToPrint } from "react-to-print";
+import { useDispatch, useSelector } from "react-redux";
+import { editQuotation } from "../slice/quotationSlice";
+import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 
 const QuoteDetailsView = () => {
-    const contentRef = useRef(null);
-    
-      const handlePrint = useReactToPrint({
-        contentRef, //  v3.2.0 requires contentRef instead of content()
-        documentTitle: "Invoice Detail Report",
-        pageStyle: `
-          @page {
-            size: A4 landscape;
-            margin: 5mm;
+  const { id } = useParams();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const contentRef = useRef(null);
+
+  const imageUrl = import.meta.env.VITE_MEDIA_URL;
+
+  const [items, setItems] = useState([]);
+  const [quotationDetails, setQuotationDetails] = useState(null);
+
+  const { selected: quotationData = {}, loading: quotationLoading } =
+    useSelector((state) => state.quotation);
+
+  const handlePrint = useReactToPrint({
+    contentRef,
+    documentTitle: `Quote_${quotationDetails?.batch_no || "Invoice"}`,
+    pageStyle: `
+      @page {
+        size: A4 landscape;
+        margin: 5mm;
+      }
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    `,
+  });
+
+  // Load quotation data
+  useEffect(() => {
+    if (id) {
+      dispatch(editQuotation(id));
+    }
+  }, [dispatch, id]);
+
+  // Parse and set quotation data
+  useEffect(() => {
+    if (quotationData && quotationData.id) {
+      try {
+        // Parse product_ids JSON string
+        let parsedItems = [];
+        if (quotationData.product_ids) {
+          try {
+            parsedItems = JSON.parse(quotationData.product_ids);
+          } catch (e) {
+            console.error("Error parsing product_ids:", e);
           }
-          @media print {
-            body {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-          }
-        `,
-      });
-    const [items, setItems] = useState([
-    // 🔹 Area 1
-        {
-            id: 1,
-            area: "Area 1",
-            name: "Cement Bags",
-            itemCode: "CEM-001",
-            qty: 50,
-            size: "50kg",
-            documents: "Invoice #1001",
-            cost: 25000,
-            naration: "Delivered on site",
-        },
-        {
-            id: 2,
-            area: "Area 1",
-            name: "Steel Rods",
-            itemCode: "STL-010",
-            qty: 100,
-            size: "12mm",
-            documents: "Challan #2345",
-            cost: 50000,
-            naration: "Used for foundation",
-        },
+        }
 
-        // 🔹 Area 2
-        {
-            id: 3,
-            area: "Area 2",
-            name: "Bricks",
-            itemCode: "BRK-020",
-            qty: 1000,
-            size: "9x4x3",
-            documents: "Invoice #1010",
-            cost: 15000,
-            naration: "For wall construction",
-        },
-        {
-            id: 4,
-            area: "Area 2",
-            name: "Sand",
-            itemCode: "SND-005",
-            qty: 200,
-            size: "Ton",
-            documents: "Gate Pass #567",
-            cost: 12000,
-            naration: "Delivered by local vendor",
-        },
+        // Format items
+        const formattedItems = parsedItems.map((item) => ({
+          id: item.id || Date.now() + Math.random(),
+          group: item.group || "",
+          name: item.name || "",
+          itemCode: item.model || "",
+          qty: parseInt(item.qty, 10) || 0,
+          size: item.size || "",
+          documents:
+            typeof item.document === "string"
+              ? imageUrl + item.document
+              : imageUrl + item.document?.name || "",
+          cost: parseFloat(item.cost) || 0,
+          unitPrice: parseFloat(item.unitPrice) || 0,
+          narration: item.narration || "",
+        }));
 
-        // 🔹 Area 3
-        {
-            id: 5,
-            area: "Area 3",
-            name: "Paint",
-            itemCode: "PNT-030",
-            qty: 25,
-            size: "20L",
-            documents: "Invoice #1122",
-            cost: 18000,
-            naration: "For interior finishing",
-        },
-        {
-            id: 6,
-            area: "Area 3",
-            name: "Brush Set",
-            itemCode: "BRH-011",
-            qty: 40,
-            size: "Standard",
-            documents: "Receipt #778",
-            cost: 4000,
-            naration: "For paint work",
-        },
-        ]);
+        setItems(formattedItems);
+        setQuotationDetails(quotationData);
+      } catch (error) {
+        console.error("Error parsing quotation data:", error);
+      }
+    }
+  }, [quotationData]);
 
-    const uniqueAreas = [...new Set(items.map((item) => item.area))];
+  const uniqueAreas = [...new Set(items.map((item) => item.group))];
+
+  // Format date helper
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  // Calculate totals
+  const subTotal = items.reduce((sum, item) => sum + item.cost, 0);
+  const discount = parseFloat(quotationDetails?.discount || 0);
+  const additionalCharges = parseFloat(
+    quotationDetails?.additional_charges || 0
+  );
+  const gstRate = parseFloat(quotationDetails?.gst_rate || 0);
+  const afterDiscount = subTotal - discount + additionalCharges;
+  const gstAmount = (afterDiscount * gstRate) / 100;
+  const grandTotal = afterDiscount + gstAmount;
+
+  // Show loader while data is loading
+  if (quotationLoading || !quotationDetails) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "60vh",
+        }}
+      >
+        <CircularProgress size={60} />
+      </Box>
+    );
+  }
 
   return (
     <>
@@ -118,7 +145,7 @@ const QuoteDetailsView = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Quotation</Typography>
+          <Typography variant="h6">Quotation Details</Typography>
         </Grid>
         <Grid>
           <Button
@@ -126,9 +153,9 @@ const QuoteDetailsView = () => {
             startIcon={<AiOutlinePrinter />}
             color="warning"
             onClick={handlePrint}
-        >
+          >
             Print
-        </Button>
+          </Button>
         </Grid>
       </Grid>
       <Grid
@@ -139,168 +166,290 @@ const QuoteDetailsView = () => {
         sx={{ mb: 2 }}
       >
         <Grid size={12}>
-            <div ref={contentRef} style={{ background: "#fff", padding: "20px" }}>
-                <Card>
-                    <CardContent>
-                    <Grid size={12} sx={{ pt: 2 }}>
-                        <Box
+          <div ref={contentRef} style={{ background: "#fff", padding: "20px" }}>
+            <Card>
+              <CardContent>
+                {/* Header Section */}
+                <Grid size={12} sx={{ pt: 2 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 2,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <Typography variant="body1" sx={{ m: 0 }}>
+                      Quote No. :{" "}
+                      <Box component="span" sx={{ fontWeight: 600 }}>
+                        {quotationDetails.batch_no || "N/A"}
+                      </Box>
+                    </Typography>
+                    <Typography variant="body1" sx={{ m: 0 }}>
+                      Quote Date:{" "}
+                      <Box component="span" sx={{ fontWeight: 600 }}>
+                        {formatDate(quotationDetails.created_at)}
+                      </Box>
+                    </Typography>
+                    <Typography variant="body1" sx={{ m: 0 }}>
+                      Delivery Date:{" "}
+                      <Box component="span" sx={{ fontWeight: 600 }}>
+                        {formatDate(quotationDetails.delivery_date)}
+                      </Box>
+                    </Typography>
+                    <Typography variant="body1" sx={{ m: 0 }}>
+                      Priority:{" "}
+                      <Box component="span" sx={{ fontWeight: 600 }}>
+                        {quotationDetails.priority || "Normal"}
+                      </Box>
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                {/* Company Details */}
+                <Grid size={{ xs: 12, md: 6 }} sx={{ pt: 2 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                    From:
+                  </Typography>
+                  <Typography variant="body2">
+                    TECHIE SQUAD PRIVATE LIMITED
+                    <br />
+                    CIN: U72900BR2019PTC042431
+                    <br />
+                    RK NIWAS, GOLA ROAD MOR, BAILEY ROAD
+                    <br />
+                    DANAPUR, PATNA-801503, BIHAR, INDIA
+                    <br />
+                    GSTIN: 10AAHCT3899A1ZI
+                  </Typography>
+                </Grid>
+
+                {/* Customer Details */}
+                {quotationDetails.customer && (
+                  <Grid size={{ xs: 12, md: 6 }} sx={{ pt: 2 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                      To:
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>{quotationDetails.customer.name}</strong>
+                      <br />
+                      {quotationDetails.customer.address}
+                      <br />
+                      {quotationDetails.customer.city},{" "}
+                      {quotationDetails.customer.state?.name}{" "}
+                      {quotationDetails.customer.zip_code}
+                      <br />
+                      Mobile: {quotationDetails.customer.mobile}
+                      <br />
+                      Email: {quotationDetails.customer.email}
+                    </Typography>
+                  </Grid>
+                )}
+
+                {/* Items Table by Group */}
+                {uniqueAreas.map((area) => (
+                  <React.Fragment key={area}>
+                    <Grid size={12} sx={{ pt: 3 }}>
+                      <Box
                         sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: 2,
-                            flexWrap: 'wrap', // optional for responsiveness
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 2,
+                          flexWrap: "nowrap",
+                          backgroundColor: "#f5f5f5",
+                          padding: "8px 12px",
+                          borderRadius: "4px",
                         }}
-                        >
-                            <Typography variant="body1" sx={{ m: 0 }}>
-                            Quote No. : <Box component="span" sx={{ fontWeight: 600 }}>TEX6789</Box>
-                            </Typography>
-                            <Typography variant="body1" sx={{ m: 0 }}>
-                            Quote Date: <Box component="span" sx={{ fontWeight: 600 }}>14/10/2025</Box>
-                            </Typography>
-                        </Box>
-                    </Grid>
-                    <Grid size={{ xs: 12, md: 3 }} sx={{pt:2}}>
-                        <Typography variant="p">
-                        TECHIE SQUAD PRIVATE LIMITED
-                        <br />
-                        CIN: U72900BR2019PTC042431
-                        <br />
-                        RK NIWAS, GOLA ROAD MOR, BAILEY ROAD
-                        <br />
-                        DANAPUR, PATNA-801503, BIHAR, INDIA
-                        <br />
-                        GSTIN: 10AAHCT3899A1ZI
+                      >
+                        <Typography variant="body1" sx={{ m: 0 }}>
+                          <Box component="span" sx={{ fontWeight: 600 }}>
+                            {area}
+                          </Box>
                         </Typography>
+                      </Box>
                     </Grid>
-                    {uniqueAreas.map((area) => (
-                        <React.Fragment key={area}>
-                            <Grid size={12} sx={{ pt: 2 }}>
-                            <Box
-                                sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                gap: 2,
-                                flexWrap: "nowrap",
-                                }}
-                            >
-                                <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-                                <Typography variant="body1" sx={{ m: 0 }}>
-                                    <Box component="span" sx={{ fontWeight: 600 }}>
-                                    {area}
+
+                    <Grid size={12} sx={{ mt: 0 }}>
+                      <Table>
+                        <Thead>
+                          <Tr>
+                            <Th>Item Name</Th>
+                            <Th>Item Code</Th>
+                            <Th>Qty</Th>
+                            <Th>Size</Th>
+                            <Th>Unit Price</Th>
+                            <Th>Total Cost</Th>
+                            <Th>Documents</Th>
+                            <Th style={{ width: "200px" }}>Narration</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {items
+                            .filter((item) => item.group === area)
+                            .map((item) => (
+                              <Tr key={item.id}>
+                                <Td>{item.name}</Td>
+                                <Td>{item.itemCode}</Td>
+                                <Td>{item.qty}</Td>
+                                <Td>{item.size}</Td>
+                                <Td>
+                                  ₹{item.unitPrice.toLocaleString("en-IN")}
+                                </Td>
+                                <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
+                                <Td>
+                                  {item.documents ? (
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 1,
+                                      }}
+                                    >
+                                      {/* <Avatar
+                                        variant="rounded"
+                                        src={item.documents} // ✅ image preview
+                                        alt="document"
+                                        sx={{
+                                          width: 30,
+                                          height: 30,
+                                          fontSize: 16,
+                                        }}
+                                      /> */}
+                                      <ImagePreviewDialog
+                                        imageUrl={item.documents}
+                                        alt={item.documents.split("/").pop()}
+                                      />
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ wordBreak: "break-all" }}
+                                      >
+                                        {item.documents.split("/").pop()}{" "}
+                                        {/* ✅ shows just filename */}
+                                      </Typography>
                                     </Box>
-                                </Typography>
-                                </Box>
-                            </Box>
-                            </Grid>
-
-                            <Grid size={12} sx={{ mt: 2 }}>
-                            <Table>
-                                <Thead>
-                                <Tr>
-                                    <Th>Item Name</Th>
-                                    <Th>Item Code</Th>
-                                    <Th>Qty</Th>
-                                    <Th>Size</Th>
-                                    <Th>Documents</Th>
-                                    <Th>Item Cost</Th>
-                                    <Th className="w-300">Naration</Th>
-                                </Tr>
-                                </Thead>
-                                <Tbody>
-                                {items
-                                    .filter((item) => item.area === area)
-                                    .map((item) => (
-                                    <Tr key={item.id}>
-                                        <Td>{item.name}</Td>
-                                        <Td>{item.itemCode}</Td>
-                                        <Td>{item.qty}</Td>
-                                        <Td>{item.size}</Td>
-                                        <Td>{item.documents}</Td>
-                                        <Td>{item.cost}</Td>
-                                        <Td className="w-300">{item.naration}</Td>
-                                    </Tr>
-                                    ))}
-                                </Tbody>
-                            </Table>
-                            </Grid>
-                        </React.Fragment>
-                    ))}
-
-                    <Grid size={12} sx={{ mt: 3 }}>
-                        <Box
-                        sx={{
-                            display: 'flex',
-                            // alignItems: 'center',
-                            justifyContent: 'space-between',
-                            width: '100%',
-                            gap: 2 // Adds spacing between both textareas
-                        }}
-                        >
-                        <TextareaAutosize
-                            aria-label="minimum height"
-                            minRows={3}
-                            placeholder="Order Terms"
-                            style={{ width: '50%', padding: '8px' }}
-                        />
-                        <Box
-                        sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 1,
-                            width: '20%',
-                        }}
-                        >
-                        <Box
-                            className="fs-15"
-                            sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            borderBottom: '1px solid #ccc', // Add bottom border
-                            pb: 0.5, // Add small padding for spacing
-                            }}
-                        >
-                            <span>Sub Total</span>
-                            <span>8000</span>
-                        </Box>
-
-                        <Box className="fs-15" sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Discount</span>
-                            <span>1000</span>
-                        </Box>
-
-                        <Box className="fs-15" sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>Additional Charges</span>
-                            <span>2000</span>
-                        </Box>
-
-                        <Box className="fs-15" sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>GST (18%)</span>
-                            <span>800</span>
-                        </Box>
-
-                        <Box
-                            className="fs-15"
-                            sx={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            borderTop: '1px solid #222', // Add separator for total if desired
-                            mt: 1,
-                            pt: 0.5,
-                            fontWeight: '600',
-                            }}
-                        >
-                            <span>Grand Total</span>
-                            <span>10000</span>
-                        </Box>
-                        </Box>
-
-                        </Box>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </Td>
+                                <Td style={{ width: "200px" }}>
+                                  {item.narration || "-"}
+                                </Td>
+                              </Tr>
+                            ))}
+                        </Tbody>
+                      </Table>
                     </Grid>
-                    </CardContent>
-                </Card>
-            </div>
+                  </React.Fragment>
+                ))}
+
+                {/* Order Terms and Totals Section */}
+                <Grid size={12} sx={{ mt: 3 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      width: "100%",
+                      gap: 2,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {/* Order Terms */}
+                    <Box sx={{ width: "48%", minWidth: "300px" }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 600, mb: 1 }}
+                      >
+                        Order Terms:
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          padding: "8px",
+                          border: "1px solid #ccc",
+                          borderRadius: "4px",
+                          minHeight: "80px",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {quotationDetails.order_terms ||
+                          "No order terms specified"}
+                      </Typography>
+                    </Box>
+
+                    {/* Totals */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                        minWidth: "300px",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          borderBottom: "1px solid #ccc",
+                          pb: 0.5,
+                        }}
+                      >
+                        <span>Sub Total</span>
+                        <span>₹{subTotal.toLocaleString("en-IN")}</span>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>Discount</span>
+                        <span>₹{discount.toLocaleString("en-IN")}</span>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>Additional Charges</span>
+                        <span>
+                          ₹{additionalCharges.toLocaleString("en-IN")}
+                        </span>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>GST ({gstRate}%)</span>
+                        <span>₹{gstAmount.toLocaleString("en-IN")}</span>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          borderTop: "2px solid #222",
+                          mt: 1,
+                          pt: 0.5,
+                          fontWeight: "600",
+                        }}
+                      >
+                        <span>Grand Total</span>
+                        <span>₹{grandTotal.toLocaleString("en-IN")}</span>
+                      </Box>
+                    </Box>
+                  </Box>
+                </Grid>
+              </CardContent>
+            </Card>
+          </div>
         </Grid>
       </Grid>
     </>

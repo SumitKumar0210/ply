@@ -2,14 +2,14 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 
-// Fetch quotations with pagination
-export const fetchQuotation = createAsyncThunk(
-  "quotation/fetchQuotation",
+// Fetch orders with pagination
+export const fetchOrder = createAsyncThunk(
+  "order/fetchOrder",
   async ({ pageIndex, pageLimit }, { rejectWithValue }) => {
     try {
-      const res = await api.get(`admin/quotation-order/get-data`, {
+      const res = await api.get(`admin/quotation-product/get-data`, {
         params: {
-          page: pageIndex + 1, 
+          page: pageIndex + 1,
           limit: pageLimit
         }
       });
@@ -25,12 +25,12 @@ export const fetchQuotation = createAsyncThunk(
   }
 );
 
-// Add quotation
-export const addQuotation = createAsyncThunk(
-  "quotation/addQuotation",
+// Add order
+export const addOrder = createAsyncThunk(
+  "order/addOrder",
   async (values, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/quotation-order/store`, values);
+      const res = await api.post(`admin/quotation-product/store`, values);
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
@@ -41,12 +41,12 @@ export const addQuotation = createAsyncThunk(
   }
 );
 
-// Edit quotation
-export const editQuotation = createAsyncThunk(
-  "quotation/editQuotation",
+// Edit order
+export const editOrder = createAsyncThunk(
+  "order/editOrder",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/quotation-order/edit/${id}`);
+      const res = await api.post(`admin/quotation-product/edit/${id}`);
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
@@ -57,12 +57,12 @@ export const editQuotation = createAsyncThunk(
   }
 );
 
-// Update quotation
-export const updateQuotation = createAsyncThunk(
-  "quotation/updateQuotation",
+// Update order
+export const updateOrder = createAsyncThunk(
+  "order/updateOrder",
   async (values, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/quotation-order/update/${values.id}`, values);
+      const res = await api.post(`admin/quotation-product/update/${values.id}`, values);
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
@@ -73,12 +73,12 @@ export const updateQuotation = createAsyncThunk(
   }
 );
 
-// Delete quotation
-export const deleteQuotation = createAsyncThunk(
-  "quotation/deleteQuotation",
+// Delete order
+export const deleteOrder = createAsyncThunk(
+  "order/deleteOrder",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/quotation-order/delete/${id}`);
+      const res = await api.post(`admin/quotation-product/delete/${id}`);
       successMessage(res.data.message);
       return { id };
     } catch (error) {
@@ -89,8 +89,8 @@ export const deleteQuotation = createAsyncThunk(
   }
 );
 
-const quotationSlice = createSlice({
-  name: "quotation",
+const orderSlice = createSlice({
+  name: "order",
   initialState: {
     data: [],
     selected: {},
@@ -101,56 +101,56 @@ const quotationSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch quotations
-      .addCase(fetchQuotation.pending, (state) => {
+      // Fetch orders
+      .addCase(fetchOrder.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchQuotation.fulfilled, (state, action) => {
+      .addCase(fetchOrder.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload.data || [];
         state.totalRecords = action.payload.totalRecords || 0;
       })
-      .addCase(fetchQuotation.rejected, (state, action) => {
+      .addCase(fetchOrder.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      // Add quotation
-      .addCase(addQuotation.pending, (state) => {
+      // Add order
+      .addCase(addOrder.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(addQuotation.fulfilled, (state, action) => {
+      .addCase(addOrder.fulfilled, (state, action) => {
         state.loading = false;
         state.data.unshift(action.payload);
         state.totalRecords += 1;
       })
-      .addCase(addQuotation.rejected, (state, action) => {
+      .addCase(addOrder.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
       
-      // Edit quotation
-      .addCase(editQuotation.fulfilled, (state, action) => {
+      // Edit order
+      .addCase(editOrder.fulfilled, (state, action) => {
         state.loading = false;
         state.selected = action.payload;
       })
       
-      // Delete quotation
-      .addCase(deleteQuotation.pending, (state) => {
+      // Delete order
+      .addCase(deleteOrder.pending, (state) => {
         state.loading = true;
       })
-      .addCase(deleteQuotation.fulfilled, (state, action) => {
+      .addCase(deleteOrder.fulfilled, (state, action) => {
         state.loading = false;
         state.data = state.data.filter(item => item.id !== action.payload.id);
         state.totalRecords = Math.max(0, state.totalRecords - 1);
       })
-      .addCase(deleteQuotation.rejected, (state, action) => {
+      .addCase(deleteOrder.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
   },
 });
 
-export default quotationSlice.reducer;
+export default orderSlice.reducer;

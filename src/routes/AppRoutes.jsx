@@ -84,13 +84,13 @@ const AppRoutes = () => {
       {/* Customer */}
       <Route path="/customer/dashboard" element={<ProtectedRoute><MainLayout><CustomerDashboard/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/quote" element={<ProtectedRoute><MainLayout><Quote/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/quote/view" element={<ProtectedRoute><MainLayout><QuoteDetailsView/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/quote/view/:id" element={<ProtectedRoute><MainLayout><QuoteDetailsView/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/quote/create" element={<ProtectedRoute><MainLayout><CreateQuote/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/quote/edit" element={<ProtectedRoute><MainLayout><EditQuote/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/quote/edit/:id" element={<ProtectedRoute><MainLayout><EditQuote/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/order" element={<ProtectedRoute><MainLayout><Order/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/order/view" element={<ProtectedRoute><MainLayout><OrderDetailsView/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/order/view/:id" element={<ProtectedRoute><MainLayout><OrderDetailsView/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/order/create" element={<ProtectedRoute><MainLayout><CreateOrder/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/order/edit" element={<ProtectedRoute><MainLayout><EditOrder/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/order/edit/:id" element={<ProtectedRoute><MainLayout><EditOrder/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/ledger" element={<ProtectedRoute><MainLayout><CustomerLedger/></MainLayout></ProtectedRoute>}/>
 
       {/* Catch-all */}

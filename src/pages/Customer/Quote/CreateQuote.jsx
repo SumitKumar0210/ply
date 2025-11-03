@@ -130,7 +130,8 @@ const CreateQuote = () => {
   });
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [savingFinal, setSavingFinal] = useState(false);
 
   const { data: customerData = [], loading: customersLoading } = useSelector(
     (state) => state.customer
@@ -170,7 +171,6 @@ const CreateQuote = () => {
       if (res.error) return;
       resetForm();
       setOpenAddCustomer(false);
-      // Reload customers after adding
       await dispatch(fetchActiveCustomers());
     } catch (error) {
       console.error("Add customer failed:", error);
@@ -188,7 +188,7 @@ const CreateQuote = () => {
 
   const generateCode = (model) => {
     return model + '@' + Math.floor(1000 + Math.random() * 9000);
-  }
+  };
 
   const handleAddItem = (values, { resetForm }) => {
     const { product_id, quantity, group, narration, document } = values;
@@ -214,7 +214,6 @@ const CreateQuote = () => {
       return;
     }
 
-    // Construct new item - Store the actual File object
     const newItem = {
       id: Date.now(),
       group,
@@ -227,8 +226,8 @@ const CreateQuote = () => {
       cost: parseFloat(product.rrp) * parseInt(quantity, 10),
       unitPrice: parseFloat(product.rrp),
       narration,
-      documentFile: document || null, // Store the File object
-      document: document ? document.name : "", // Store the filename for display
+      documentFile: document || null,
+      document: document ? document.name : "",
     };
 
     setItems((prev) => [...prev, newItem]);
@@ -266,24 +265,27 @@ const CreateQuote = () => {
   // Handle final quote submission with FormData
   const handleSubmitQuote = async (values, isDraft = false) => {
     if (!selectedCustomer) {
-      alert("Please select a customer");
+      errorMessage("Please select a customer");
       return;
     }
 
     if (items.length === 0) {
-      alert("Please add at least one item");
+      errorMessage("Please add at least one item");
       return;
     }
 
-    setSubmitting(true);
+    // Set the appropriate loading state
+    if (isDraft) {
+      setSavingDraft(true);
+    } else {
+      setSavingFinal(true);
+    }
 
     try {
       const totals = calculateTotals(values);
       
-      // Create FormData object
       const formData = new FormData();
       
-      // Add basic quote data
       formData.append('customer_id', selectedCustomer.id);
       formData.append('quote_date', creationDate.toISOString());
       formData.append('priority', priority);
@@ -298,7 +300,6 @@ const CreateQuote = () => {
       formData.append('grand_total', totals.grandTotal);
       formData.append('is_draft', isDraft ? 1 : 0);
       
-      // Add items data and files
       items.forEach((item, index) => {
         formData.append(`items[${index}][id]`, item.id);
         formData.append(`items[${index}][group]`, item.group);
@@ -312,30 +313,42 @@ const CreateQuote = () => {
         formData.append(`items[${index}][unitPrice]`, item.unitPrice);
         formData.append(`items[${index}][narration]`, item.narration || '');
         
-        // Append the file if it exists
         if (item.documentFile) {
           formData.append(`items[${index}][document]`, item.documentFile);
         }
       });
 
-      // Dispatch your quote creation action with FormData
-      await dispatch(addQuotation(formData));
-      
+      const res =  await dispatch(addQuotation(formData));
+      if(res.error) return ;
       successMessage(`Quote ${isDraft ? "saved as draft" : "submitted"} successfully!`);
-      
-      // Optional: Reset form or redirect
-      resetForm();
       navigate('/customer/quote');
       
     } catch (error) {
       console.error("Submit quote failed:", error);
       errorMessage("Failed to submit quote");
     } finally {
-      setSubmitting(false);
+      setSavingDraft(false);
+      setSavingFinal(false);
     }
   };
 
   const isLoading = customersLoading || productsLoading || gstsLoading;
+
+  // Show centered loader when initial data is loading
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "60vh",
+        }}
+      >
+        <CircularProgress size={60} />
+      </Box>
+    );
+  }
 
   return (
     <>
@@ -355,18 +368,6 @@ const CreateQuote = () => {
         <Grid size={12}>
           <Card>
             <CardContent>
-              {isLoading && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    py: 3,
-                  }}
-                >
-                  <CircularProgress />
-                </Box>
-              )}
-
               {/* Header Row */}
               <Box
                 sx={{
@@ -385,7 +386,6 @@ const CreateQuote = () => {
                     getOptionLabel={(option) => option?.name || ""}
                     value={selectedCustomer}
                     onChange={(e, value) => setSelectedCustomer(value)}
-                    loading={customersLoading}
                     renderInput={(params) => (
                       <TextField
                         {...params}
@@ -422,12 +422,10 @@ const CreateQuote = () => {
                     }}
                   />
                   <Autocomplete
-                    options={["Normal", "High", "Slow"]}
+                    options={["Normal", "High", "Low"]}
                     size="small"
                     value={priority}
-                    onChange={(e, value) => {
-                      setPriority(value);
-                    }}
+                    onChange={(e, value) => setPriority(value)}
                     renderInput={(params) => (
                       <TextField
                         {...params}
@@ -507,7 +505,6 @@ const CreateQuote = () => {
                           setSelectedProduct(value);
                           setFieldValue("product_id", value?.id || "");
                         }}
-                        loading={productsLoading}
                         renderInput={(params) => (
                           <TextField
                             {...params}
@@ -665,7 +662,7 @@ const CreateQuote = () => {
                   orderTerms: "",
                   discount: 0,
                   additionalCharges: 0,
-                  gstRate: 18 || 0,
+                  gstRate: 18,
                 }}
                 validationSchema={quoteValidationSchema}
                 onSubmit={(values) => handleSubmitQuote(values, false)}
@@ -845,21 +842,27 @@ const CreateQuote = () => {
                           variant="contained"
                           color="secondary"
                           onClick={() => handleSubmitQuote(values, true)}
-                          disabled={submitting || items.length === 0}
+                          disabled={savingDraft || savingFinal || items.length === 0}
+                          startIcon={
+                            savingDraft ? (
+                              <CircularProgress size={20} color="inherit" />
+                            ) : null
+                          }
                         >
-                          {submitting ? (
-                            <CircularProgress size={24} />
-                          ) : (
-                            "Save as Draft"
-                          )}
+                          {savingDraft ? "Saving..." : "Save as Draft"}
                         </Button>
                         <Button
                           type="submit"
                           variant="contained"
                           color="primary"
-                          disabled={submitting || items.length === 0}
+                          disabled={savingDraft || savingFinal || items.length === 0}
+                          startIcon={
+                            savingFinal ? (
+                              <CircularProgress size={20} color="inherit" />
+                            ) : null
+                          }
                         >
-                          {submitting ? <CircularProgress size={24} /> : "Save"}
+                          {savingFinal ? "Saving..." : "Save"}
                         </Button>
                       </Stack>
                     </Form>
