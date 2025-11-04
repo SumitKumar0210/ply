@@ -129,6 +129,7 @@ const CreateQuote = () => {
     itemId: null,
   });
   const navigate = useNavigate();
+  const [groupList, setGroupList] = useState([]);
   const [items, setItems] = useState([]);
   const [savingDraft, setSavingDraft] = useState(false);
   const [savingFinal, setSavingFinal] = useState(false);
@@ -178,13 +179,16 @@ const CreateQuote = () => {
   };
 
   const isDuplicateItem = useCallback(
-    (product_id, group) => {
-      return items.some(
-        (item) => item.product_id === product_id && item.group === group
-      );
-    },
-    [items]
-  );
+  (product_id, group) => {
+    const normalizedGroup = group?.trim().toLowerCase(); // normalize input group
+    return items.some(
+      (item) =>
+        item.product_id === product_id &&
+        item.group?.trim().toLowerCase() === normalizedGroup
+    );
+  },
+  [items]
+)
 
   const generateCode = (model) => {
     return model + '@' + Math.floor(1000 + Math.random() * 9000);
@@ -210,9 +214,10 @@ const CreateQuote = () => {
     }
 
     if (isDuplicateItem(product_id, group)) {
-      errorMessage("This material is already added. Update quantity in the table instead.");
+      errorMessage("This Product is already added. Update quantity in the table instead.");
       return;
     }
+
 
     const newItem = {
       id: Date.now(),
@@ -229,7 +234,7 @@ const CreateQuote = () => {
       documentFile: document || null,
       document: document ? document.name : "",
     };
-
+    setGroupList(prev => [...prev, group]);
     setItems((prev) => [...prev, newItem]);
     setSelectedProduct(null);
     resetForm();
@@ -283,9 +288,9 @@ const CreateQuote = () => {
 
     try {
       const totals = calculateTotals(values);
-      
+
       const formData = new FormData();
-      
+
       formData.append('customer_id', selectedCustomer.id);
       formData.append('quote_date', creationDate.toISOString());
       formData.append('priority', priority);
@@ -299,7 +304,7 @@ const CreateQuote = () => {
       formData.append('sub_total', totals.subTotal);
       formData.append('grand_total', totals.grandTotal);
       formData.append('is_draft', isDraft ? 1 : 0);
-      
+
       items.forEach((item, index) => {
         formData.append(`items[${index}][id]`, item.id);
         formData.append(`items[${index}][group]`, item.group);
@@ -312,17 +317,17 @@ const CreateQuote = () => {
         formData.append(`items[${index}][cost]`, item.cost);
         formData.append(`items[${index}][unitPrice]`, item.unitPrice);
         formData.append(`items[${index}][narration]`, item.narration || '');
-        
+
         if (item.documentFile) {
           formData.append(`items[${index}][document]`, item.documentFile);
         }
       });
 
-      const res =  await dispatch(addQuotation(formData));
-      if(res.error) return ;
+      const res = await dispatch(addQuotation(formData));
+      if (res.error) return;
       successMessage(`Quote ${isDraft ? "saved as draft" : "submitted"} successfully!`);
       navigate('/customer/quote');
-      
+
     } catch (error) {
       console.error("Submit quote failed:", error);
       errorMessage("Failed to submit quote");
@@ -484,16 +489,29 @@ const CreateQuote = () => {
                         mt: 3,
                       }}
                     >
-                      <TextField
-                        label="Group"
-                        variant="outlined"
-                        size="small"
-                        name="group"
+                      <Autocomplete
+                        freeSolo
+                        options={groupList}
                         value={values.group}
-                        onChange={handleChange}
-                        error={touched.group && Boolean(errors.group)}
-                        helperText={touched.group && errors.group}
-                        sx={{ minWidth: 150 }}
+                        onChange={(e, value) => {
+                          // Allow selecting or typing new value
+                          setFieldValue("group", value || "");
+                        }}
+                        onInputChange={(e, value) => {
+                          // Also update when typing
+                          setFieldValue("group", value || "");
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Group"
+                            variant="outlined"
+                            size="small"
+                            error={touched.group && Boolean(errors.group)}
+                            helperText={touched.group && errors.group}
+                            sx={{ minWidth: 150 }}
+                          />
+                        )}
                       />
 
                       <Autocomplete

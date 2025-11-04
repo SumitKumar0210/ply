@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useActionState } from "react";
 import Grid from "@mui/material/Grid";
 import {
   Button,
@@ -22,6 +22,8 @@ import { Autocomplete, TextField } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { fetchOrder, deleteOrder } from "../slice/orderSlice";
+import { useDispatch, useSelector } from "react-redux";
 
 
 const CreateOrder = () => {
@@ -30,6 +32,22 @@ const CreateOrder = () => {
   const [eddDate, setEddDate] = useState(null);
 
   const [openDelete, setOpenDelete] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
+
+  const { data = [], loading } = useSelector((state) => state.order);
+
+  useEffect(() => {
+    const params = {
+      pageIndex: 0,   // starting page index
+      pageLimit: 10,  // items per page
+    };
+
+    dispatch(fetchOrder(params));
+  }, [dispatch]);
+
+  console.log(data);
+
   const [items, setItems] = useState([
   {
     id: 1,
@@ -82,11 +100,7 @@ const CreateOrder = () => {
 ]);
 
 
-const quoteList = [
-  { id: 1, label: 'Quote 1' },
-  { id: 2, label: 'Quote 3' },
-  { id: 3, label: 'Quote 2' },
-];
+const quoteList = data;
 const itemCode = [
   { id: 1, label: 'Item_001' },
   { id: 2, label: 'Item_002' },
@@ -134,7 +148,7 @@ const itemquantity = [
                   <Autocomplete
                     options={quoteList}
                     size="small"
-                    getOptionLabel={(option) => option.label}
+                    getOptionLabel={(option) => option.id}
                     renderInput={(params) => (
                       <TextField
                         {...params}

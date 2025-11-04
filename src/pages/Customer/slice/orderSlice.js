@@ -10,9 +10,10 @@ export const fetchOrder = createAsyncThunk(
       const res = await api.get(`admin/quotation-product/get-data`, {
         params: {
           page: pageIndex + 1,
-          limit: pageLimit
+          limit: pageLimit + 10
         }
       });
+      console.log(res.data.data);
       return {
         data: res.data.data,
         totalRecords: res.data.total || res.data.data.length
