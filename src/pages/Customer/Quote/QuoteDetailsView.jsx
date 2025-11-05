@@ -150,8 +150,17 @@ const QuoteDetailsView = () => {
         <Grid>
           <Button
             variant="contained"
-            startIcon={<AiOutlinePrinter />}
+            color="success"
+           
+            sx={{ mr: 2 }} 
+          >
+            Approve
+          </Button>
+
+          <Button
+            variant="contained"
             color="warning"
+            startIcon={<AiOutlinePrinter />}
             onClick={handlePrint}
           >
             Print

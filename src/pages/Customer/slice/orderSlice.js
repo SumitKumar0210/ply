@@ -26,6 +26,25 @@ export const fetchOrder = createAsyncThunk(
   }
 );
 
+// fetch supervisor
+export const fetchSupervisor = createAsyncThunk(
+  "order/fetchSupervisor",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/user/get-supervisor`);
+      console.log(res.data.data);
+      return {
+        data: res.data.data,
+        totalRecords: res.data.total || res.data.data.length
+      };
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 // Add order
 export const addOrder = createAsyncThunk(
   "order/addOrder",
@@ -94,6 +113,7 @@ const orderSlice = createSlice({
   name: "order",
   initialState: {
     data: [],
+    user: [],
     selected: {},
     totalRecords: 0,
     loading: false,
@@ -113,6 +133,22 @@ const orderSlice = createSlice({
         state.totalRecords = action.payload.totalRecords || 0;
       })
       .addCase(fetchOrder.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+
+      // Fetch orders
+      .addCase(fetchSupervisor.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchSupervisor.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.data || [];
+        state.totalRecords = action.payload.totalRecords || 0;
+      })
+      .addCase(fetchSupervisor.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

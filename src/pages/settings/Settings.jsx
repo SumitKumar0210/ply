@@ -59,7 +59,7 @@ const tabConfig = [
   { value: "tab7", label: "Products", icon: <LayersIcon />, component: <Product/> },
   { value: "tab33", label: "Tax Slabs", icon: <ListAltIcon />, component: <TaxSlab/> },
   { value: "tab8", label: "UOM", icon: <TbRosetteNumber1 />, component: <UOM/> },
-  { value: "tab1", label: "User Type", icon: <LuUserRoundCog />, component: <UserType/> },
+  { value: "tab1", label: "User Roles", icon: <LuUserRoundCog />, component: <UserType/> },
   { value: "tab4", label: "Vendors", icon: <MdOutlineStorefront />, component: <Vendor/> },
 ];
 

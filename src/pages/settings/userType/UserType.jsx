@@ -145,7 +145,7 @@ const handleEditSubmit = async (values, resetForm) => {
 
  const columns = useMemo(
     () => [
-      { accessorKey: "name", header: "User Type" },
+      { accessorKey: "name", header: "User Role" },
       {
         accessorKey: "status",
         header: "Status",
@@ -256,7 +256,7 @@ const handleEditSubmit = async (values, resetForm) => {
                   }}
                 >
                   <Typography variant="h6" fontWeight={400}>
-                    User Type
+                    User Roles
                   </Typography>
 
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -273,7 +273,7 @@ const handleEditSubmit = async (values, resetForm) => {
                       </IconButton>
                     </Tooltip>
                     <Button variant="contained" startIcon={<AddIcon />} onClick={handleClickOpen}>
-                      Add User Type
+                      Add User Role
                     </Button>
                   </Box>
                 </Box>
@@ -285,7 +285,7 @@ const handleEditSubmit = async (values, resetForm) => {
 
       {/* Modal user type start */}
       <BootstrapDialog onClose={handleClose} open={open} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ m: 0, p: 1.5 }}>Add User Type</DialogTitle>
+        <DialogTitle sx={{ m: 0, p: 1.5 }}>Add User Role</DialogTitle>
         <IconButton
           aria-label="close"
           onClick={handleClose}
@@ -340,7 +340,7 @@ const handleEditSubmit = async (values, resetForm) => {
       {/* Modal user type end */}
       {/* Edit Modal user type start */}
       <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit User Type</DialogTitle>
+        <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit User Role</DialogTitle>
         <IconButton
           aria-label="close"
           onClick={handleEditClose}

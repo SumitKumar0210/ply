@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Grid,
   Button,
@@ -18,7 +18,6 @@ import {
   TextField,
   MenuItem,
   CircularProgress,
-  Avatar,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
@@ -86,7 +85,6 @@ const itemValidationSchema = Yup.object({
     .positive("Quantity must be positive")
     .integer("Quantity must be a whole number"),
   narration: Yup.string(),
-  document: Yup.mixed(),
 });
 
 const customerValidationSchema = Yup.object({
@@ -122,6 +120,17 @@ const quoteValidationSchema = Yup.object({
   gstRate: Yup.number().required("GST rate is required"),
 });
 
+// Helper function to generate unique code
+const generateCode = (model) => {
+  return `${model}@${Math.floor(1000 + Math.random() * 9000)}`;
+};
+
+// Helper function to parse numeric values safely
+const parseNumericValue = (value, defaultValue = 0) => {
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? defaultValue : parsed;
+};
+
 const EditQuote = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -132,6 +141,7 @@ const EditQuote = () => {
   const [priority, setPriority] = useState("Normal");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [groupList, setGroupList] = useState([]);
   const [openAddCustomer, setOpenAddCustomer] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -149,6 +159,7 @@ const EditQuote = () => {
 
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
 
+  // Redux selectors
   const { selected: quotationData = {}, loading: quotationLoading } =
     useSelector((state) => state.quotation);
   const { data: customerData = [], loading: customersLoading } = useSelector(
@@ -162,15 +173,25 @@ const EditQuote = () => {
     (state) => state.taxSlab
   );
 
+  // Memoized products map for faster lookups
+  const productsMap = useMemo(() => {
+    return new Map(products.map((p) => [p.id, p]));
+  }, [products]);
+
   // Load initial data
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([
-        dispatch(editQuotation(id)),
-        dispatch(fetchActiveCustomers()),
-        dispatch(fetchActiveProducts()),
-        dispatch(fetchActiveTaxSlabs()),
-      ]);
+      try {
+        await Promise.all([
+          dispatch(editQuotation(id)),
+          dispatch(fetchActiveCustomers()),
+          dispatch(fetchActiveProducts()),
+          dispatch(fetchActiveTaxSlabs()),
+        ]);
+      } catch (error) {
+        console.error("Error loading data:", error);
+        errorMessage("Failed to load data");
+      }
     };
     loadData();
   }, [dispatch, id]);
@@ -178,25 +199,35 @@ const EditQuote = () => {
   // Populate form when quotation data and dependencies are loaded
   useEffect(() => {
     if (
-      quotationData &&
-      quotationData.id &&
-      customerData.length > 0 &&
-      products.length > 0
+      !quotationData?.id ||
+      customerData.length === 0 ||
+      products.length === 0
     ) {
-      try {
-        // Parse product_ids JSON string
-        let parsedItems = [];
-        if (quotationData.product_ids) {
-          try {
-            parsedItems = JSON.parse(quotationData.product_ids);
-          } catch (e) {
-            console.error("Error parsing product_ids:", e);
-          }
+      return;
+    }
+
+    try {
+      // Parse product_ids JSON string
+      let parsedItems = [];
+      if (quotationData.product_ids) {
+        try {
+          parsedItems = JSON.parse(quotationData.product_ids);
+        } catch (e) {
+          console.error("Error parsing product_ids:", e);
+          errorMessage("Failed to parse quotation items");
+          return;
+        }
+      }
+
+      // Extract unique groups and format items
+      const uniqueGroups = new Set();
+      const formattedItems = parsedItems.map((item) => {
+        if (item.group) {
+          uniqueGroups.add(item.group);
         }
 
-        // Set items with proper structure
-        const formattedItems = parsedItems.map((item) => ({
-          id: item.id || Date.now() + Math.random(),
+        return {
+          id: item.id || `${Date.now()}_${Math.random()}`,
           group: item.group || "",
           product_id: item.product_id || "",
           name: item.name || "",
@@ -204,8 +235,8 @@ const EditQuote = () => {
           unique_code: item.unique_code || "",
           qty: parseInt(item.qty, 10) || 0,
           size: item.size || "",
-          cost: parseFloat(item.cost) || 0,
-          unitPrice: parseFloat(item.unitPrice) || 0,
+          cost: parseNumericValue(item.cost),
+          unitPrice: parseNumericValue(item.unitPrice),
           narration: item.narration || "",
           document:
             typeof item.document === "string" ? imageUrl + item.document : "",
@@ -214,139 +245,159 @@ const EditQuote = () => {
             typeof item.document === "string"
               ? item.document.split("/").pop()
               : "",
-        }));
+        };
+      });
 
-        setItems(formattedItems);
+      setItems(formattedItems);
+      setGroupList(Array.from(uniqueGroups));
 
-        // Set dates
-        if (quotationData.delivery_date) {
-          setDeliveryDate(new Date(quotationData.delivery_date));
-        }
-        if (quotationData.created_at) {
-          setCreationDate(new Date(quotationData.created_at));
-        }
-
-        // Set priority
-        setPriority(quotationData.priority || "Normal");
-
-        // Set selected customer
-        const customer = customerData.find(
-          (c) => c.id === quotationData.customer_id
-        );
-        if (customer) {
-          setSelectedCustomer(customer);
-        }
-
-        // Set initial form values
-        setInitialValues({
-          orderTerms: quotationData.order_terms || "",
-          discount: parseFloat(quotationData.discount) || 0,
-          additionalCharges: parseFloat(quotationData.additional_charges) || 0,
-          gstRate: parseFloat(quotationData.gst_rate) || 18,
-        });
-      } catch (error) {
-        console.error("Error parsing quotation data:", error);
-        errorMessage("Failed to load quotation data");
+      // Set dates
+      if (quotationData.delivery_date) {
+        setDeliveryDate(new Date(quotationData.delivery_date));
       }
+      if (quotationData.created_at) {
+        setCreationDate(new Date(quotationData.created_at));
+      }
+
+      // Set priority
+      setPriority(quotationData.priority || "Normal");
+
+      // Set selected customer
+      const customer = customerData.find(
+        (c) => c.id === quotationData.customer_id
+      );
+      if (customer) {
+        setSelectedCustomer(customer);
+      }
+
+      // Set initial form values
+      setInitialValues({
+        orderTerms: quotationData.order_terms || "",
+        discount: parseNumericValue(quotationData.discount),
+        additionalCharges: parseNumericValue(quotationData.additional_charges),
+        gstRate: parseNumericValue(quotationData.gst_rate, 18),
+      });
+    } catch (error) {
+      console.error("Error parsing quotation data:", error);
+      errorMessage("Failed to load quotation data");
     }
   }, [quotationData, customerData, products, imageUrl]);
 
   // Open customer modal and load states
-  const openCustomerModal = async () => {
-    await dispatch(fetchStates());
-    setOpenAddCustomer(true);
-  };
+  const openCustomerModal = useCallback(async () => {
+    try {
+      await dispatch(fetchStates());
+      setOpenAddCustomer(true);
+    } catch (error) {
+      console.error("Error loading states:", error);
+      errorMessage("Failed to load states");
+    }
+  }, [dispatch]);
 
   // Handle add customer
-  const handleAddCustomer = async (values, { resetForm }) => {
-    try {
-      const res = await dispatch(addCustomer(values));
-      if (res.error) return;
-      resetForm();
-      setOpenAddCustomer(false);
-      await dispatch(fetchActiveCustomers());
-    } catch (error) {
-      console.error("Add customer failed:", error);
-    }
-  };
+  const handleAddCustomer = useCallback(
+    async (values, { resetForm }) => {
+      try {
+        const res = await dispatch(addCustomer(values));
+        if (res.error) return;
+        resetForm();
+        setOpenAddCustomer(false);
+        await dispatch(fetchActiveCustomers());
+        successMessage("Customer added successfully");
+      } catch (error) {
+        console.error("Add customer failed:", error);
+        errorMessage("Failed to add customer");
+      }
+    },
+    [dispatch]
+  );
 
+  // Check for duplicate items
   const isDuplicateItem = useCallback(
-    (product_id, group, excludeId = null) => {
+    (product_id, group) => {
+      const normalizedGroup = group?.trim().toLowerCase();
       return items.some(
         (item) =>
           item.product_id === product_id &&
-          item.group === group &&
-          item.id !== excludeId
+          item.group?.trim().toLowerCase() === normalizedGroup
       );
     },
     [items]
   );
 
-  const generateCode = (model) => {
-    return model + "@" + Math.floor(1000 + Math.random() * 9000);
-  };
+  // Handle add item
+  const handleAddItem = useCallback(
+    (values, { resetForm }) => {
+      const { product_id, quantity, group, narration, document } = values;
 
-  const handleAddItem = (values, { resetForm }) => {
-    const { product_id, quantity, group, narration, document } = values;
+      if (!product_id) {
+        errorMessage("Please select a product before adding.");
+        return;
+      }
 
-    if (!product_id) {
-      errorMessage("Please select a product before adding.");
-      return;
-    }
+      const qty = parseInt(quantity, 10);
+      if (!qty || qty <= 0) {
+        errorMessage("Please enter a valid quantity greater than 0.");
+        return;
+      }
 
-    if (!quantity || isNaN(quantity) || quantity <= 0) {
-      errorMessage("Please enter a valid quantity greater than 0.");
-      return;
-    }
+      const product = productsMap.get(product_id);
+      if (!product) {
+        errorMessage("Selected product not found in the list.");
+        return;
+      }
 
-    const product = products.find((p) => p.id === product_id);
-    if (!product) {
-      errorMessage("Selected product not found in the list.");
-      return;
-    }
+      if (isDuplicateItem(product_id, group)) {
+        errorMessage(
+          "This product is already added. Update quantity in the table instead."
+        );
+        return;
+      }
 
-    if (isDuplicateItem(product_id, group)) {
-      errorMessage(
-        "This material is already added. Update quantity in the table instead."
-      );
-      return;
-    }
+      const unitPrice = parseNumericValue(product.rrp);
+      const newItem = {
+        id: `${Date.now()}_${Math.random()}`,
+        group: group?.trim() || "",
+        product_id,
+        name: product.name,
+        model: product.model,
+        unique_code: generateCode(product.model),
+        qty,
+        size: product.size || "",
+        cost: unitPrice * qty,
+        unitPrice,
+        narration: narration?.trim() || "",
+        documentFile: document || null,
+        document: document ? URL.createObjectURL(document) : "",
+        documentName: document ? document.name : "",
+      };
 
-    const newItem = {
-      id: Date.now(),
-      group,
-      product_id,
-      name: product.name,
-      model: product.model,
-      unique_code: generateCode(product.model),
-      qty: parseInt(quantity, 10),
-      size: product.size,
-      cost: parseFloat(product.rrp) * parseInt(quantity, 10),
-      unitPrice: parseFloat(product.rrp),
-      narration,
-      documentFile: document || null,
-      document: document ? URL.createObjectURL(document) : "",
-      documentName: document ? document.name : "",
-    };
+      setItems((prev) => [...prev, newItem]);
 
-    setItems((prev) => [...prev, newItem]);
-    setSelectedProduct(null);
-    resetForm();
-  };
+      // Add group to list if it's new
+      if (group && !groupList.includes(group)) {
+        setGroupList((prev) => [...prev, group]);
+      }
+
+      setSelectedProduct(null);
+      resetForm();
+    },
+    [productsMap, isDuplicateItem, groupList]
+  );
 
   // Handle delete item
-  const confirmDeleteItem = () => {
+  const confirmDeleteItem = useCallback(() => {
     setItems((prev) => prev.filter((item) => item.id !== deleteDialog.itemId));
     setDeleteDialog({ open: false, itemId: null });
-  };
+  }, [deleteDialog.itemId]);
 
-  // Calculate totals
-  const calculateTotals = (values) => {
+  // Calculate totals - memoized to prevent recalculation
+  const calculateTotals = useCallback((values) => {
     const subTotal = items.reduce((sum, item) => sum + item.cost, 0);
-    const discountAmount = parseFloat(values.discount || 0);
-    const additionalChargesAmount = parseFloat(values.additionalCharges || 0);
+    const discountAmount = parseNumericValue(values.discount);
+    const additionalChargesAmount = parseNumericValue(values.additionalCharges);
     const afterDiscount = subTotal - discountAmount + additionalChargesAmount;
-    const gstAmount = (afterDiscount * parseFloat(values.gstRate || 0)) / 100;
+    const gstAmount = (afterDiscount * parseNumericValue(values.gstRate)) / 100;
     const grandTotal = afterDiscount + gstAmount;
 
     return {
@@ -356,81 +407,108 @@ const EditQuote = () => {
       gstAmount,
       grandTotal,
     };
-  };
+  }, [items]);
 
-  // Get unique groups
-  const uniqueGroups = [...new Set(items.map((item) => item.group))];
+  // Get unique groups - memoized
+  const uniqueGroups = useMemo(() => {
+    return [...new Set(items.map((item) => item.group))];
+  }, [items]);
 
   // Handle final quote submission with FormData
-  const handleSubmitQuote = async (values, isDraft = false) => {
-    if (!selectedCustomer) {
-      errorMessage("Please select a customer");
-      return;
-    }
-
-    if (items.length === 0) {
-      errorMessage("Please add at least one item");
-      return;
-    }
-
-    if (isDraft) {
-      setSavingDraft(true);
-    } else {
-      setSavingFinal(true);
-    }
-
-    try {
-      const totals = calculateTotals(values);
-
-      const formData = new FormData();
-
-      formData.append("_method", "PUT");
-      formData.append("customer_id", selectedCustomer.id);
-      formData.append("quote_date", creationDate.toISOString());
-      formData.append("priority", priority);
-      if (deliveryDate) {
-        formData.append("delivery_date", deliveryDate.toISOString());
+  const handleSubmitQuote = useCallback(
+    async (values, isDraft = false) => {
+      if (!selectedCustomer) {
+        errorMessage("Please select a customer");
+        return;
       }
-      formData.append("order_terms", values.orderTerms);
-      formData.append("discount", values.discount);
-      formData.append("additional_charges", values.additionalCharges);
-      formData.append("gst_rate", values.gstRate);
-      formData.append("sub_total", totals.subTotal);
-      formData.append("grand_total", totals.grandTotal);
-      formData.append("is_draft", isDraft ? 1 : 0);
 
-      items.forEach((item, index) => {
-        formData.append(`items[${index}][id]`, item.id);
-        formData.append(`items[${index}][group]`, item.group);
-        formData.append(`items[${index}][product_id]`, item.product_id);
-        formData.append(`items[${index}][name]`, item.name);
-        formData.append(`items[${index}][model]`, item.model);
-        formData.append(`items[${index}][unique_code]`, item.unique_code);
-        formData.append(`items[${index}][qty]`, item.qty);
-        formData.append(`items[${index}][size]`, item.size);
-        formData.append(`items[${index}][cost]`, item.cost);
-        formData.append(`items[${index}][unitPrice]`, item.unitPrice);
-        formData.append(`items[${index}][narration]`, item.narration || "");
+      if (items.length === 0) {
+        errorMessage("Please add at least one item");
+        return;
+      }
 
-        if (item.documentFile) {
-          formData.append(`items[${index}][document]`, item.documentFile);
+      if (isDraft) {
+        setSavingDraft(true);
+      } else {
+        setSavingFinal(true);
+      }
+
+      try {
+        const totals = calculateTotals(values);
+
+        const formData = new FormData();
+
+        formData.append("_method", "PUT");
+        formData.append("customer_id", selectedCustomer.id);
+        formData.append("quote_date", creationDate.toISOString());
+        formData.append("priority", priority);
+
+        if (deliveryDate) {
+          formData.append("delivery_date", deliveryDate.toISOString());
         }
-      });
 
-      await dispatch(updateQuotation({ id, data: formData }));
+        formData.append("order_terms", values.orderTerms || "");
+        formData.append("discount", values.discount);
+        formData.append("additional_charges", values.additionalCharges);
+        formData.append("gst_rate", values.gstRate);
+        formData.append("sub_total", totals.subTotal);
+        formData.append("grand_total", totals.grandTotal);
+        formData.append("is_draft", isDraft ? 1 : 0);
 
-      successMessage(
-        `Quote ${isDraft ? "saved as draft" : "updated"} successfully!`
-      );
-      navigate("/customer/quote");
-    } catch (error) {
-      console.error("Update quote failed:", error);
-      errorMessage("Failed to update quote");
-    } finally {
-      setSavingDraft(false);
-      setSavingFinal(false);
-    }
-  };
+        // ✅ Loop over items properly (no need for index += 1)
+        items.forEach((item, index) => {
+          formData.append(`items[${index}][id]`, item.id);
+          formData.append(`items[${index}][group]`, item.group);
+          formData.append(`items[${index}][product_id]`, item.product_id);
+          formData.append(`items[${index}][name]`, item.name);
+          formData.append(`items[${index}][model]`, item.model);
+          formData.append(`items[${index}][unique_code]`, item.unique_code);
+          formData.append(`items[${index}][qty]`, item.qty);
+          formData.append(`items[${index}][size]`, item.size);
+          formData.append(`items[${index}][cost]`, item.cost);
+          formData.append(`items[${index}][unitPrice]`, item.unitPrice);
+          formData.append(`items[${index}][narration]`, item.narration || "");
+
+          if (item.documentFile) {
+            formData.append(`items[${index}][document]`, item.documentFile);
+          }
+        });
+
+        // ✅ Properly log FormData contents for debugging
+        console.group("FormData contents:");
+        for (const [key, value] of formData.entries()) {
+          console.log(key, value);
+        }
+        console.groupEnd();
+
+        const result = await dispatch(updateQuotation({ id, formData }));
+
+        if (!result.error) {
+          successMessage(
+            `Quote ${isDraft ? "saved as draft" : "updated"} successfully!`
+          );
+          navigate("/customer/quote");
+        }
+      } catch (error) {
+        console.error("Update quote failed:", error);
+        errorMessage("Failed to update quote");
+      } finally {
+        setSavingDraft(false);
+        setSavingFinal(false);
+      }
+    },
+    [
+      selectedCustomer,
+      items,
+      calculateTotals,
+      creationDate,
+      deliveryDate,
+      priority,
+      dispatch,
+      id,
+      navigate,
+    ]
+  );
 
   const isLoading =
     quotationLoading || customersLoading || productsLoading || gstsLoading;
@@ -585,16 +663,27 @@ const EditQuote = () => {
                         mt: 3,
                       }}
                     >
-                      <TextField
-                        label="Group"
-                        variant="outlined"
-                        size="small"
-                        name="group"
+                      <Autocomplete
+                        freeSolo
+                        options={groupList}
                         value={values.group}
-                        onChange={handleChange}
-                        error={touched.group && Boolean(errors.group)}
-                        helperText={touched.group && errors.group}
-                        sx={{ minWidth: 150 }}
+                        onChange={(e, value) => {
+                          setFieldValue("group", value || "");
+                        }}
+                        onInputChange={(e, value) => {
+                          setFieldValue("group", value || "");
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Group"
+                            variant="outlined"
+                            size="small"
+                            error={touched.group && Boolean(errors.group)}
+                            helperText={touched.group && errors.group}
+                            sx={{ minWidth: 150 }}
+                          />
+                        )}
                       />
 
                       <Autocomplete
@@ -747,11 +836,6 @@ const EditQuote = () => {
                                         gap: 1,
                                       }}
                                     >
-                                      {/* <Avatar
-                                        variant="rounded"
-                                        sx={{ width: 30, height: 30, fontSize: 16 }}
-                                        src={item.document}
-                                      /> */}
                                       <ImagePreviewDialog
                                         imageUrl={item.document}
                                         alt={item.documentName || "Document"}

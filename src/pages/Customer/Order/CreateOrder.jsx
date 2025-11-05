@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useActionState } from "react";
+import React, { useState, useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import {
   Button,
@@ -14,103 +14,95 @@ import {
   CardContent,
   Stack,
   Box,
-  TextareaAutosize
+  TextField
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { RiDeleteBinLine } from "react-icons/ri";
-import { Autocomplete, TextField } from '@mui/material';
+import { Autocomplete } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { fetchOrder, deleteOrder } from "../slice/orderSlice";
+import { fetchOrder, deleteOrder, fetchSupervisor } from "../slice/orderSlice";
 import { useDispatch, useSelector } from "react-redux";
 
-
 const CreateOrder = () => {
-
   const [creationDate, setCreationDate] = useState(null);
   const [eddDate, setEddDate] = useState(null);
-
   const [openDelete, setOpenDelete] = useState(false);
+  const [openProductionModal, setOpenProductionModal] = useState(false);
+  const [observeId, setObserveId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
 
   const { data = [], loading } = useSelector((state) => state.order);
+  const { user = [] } = useSelector((state) => state.order);
 
   useEffect(() => {
     const params = {
-      pageIndex: 0,   // starting page index
-      pageLimit: 10,  // items per page
+      pageIndex: 0,
+      pageLimit: 10,
     };
-
     dispatch(fetchOrder(params));
+    dispatch(fetchSupervisor());
   }, [dispatch]);
 
-  console.log(data);
+  // Parse product_ids from the order data
+  const [itemRowData, setItemRowData] = useState(null);
+  const [items, setItems] = useState([]);
 
-  const [items, setItems] = useState([
-  {
-    id: 1,
-    name: "Item A",
-    code: "ITM-001",
-    qty: 10,
-    size: "10x20x40",
-    document: "https://placehold.co/400",
-    grade: "A",
-    priority: 1,
-    startDate: "2025-10-01",
-    endDate: "2025-10-10",
-  },
-  {
-    id: 2,
-    name: "Item B",
-    code: "ITM-002",
-    qty: 25,
-    size: "12x24x36",
-    document: "https://placehold.co/400",
-    grade: "B",
-    priority: 2,
-    startDate: "2025-10-05",
-    endDate: "2025-10-15",
-  },
-  {
-    id: 3,
-    name: "Item C",
-    code: "ITM-003",
-    qty: 15,
-    size: "8x18x30",
-    document: "https://placehold.co/400",
-    grade: "C",
-    priority: 3,
-    startDate: "2025-10-07",
-    endDate: "2025-10-17",
-  },
-  {
-    id: 4,
-    name: "Item D",
-    code: "ITM-004",
-    qty: 40,
-    size: "20x40x60",
-    document: "https://placehold.co/400",
-    grade: "A",
-    priority: 4,
-    startDate: "2025-10-10",
-    endDate: "2025-10-20",
-  },
-]);
+  const handleSelectedQuote = (row) => {
+    setItemRowData(row);
+  };
 
+  useEffect(() => {
+    if (itemRowData) {
+      try {
+        const products = JSON.parse(itemRowData.product_ids);
+        const parsedItems = products.map((product, index) => ({
+          ...product,
+          production_qty: "",
+          start_date: null,
+          end_date: null,
+          rowId: index,
+        }));
+        setItems(parsedItems);
+      } catch (error) {
+        console.error("Error parsing product_ids:", error);
+      }
+    }
+  }, [itemRowData]);
 
-const quoteList = data;
-const itemCode = [
-  { id: 1, label: 'Item_001' },
-  { id: 2, label: 'Item_002' },
-  { id: 3, label: 'Item_003' },
-];
-const itemquantity = [
-  { id: 1, label: '1' },
-  { id: 2, label: '2' },
-  { id: 3, label: '3' },
-];
+  const handleProductionQtyChange = (rowId, value) => {
+    setItems(items.map(item =>
+      item.rowId === rowId ? { ...item, production_qty: value } : item
+    ));
+  };
+
+  const handleStartDateChange = (rowId, value) => {
+    setItems(items.map(item =>
+      item.rowId === rowId ? { ...item, start_date: value } : item
+    ));
+  };
+
+  const handleEndDateChange = (rowId, value) => {
+    setItems(items.map(item =>
+      item.rowId === rowId ? { ...item, end_date: value } : item
+    ));
+  };
+
+  const handleAddToProduction = () => {
+    setOpenProductionModal(true);
+  };
+
+  const handleSubmitProduction = () => {
+    // Handle production submission with observeId
+    console.log("Observe ID:", observeId);
+    console.log("Items:", items);
+    setOpenProductionModal(false);
+  };
+
+  const quoteList = data;
+
   return (
     <>
       <Grid
@@ -124,6 +116,7 @@ const itemquantity = [
           <Typography variant="h6">Create Order</Typography>
         </Grid>
       </Grid>
+
       <Grid
         container
         spacing={1}
@@ -141,32 +134,53 @@ const itemquantity = [
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     gap: 2,
-                    flexWrap: 'wrap', // optional for responsiveness
+                    flexWrap: 'wrap',
                   }}
                 >
-                  {/* Left: Vendor */}
                   <Autocomplete
                     options={quoteList}
                     size="small"
-                    getOptionLabel={(option) => option.id}
+                    getOptionLabel={(option) => `Quote ${option.id}`}
+                    loading={loading}
+                    onChange={(event, option) => handleSelectedQuote(option)}
                     renderInput={(params) => (
                       <TextField
                         {...params}
                         label="Select Quote"
                         variant="outlined"
-                        sx={{ width: 300, height: 40 }}
+                        sx={{ width: 300 }}
                       />
                     )}
                     sx={{ width: 300 }}
                   />
 
-                  {/* Right: Date inputs */}
+                  <Autocomplete
+                    options={user || []}
+                    size="small"
+                    getOptionLabel={(option) => option?.name || ""}
+                    loading={loading}
+                    value={user.find((u) => u.id === observeId) || null}
+                    onChange={(event, newValue) => {
+                      setObserveId(newValue ? newValue.id : null);
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Select Supervisor"
+                        variant="outlined"
+                        sx={{ width: 300 }}
+                      />
+                    )}
+                    sx={{ width: 300 }}
+                  />
+
                   <LocalizationProvider dateAdapter={AdapterDateFns}>
                     <Box sx={{ display: 'flex', gap: 2 }}>
                       <DatePicker
                         label="Project Start Date"
                         value={creationDate}
                         onChange={(newValue) => setCreationDate(newValue)}
+                        disablePast
                         slotProps={{
                           textField: {
                             size: 'small',
@@ -174,10 +188,12 @@ const itemquantity = [
                           },
                         }}
                       />
+
                       <DatePicker
                         label="EDD"
                         value={eddDate}
                         onChange={(newValue) => setEddDate(newValue)}
+                        disablePast
                         slotProps={{
                           textField: {
                             size: 'small',
@@ -189,185 +205,141 @@ const itemquantity = [
                   </LocalizationProvider>
                 </Box>
               </Grid>
-              <Grid size={{ xs: 12, md: 3 }} sx={{pt:2}}>
-                <Typography variant="p">
-                  TECHIE SQUAD PRIVATE LIMITED
-                  <br />
-                  CIN: U72900BR2019PTC042431
-                  <br />
-                  RK NIWAS, GOLA ROAD MOR, BAILEY ROAD
-                  <br />
-                  DANAPUR, PATNA-801503, BIHAR, INDIA
-                  <br />
-                  GSTIN: 10AAHCT3899A1ZI
-                </Typography>
+
+              <Grid size={{ xs: 12, md: 3 }} sx={{ pt: 2 }}>
+                {itemRowData?.customer && (
+                  <Typography variant="body2">
+                    <strong>{itemRowData?.customer.name}</strong>
+                    <br />
+                    {itemRowData?.customer.address}
+                    <br />
+                    {itemRowData?.customer?.city}, {itemRowData?.customer?.state?.name} {itemRowData?.customer?.zip_code}
+                    <br />
+                  </Typography>
+                )}
+
               </Grid>
-              <Grid size={12} sx={{pt:2}}>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Autocomplete
-                    options={itemCode}
-                    size="small"
-                    getOptionLabel={(option) => option.label}
-                    renderInput={(params) => (
-                      <TextField {...params} label="Item Code" variant="outlined" />
-                    )}
-                    sx={{ width: 300 }}
-                  />
-                  <Autocomplete
-                    options={itemquantity}
-                    size="small"
-                    getOptionLabel={(option) => option.label}
-                    renderInput={(params) => (
-                      <TextField {...params} label="Qty" variant="outlined" />
-                    )}
-                    sx={{ width: 300 }}
-                  />
-                  <Button variant="contained" color="primary" sx={{mt:0}}> Add</Button>
-                </Box>
-              </Grid>
-              <Grid size={12} sx={{ mt: 3 }}>
-                <Table>
-                  <Thead>
-                    <Tr>
-                      <Th>Item Name</Th>
-                      <Th>Item Code</Th>
-                      <Th>Qty</Th>
-                      <Th>Size</Th>
-                      <Th>Document</Th>
-                      <Th>Grade</Th>
-                      <Th>Priority</Th>
-                      <Th>Start Date</Th>
-                      <Th>End Date</Th>
-                      <Th>Action</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                      {items.map((item) => (
-                        <Tr key={item.id}>
-                          <Td>{item.name}</Td>
-                          <Td>{item.code}</Td>
-                          <Td>{item.qty}</Td>
-                          <Td>{item.size}</Td>
-                          <Td>
-                            <img
-                              src={item.document}
-                              // alt={row.original.name}
-                              style={{
-                                  width: "40px",
-                                  height: "40px",
-                                  objectFit: "cover",
-                                  borderRadius: "4px",
-                                  border: "1px solid #ddd",
-                              }}
-                            />
-                          </Td>
-                          <Td>{item.grade}</Td>
-                          <Td>{item.priority}</Td>
-                          <Td>{item.startDate}</Td>
-                          <Td>{item.endDate}</Td>
-                          <Td>
-                            <Tooltip title="Delete">
-                              <IconButton
-                                color="error"
-                                onClick={() => setOpenDelete(true)}
-                              >
-                                <RiDeleteBinLine size={16} />
-                              </IconButton>
-                            </Tooltip>
-                          </Td>
+              {items.length > 0 && (
+                <Grid size={12} sx={{ mt: 3 }}>
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <Table>
+                      <Thead>
+                        <Tr>
+                          <Th>Group</Th>
+                          <Th>Product Name</Th>
+                          <Th>Model</Th>
+                          <Th>Unique Code</Th>
+                          <Th>Qty</Th>
+                          <Th>Production Qty</Th>
+                          <Th>Size</Th>
+                          <Th>Document</Th>
+                          <Th>Start Date</Th>
+                          <Th>End Date</Th>
+                          <Th>Action</Th>
                         </Tr>
-                      ))}
-                    </Tbody>
-                </Table>
-              </Grid>
-              <Grid size={12} sx={{ mt: 3 }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    // alignItems: 'center',
-                    justifyContent: 'space-between',
-                    width: '100%',
-                    gap: 2 // Adds spacing between both textareas
-                  }}
-                >
-                  <TextareaAutosize
-                    aria-label="minimum height"
-                    minRows={3}
-                    placeholder="Order Terms"
-                    style={{ width: '50%', padding: '8px' }}
-                  />
-                  <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1,
-                    width: '20%',
-                  }}
-                >
-                  <Box
-                    className="fs-15"
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      borderBottom: '1px solid #ccc', // Add bottom border
-                      pb: 0.5, // Add small padding for spacing
-                    }}
-                  >
-                    <span>Sub Total</span>
-                    <span>8000</span>
-                  </Box>
+                      </Thead>
+                      <Tbody>
+                        {items.map((item) => (
+                          <Tr key={item.rowId}>
+                            <Td>{item.group}</Td>
+                            <Td>{item.name}</Td>
+                            <Td>{item.model}</Td>
+                            <Td>{item.unique_code}</Td>
+                            <Td>{item.qty}</Td>
+                            <Td>
+                              <TextField
+                                size="small"
+                                type="number"
+                                value={item.production_qty || 0}
+                                onChange={(e) => handleProductionQtyChange(item.rowId, e.target.value)}
+                                sx={{ width: 100 }}
+                                inputProps={{ min: 0, max: item.qty }}
+                              />
+                            </Td>
+                            <Td>{item.size}</Td>
+                            <Td>
+                              {item.document && (
+                                <img
+                                  src={item.document}
+                                  alt={item.name}
+                                  style={{
+                                    width: "40px",
+                                    height: "40px",
+                                    objectFit: "cover",
+                                    borderRadius: "4px",
+                                    border: "1px solid #ddd",
+                                  }}
+                                />
+                              )}
+                            </Td>
+                            <Td>
+                              <DatePicker
+                                value={item.start_date}
+                                onChange={(newValue) => handleStartDateChange(item.rowId, newValue)}
+                                disablePast
+                                slotProps={{
+                                  textField: {
+                                    size: 'small',
+                                    sx: { width: 150 },
+                                  },
+                                }}
+                              />
+                            </Td>
+                            <Td>
+                              <DatePicker
+                                value={item.end_date}
+                                onChange={(newValue) => handleEndDateChange(item.rowId, newValue)}
+                                disablePast
+                                slotProps={{
+                                  textField: {
+                                    size: 'small',
+                                    sx: { width: 150 },
+                                  },
+                                }}
+                              />
+                            </Td>
+                            <Td>
+                              <Tooltip title="Delete">
+                                <IconButton
+                                  color="error"
+                                  onClick={() => setOpenDelete(true)}
+                                >
+                                  <RiDeleteBinLine size={16} />
+                                </IconButton>
+                              </Tooltip>
+                            </Td>
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  </LocalizationProvider>
+                </Grid>
+              )}
 
-                  <Box className="fs-15" sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Discount</span>
-                    <span>1000</span>
-                  </Box>
 
-                  <Box className="fs-15" sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Additional Charges</span>
-                    <span>2000</span>
-                  </Box>
-
-                  <Box className="fs-15" sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>GST (18%)</span>
-                    <span>800</span>
-                  </Box>
-
-                  <Box
-                    className="fs-15"
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      borderTop: '1px solid #222', // Add separator for total if desired
-                      mt: 1,
-                      pt: 0.5,
-                      fontWeight: '600',
-                    }}
-                  >
-                    <span>Grand Total</span>
-                    <span>10000</span>
-                  </Box>
-                </Box>
-
-                </Box>
-              </Grid>
               <Grid size={12} sx={{ mt: 4 }}>
                 <Stack
-                    direction="row"
-                    spacing={2}
-                    sx={{
-                        justifyContent: "flex-end",
-                        alignItems: "flex-end",
-                    }}
+                  direction="row"
+                  spacing={2}
+                  sx={{
+                    justifyContent: "flex-end",
+                    alignItems: "flex-end",
+                  }}
                 >
-                    <Button variant="contained" color="secondary">Save as Draft </Button>
-                    <Button variant="contained" color="primary"> Save</Button>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleAddToProduction}
+                  >
+                    Add to Production
+                  </Button>
                 </Stack>
               </Grid>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
-      
+
       {/* Delete Modal */}
       <Dialog maxWidth="xs" fullWidth open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>Confirm Delete</DialogTitle>
@@ -378,6 +350,32 @@ const itemquantity = [
           <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
           <Button variant="contained" color="error" onClick={() => setOpenDelete(false)}>
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add to Production Modal */}
+      <Dialog maxWidth="sm" fullWidth open={openProductionModal} onClose={() => setOpenProductionModal(false)}>
+        <DialogTitle>Add to Production</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <TextField
+              fullWidth
+              label="Observe ID"
+              value={observeId}
+              onChange={(e) => setObserveId(e.target.value)}
+              variant="outlined"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenProductionModal(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSubmitProduction}
+          >
+            Submit
           </Button>
         </DialogActions>
       </Dialog>

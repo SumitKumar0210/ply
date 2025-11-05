@@ -84,7 +84,7 @@ const itemValidationSchema = Yup.object({
     .positive("Quantity must be positive")
     .integer("Quantity must be a whole number"),
   narration: Yup.string(),
-  document: Yup.mixed(),
+  // document: Yup.mixed(),
 });
 
 const customerValidationSchema = Yup.object({
@@ -111,9 +111,9 @@ const customerValidationSchema = Yup.object({
 });
 
 const quoteValidationSchema = Yup.object({
-  orderTerms: Yup.string().max(500, "Order terms cannot exceed 500 characters"),
-  discount: Yup.number().min(0, "Discount cannot be negative"),
-  additionalCharges: Yup.number().min(0, "Additional charges cannot be negative"),
+  orderTerms: Yup.string().max(500, "Order terms can not exceed 500 characters"),
+  discount: Yup.number().min(0, "Discount can not be negative"),
+  additionalCharges: Yup.number().min(0, "Additional charges can not be negative"),
   gstRate: Yup.number().required("GST rate is required"),
 });
 
@@ -231,7 +231,7 @@ const CreateQuote = () => {
       cost: parseFloat(product.rrp) * parseInt(quantity, 10),
       unitPrice: parseFloat(product.rrp),
       narration,
-      documentFile: document || null,
+      documentFile: document || "-",
       document: document ? document.name : "",
     };
     setGroupList(prev => [...prev, group]);

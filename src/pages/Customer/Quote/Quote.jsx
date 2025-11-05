@@ -19,11 +19,12 @@ import { styled } from "@mui/material/styles";
 import { Link } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
+import { AiOutlineLink } from "react-icons/ai";
 import { RiDeleteBinLine } from "react-icons/ri";
 import AddIcon from "@mui/icons-material/Add";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { useNavigate } from 'react-router-dom';
-
+import { TextField } from "@mui/material";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -89,45 +90,48 @@ const getStatusChip = (status) => {
 
 const Quote = () => {
   const [openDelete, setOpenDelete] = useState(false);
+  const [openGenerate, setOpenGenerate] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
+    const [expiryDays, setExpiryDays] = useState(1);
+
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
-  
+
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
+
   const { data: tableData = [], loading, error, totalRecords = 0 } = useSelector((state) => state.quotation);
 
   useEffect(() => {
-    dispatch(fetchQuotation({ 
-      pageIndex: pagination.pageIndex, 
-      pageLimit: pagination.pageSize 
+    dispatch(fetchQuotation({
+      pageIndex: pagination.pageIndex,
+      pageLimit: pagination.pageSize
     }));
   }, [dispatch, pagination.pageIndex, pagination.pageSize]);
 
   const handleViewClick = (id) => {
     navigate('/customer/quote/view/' + id);
   };
-  
+
   const handleEditClick = (id) => {
     navigate('/customer/quote/edit/' + id);
   };
-  
+
   const handlDelete = (row) => {
     setDeleteRow(row);
     setOpenDelete(true);
   };
 
-  const deleteData = async(id) => {
+  const deleteData = async (id) => {
     await dispatch(deleteQuotation(id));
     setOpenDelete(false);
     // Refresh data after deletion
-    dispatch(fetchQuotation({ 
-      pageIndex: pagination.pageIndex, 
-      pageLimit: pagination.pageSize 
+    dispatch(fetchQuotation({
+      pageIndex: pagination.pageIndex,
+      pageLimit: pagination.pageSize
     }));
   };
 
@@ -140,25 +144,33 @@ const Quote = () => {
     return `${day}-${month}-${year}`;
   };
 
-  const handleIQtyCount = (items) => {
+  const handleItemCount = (items) => {
     try {
-      const parsed = JSON.parse(items); 
+      const parsed = JSON.parse(items);
       if (!Array.isArray(parsed)) return 0;
-      return parsed.reduce((total, item) => total + Number(item.qty || 0), 0);
+      return parsed.length ?? 0;
     } catch (e) {
       console.error("Invalid product_ids format:", e);
       return 0;
     }
   };
 
+  const handleGenerateableId = (row) => {
+setOpenGenerate(true);
+  }
+
+  const handleExpirySubmit = () => {
+    
+  }
+
   //  Table columns
   const columns = useMemo(
     () => [
-      { accessorKey: "quoteNumber", header: "Quote No.", Cell: ({row}) => row.original?.quote_number ?? '' },
-      { accessorKey: "customerName", header: "Customer Name", Cell: ({row}) => row.original?.customer?.name ?? '' },
-      { accessorKey: "dated", header: "Dated",  Cell: ({row}) => handleDateFormate(row.original.created_at) },
-      { accessorKey: "quoteTotal", header: "Quote Total", Cell: ({row}) => row.original?.grand_total ? parseInt(row.original?.grand_total) : ''  },
-      { accessorKey: "totalItems", header: "Total Items", Cell: ({row}) => handleIQtyCount(row.original?.product_ids) },
+      { accessorKey: "quoteNumber", header: "Quote No.", Cell: ({ row }) => row.original?.quote_number ?? '' },
+      { accessorKey: "customerName", header: "Customer Name", Cell: ({ row }) => row.original?.customer?.name ?? '' },
+      { accessorKey: "date", header: "Date", Cell: ({ row }) => handleDateFormate(row.original.created_at) },
+      { accessorKey: "quoteTotal", header: "Quote Total", Cell: ({ row }) => row.original?.grand_total ? '₹ ' + parseInt(row.original?.grand_total) : '' },
+      { accessorKey: "totalItems", header: "Total Items", Cell: ({ row }) => handleItemCount(row.original?.product_ids) },
       {
         accessorKey: "status",
         header: "Status",
@@ -174,6 +186,14 @@ const Quote = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            <Tooltip title="Generate Public Link">
+              <IconButton
+                color="success"
+                onClick={() => handleGenerateableId(row.original)}
+              >
+                <AiOutlineLink size={16} />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="View">
               <IconButton
                 color="warning"
@@ -282,7 +302,7 @@ const Quote = () => {
             data={tableData}
             manualPagination
             rowCount={totalRecords}
-            state={{ 
+            state={{
               isLoading: loading,
               pagination: pagination,
             }}
@@ -347,7 +367,7 @@ const Quote = () => {
           />
         </Paper>
       </Grid>
-      
+
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>{"Delete this purchase order?"}</DialogTitle>
@@ -364,6 +384,52 @@ const Quote = () => {
           >
             Delete
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal */}
+      <Dialog open={openGenerate} onClose={() => setOpenGenerate(false)}>
+        <DialogTitle>Generate Public Link</DialogTitle>
+        <DialogContent sx={{ minWidth: 350 }}>
+          {!openGenerate ? (
+            <Typography sx={{ mt: 2 }}>
+              ✅ Link generated successfully:
+              <br />
+              <a
+                href={openGenerate}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {openGenerate}
+              </a>
+            </Typography>
+          ) : (
+            <TextField
+              label="Expiry (in days)"
+              type="number"
+              size="small"
+              fullWidth
+              margin="normal"
+              value={expiryDays}
+              onChange={(e) => setExpiryDays(e.target.value)}
+            />
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => setOpenGenerate(false)} color="error">
+            Close
+          </Button>
+          {openGenerate && (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={handleExpirySubmit}
+              disabled={loading}
+            >
+              {loading ? "Generating..." : "Generate"}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </>
