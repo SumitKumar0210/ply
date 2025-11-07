@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { debounce } from "lodash";
 import {
   Typography,
   Grid,
@@ -24,21 +25,19 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
-import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 
-import {
-  fetchActiveGroup,
-} from "../slices/groupSlice";
+import { fetchActiveGroup } from "../slices/groupSlice";
 import {
   addCategory,
   fetchCategories,
   statusUpdate,
   deleteCategory,
   updateCategory,
+  sequenceUpdate,
 } from "../slices/categorySlice";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -47,80 +46,174 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogActions-root": { padding: theme.spacing(1) },
 }));
 
+// Validation schemas (defined outside component for performance)
+const addValidationSchema = Yup.object({
+  name: Yup.string()
+    .min(2, "Category must be at least 2 characters")
+    .required("Category is required"),
+  group_id: Yup.string().required("Group is required"),
+});
+
+const editValidationSchema = Yup.object({
+  name: Yup.string().required("Category is required"),
+  group_id: Yup.string().required("Group is required"),
+});
+
 const Category = () => {
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
 
-  // redux state
-  const { data: data = []} = useSelector((state) => state.category);
+  // Redux state
+  const { data = [], loading } = useSelector((state) => state.category);
   const { data: groups = [] } = useSelector((state) => state.group);
 
-  // modal states
+  // Modal states
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [editData, setEditData] = useState(null);
 
-  // fetch initial data
+  // Local state for sequence inputs
+  const [sequenceValues, setSequenceValues] = useState({});
+
+  // Fetch initial data
   useEffect(() => {
     dispatch(fetchCategories());
   }, [dispatch]);
 
-  // fetch initial data
+  // Initialize sequence values when data loads
   useEffect(() => {
-    dispatch(fetchActiveGroup());
-  }, [openAdd, openEdit]);
+    if (data.length > 0) {
+      const initialSequences = {};
+      data.forEach((item) => {
+        initialSequences[item.id] = item.sequence || "";
+      });
+      setSequenceValues(initialSequences);
+    }
+  }, [data]);
 
-  // open modals
-  const handleOpenAdd = () => setOpenAdd(true);
-  const handleCloseAdd = () => setOpenAdd(false);
+  // Fetch groups when modals open
+  useEffect(() => {
+    if (openAdd || openEdit) {
+      dispatch(fetchActiveGroup());
+    }
+  }, [openAdd, openEdit, dispatch]);
 
-  const handleOpenEdit = (row) => {
+  // Modal handlers
+  const handleOpenAdd = useCallback(() => setOpenAdd(true), []);
+  const handleCloseAdd = useCallback(() => setOpenAdd(false), []);
+
+  const handleOpenEdit = useCallback((row) => {
     setEditData(row);
     setOpenEdit(true);
-  };
-  const handleCloseEdit = () => {
+  }, []);
+
+  const handleCloseEdit = useCallback(() => {
     setEditData(null);
     setOpenEdit(false);
-  };
+  }, []);
 
-  // add
-  const handleAddSubmit = async (values, { resetForm }) => {
-    const payload = {
-      name: values.name,
-      group_id: Number(values.group_id),
-    };
-    const res = await dispatch(addCategory(payload));
-    if (res.error) return ; 
-    resetForm();
-    handleCloseAdd();
-  };
-
-  // update
-  const handleEditSubmit = async (values, { resetForm }) => {
-    const payload = {
-      id: editData.id,
-      name: values.name,
-      group_id: Number(values.group_id),
-    };
-    try{
-      const res = await dispatch(updateCategory(payload));
-      if (res.error) {
-      console.log("Update failed:", res.payload);
-        return;
+  // Add category
+  const handleAddSubmit = useCallback(
+    async (values, { resetForm, setSubmitting }) => {
+      try {
+        const payload = {
+          name: values.name,
+          group_id: Number(values.group_id),
+        };
+        const res = await dispatch(addCategory(payload));
+        if (res.error) return;
+        resetForm();
+        handleCloseAdd();
+      } catch (error) {
+        console.error("Add category error:", error);
+      } finally {
+        setSubmitting(false);
       }
-      resetForm();
-      handleCloseEdit();
-    }catch(error){
+    },
+    [dispatch, handleCloseAdd]
+  );
 
-    }
-  };
+  // Update category
+  const handleEditSubmit = useCallback(
+    async (values, { resetForm, setSubmitting }) => {
+      try {
+        const payload = {
+          id: editData.id,
+          name: values.name,
+          group_id: Number(values.group_id),
+        };
+        const res = await dispatch(updateCategory(payload));
+        if (res.error) {
+          console.error("Update failed:", res.payload);
+          return;
+        }
+        resetForm();
+        handleCloseEdit();
+      } catch (error) {
+        console.error("Update error:", error);
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [dispatch, editData, handleCloseEdit]
+  );
 
-  // delete
-  const handleDelete = (id) => {
-    dispatch(deleteCategory(id));
-  };
+  // Update sequence - debounced API call
+  const debouncedSequenceUpdate = useMemo(
+    () =>
+      debounce((id, value) => {
+        if (!value || isNaN(value)) return;
+        const params = {
+          id: id,
+          sequence: Number(value),
+        };
+        dispatch(sequenceUpdate(params));
+      }, 2000),
+    [dispatch]
+  );
 
-  // columns
+  // Handle sequence input change
+  const handleSequenceChange = useCallback(
+    (id, value) => {
+      // Update local state immediately for instant UI feedback
+      setSequenceValues((prev) => ({
+        ...prev,
+        [id]: value,
+      }));
+
+      // Debounce the API call
+      debouncedSequenceUpdate(id, value);
+    },
+    [debouncedSequenceUpdate]
+  );
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSequenceUpdate.cancel();
+    };
+  }, [debouncedSequenceUpdate]);
+
+  // Delete category
+  const handleDelete = useCallback(
+    (id) => {
+      if (window.confirm("Are you sure you want to delete this category?")) {
+        dispatch(deleteCategory(id));
+      }
+    },
+    [dispatch]
+  );
+
+  // Handle status change
+  const handleStatusChange = useCallback(
+    (row, checked) => {
+      const newStatus = checked ? 1 : 0;
+      dispatch(statusUpdate({ ...row, status: newStatus }));
+    },
+    [dispatch]
+  );
+
+  // Columns definition
   const columns = useMemo(
     () => [
       {
@@ -133,15 +226,26 @@ const Category = () => {
         Cell: ({ row }) => row.original.group?.name || "—",
       },
       {
+        accessorKey: "sequence",
+        header: "Sequence",
+        Cell: ({ row }) => (
+          <TextField
+            type="number"
+            size="small"
+            value={sequenceValues[row.original.id] ?? row.original.sequence ?? ""}
+            onChange={(e) => handleSequenceChange(row.original.id, e.target.value)}
+            inputProps={{ min: 0 }}
+            sx={{ width: 80 }}
+          />
+        ),
+      },
+      {
         accessorKey: "status",
         header: "Status",
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
+            onChange={(e) => handleStatusChange(row.original, e.target.checked)}
           />
         ),
       },
@@ -168,19 +272,24 @@ const Category = () => {
         ),
       },
     ],
-    [dispatch]
+    [handleSequenceChange, handleStatusChange, handleOpenEdit, handleDelete, sequenceValues]
   );
 
   // CSV export
-  const downloadCSV = () => {
+  const downloadCSV = useCallback(() => {
     const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
     const rows = data.map((row) =>
       columns
         .filter((c) => c.accessorKey)
         .map((c) => {
-          const val = c.accessorKey.includes(".")
-            ? c.accessorKey.split(".").reduce((acc, k) => acc?.[k], row)
-            : row[c.accessorKey];
+          let val;
+          if (c.accessorKey === "group") {
+            val = row.group?.name || "";
+          } else if (c.accessorKey.includes(".")) {
+            val = c.accessorKey.split(".").reduce((acc, k) => acc?.[k], row);
+          } else {
+            val = row[c.accessorKey];
+          }
           return `"${val ?? ""}"`;
         })
         .join(",")
@@ -191,15 +300,16 @@ const Category = () => {
 
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "categories.csv");
+    link.setAttribute("download", `categories_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+    URL.revokeObjectURL(url);
+  }, [columns, data]);
 
   return (
     <Grid container spacing={2}>
-      <Grid size={12}>
+            <Grid size={12}>
         <Paper
           elevation={0}
           sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
@@ -209,6 +319,7 @@ const Category = () => {
             columns={columns}
             data={data}
             getRowId={(row) => row.id}
+            state={{ isLoading: loading }}
             enableTopToolbar
             enableGlobalFilter
             enableColumnFilters
@@ -266,15 +377,10 @@ const Category = () => {
         </DialogTitle>
         <Formik
           initialValues={{ name: "", group_id: "" }}
-          validationSchema={Yup.object({
-            name: Yup.string()
-            .min(2, "Category must be at least 2 characters")
-            .required("Category is required"),
-            group_id: Yup.string().required("Group is required"),
-          })}
+          validationSchema={addValidationSchema}
           onSubmit={handleAddSubmit}
         >
-          {({ values, errors, touched, handleChange }) => (
+          {({ values, errors, touched, handleChange, isSubmitting }) => (
             <Form>
               <DialogContent dividers>
                 <TextField
@@ -287,6 +393,7 @@ const Category = () => {
                   error={touched.name && Boolean(errors.name)}
                   helperText={touched.name && errors.name}
                   sx={{ mb: 3 }}
+                  autoFocus
                 />
                 <TextField
                   select
@@ -307,11 +414,11 @@ const Category = () => {
                 </TextField>
               </DialogContent>
               <DialogActions>
-                <Button onClick={handleCloseAdd} variant="outlined" color="error">
+                <Button onClick={handleCloseAdd} variant="outlined" color="error" disabled={isSubmitting}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained">
-                  Submit
+                <Button type="submit" variant="contained" disabled={isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "Submit"}
                 </Button>
               </DialogActions>
             </Form>
@@ -336,14 +443,11 @@ const Category = () => {
             name: editData?.name || "",
             group_id: editData?.group_id ? String(editData.group_id) : "",
           }}
-          validationSchema={Yup.object({
-            name: Yup.string().required("Category is required"),
-            group_id: Yup.string().required("Group is required"),
-          })}
+          validationSchema={editValidationSchema}
           enableReinitialize
           onSubmit={handleEditSubmit}
         >
-          {({ values, errors, touched, handleChange }) => (
+          {({ values, errors, touched, handleChange, isSubmitting }) => (
             <Form>
               <DialogContent dividers>
                 <TextField
@@ -356,6 +460,7 @@ const Category = () => {
                   error={touched.name && Boolean(errors.name)}
                   helperText={touched.name && errors.name}
                   sx={{ mb: 3 }}
+                  autoFocus
                 />
                 <TextField
                   select
@@ -376,11 +481,11 @@ const Category = () => {
                 </TextField>
               </DialogContent>
               <DialogActions>
-                <Button variant="outlined" color="error" onClick={handleCloseEdit}>
+                <Button variant="outlined" color="error" onClick={handleCloseEdit} disabled={isSubmitting}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained">
-                  Save Changes
+                <Button type="submit" variant="contained" disabled={isSubmitting}>
+                  {isSubmitting ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogActions>
             </Form>

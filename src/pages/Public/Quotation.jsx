@@ -5,33 +5,41 @@ import {
   Typography,
   Card,
   CardContent,
-  TextareaAutosize,
   Box,
   CircularProgress,
-  Avatar,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { useNavigate, useParams } from "react-router-dom";
 import { AiOutlinePrinter } from "react-icons/ai";
 import { useReactToPrint } from "react-to-print";
-import { useDispatch, useSelector } from "react-redux";
-import { editQuotation } from "../slice/quotationSlice";
-import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
+import api from "../../api";
+import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 
-const QuoteDetailsView = () => {
-  const { id } = useParams();
-  const dispatch = useDispatch();
+
+const PublicQuoteDetailsView = () => {
+    console.log('pass')
+  const { link } = useParams();
+  const fullUrl = window.location.href;
   const navigate = useNavigate();
   const contentRef = useRef(null);
 
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
 
+  // State management
   const [items, setItems] = useState([]);
   const [quotationDetails, setQuotationDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [approving, setApproving] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
-  const { selected: quotationData = {}, loading: quotationLoading } =
-    useSelector((state) => state.quotation);
-
+  // Print handler
   const handlePrint = useReactToPrint({
     contentRef,
     documentTitle: `Quote_${quotationDetails?.batch_no || "Invoice"}`,
@@ -49,22 +57,85 @@ const QuoteDetailsView = () => {
     `,
   });
 
-  // Load quotation data
-  useEffect(() => {
-    if (id) {
-      dispatch(editQuotation(id?? 26));
+  // ==================== API CALLS ====================
+
+  // Fetch Quotation Details
+  const fetchQuotationDetails = async (quotationId) => {
+    try {
+      setLoading(false);
+      setError(null);
+
+      const response = await api.post(`get-customer-quotation`, {link:quotationId});
+      console.log(response)
+      setQuotationDetails(response.data);
+      return response.data;
+    } catch (err) {
+      console.error("Error fetching quotation:", err);
+      const errorMessage = err.response?.data?.message || err.message || "Failed to fetch quotation";
+      setError(errorMessage);
+      setSnackbar({
+        open: true,
+        message: `Error: ${errorMessage}`,
+        severity: "error",
+      });
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  }, [dispatch, id]);
+  };
+
+  // Approve Quotation
+  const approveQuotation = async (quotationId) => {
+    try {
+      setApproving(true);
+
+      const response = await api.post(`/quotations/${quotationId}/approve`, {
+        status: "approved",
+        approved_at: new Date().toISOString(),
+      });
+
+      setSnackbar({
+        open: true,
+        message: "Quotation approved successfully!",
+        severity: "success",
+      });
+
+      // Refresh quotation data
+      await fetchQuotationDetails(quotationId);
+      
+      return response.data;
+    } catch (err) {
+      console.error("Error approving quotation:", err);
+      const errorMessage = err.response?.data?.message || err.message || "Failed to approve quotation";
+      setSnackbar({
+        open: true,
+        message: `Error approving: ${errorMessage}`,
+        severity: "error",
+      });
+      throw err;
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  // ==================== END API CALLS ====================
+
+  // Load quotation data on mount
+  useEffect(() => {
+    if (fullUrl) {
+      fetchQuotationDetails(fullUrl);
+    }
+  }, [fullUrl]);
 
   // Parse and set quotation data
   useEffect(() => {
-    if (quotationData && quotationData.id) {
+    if (quotationDetails && quotationDetails.id) {
       try {
         // Parse product_ids JSON string
         let parsedItems = [];
-        if (quotationData.product_ids) {
+        if (quotationDetails.product_ids) {
           try {
-            parsedItems = JSON.parse(quotationData.product_ids);
+            parsedItems = JSON.parse(quotationDetails.product_ids);
           } catch (e) {
             console.error("Error parsing product_ids:", e);
           }
@@ -88,12 +159,12 @@ const QuoteDetailsView = () => {
         }));
 
         setItems(formattedItems);
-        setQuotationDetails(quotationData);
       } catch (error) {
         console.error("Error parsing quotation data:", error);
+        setError("Error processing quotation data");
       }
     }
-  }, [quotationData]);
+  }, [quotationDetails]);
 
   const uniqueAreas = [...new Set(items.map((item) => item.group))];
 
@@ -119,8 +190,20 @@ const QuoteDetailsView = () => {
   const gstAmount = (afterDiscount * gstRate) / 100;
   const grandTotal = afterDiscount + gstAmount;
 
+  // Handle Approve button click
+  const handleApprove = async () => {
+    if (id) {
+      await approveQuotation(id);
+    }
+  };
+
+  // Close snackbar
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   // Show loader while data is loading
-  if (quotationLoading || !quotationDetails) {
+  if (loading || !quotationDetails) {
     return (
       <Box
         sx={{
@@ -131,6 +214,30 @@ const QuoteDetailsView = () => {
         }}
       >
         <CircularProgress size={60} />
+      </Box>
+    );
+  }
+
+  // Show error state
+  if (error && !quotationDetails) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "60vh",
+          gap: 2,
+        }}
+      >
+        <Typography variant="h6" color="error">
+          Error Loading Quotation
+        </Typography>
+        <Typography variant="body2">{error}</Typography>
+        <Button variant="contained" onClick={() => navigate(-1)}>
+          Go Back
+        </Button>
       </Box>
     );
   }
@@ -151,10 +258,17 @@ const QuoteDetailsView = () => {
           <Button
             variant="contained"
             color="success"
-           
-            sx={{ mr: 2 }} 
+            onClick={handleApprove}
+            disabled={approving || quotationDetails?.status === "approved"}
+            sx={{ mr: 2 }}
           >
-            Approve
+            {approving ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : quotationDetails?.status === "approved" ? (
+              "Approved"
+            ) : (
+              "Approve"
+            )}
           </Button>
 
           <Button
@@ -167,6 +281,7 @@ const QuoteDetailsView = () => {
           </Button>
         </Grid>
       </Grid>
+
       <Grid
         container
         spacing={1}
@@ -316,16 +431,6 @@ const QuoteDetailsView = () => {
                                         gap: 1,
                                       }}
                                     >
-                                      {/* <Avatar
-                                        variant="rounded"
-                                        src={item.documents} // ✅ image preview
-                                        alt="document"
-                                        sx={{
-                                          width: 30,
-                                          height: 30,
-                                          fontSize: 16,
-                                        }}
-                                      /> */}
                                       <ImagePreviewDialog
                                         imageUrl={item.documents}
                                         alt={item.documents.split("/").pop()}
@@ -334,8 +439,7 @@ const QuoteDetailsView = () => {
                                         variant="caption"
                                         sx={{ wordBreak: "break-all" }}
                                       >
-                                        {item.documents.split("/").pop()}{" "}
-                                        {/* ✅ shows just filename */}
+                                        {item.documents.split("/").pop()}
                                       </Typography>
                                     </Box>
                                   ) : (
@@ -461,8 +565,24 @@ const QuoteDetailsView = () => {
           </div>
         </Grid>
       </Grid>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   );
 };
 
-export default QuoteDetailsView;
+export default PublicQuoteDetailsView;

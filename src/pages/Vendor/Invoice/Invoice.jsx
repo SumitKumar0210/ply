@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   Button,
   Paper,
@@ -37,7 +43,12 @@ import {
   MRT_GlobalFilterTextField,
 } from "material-react-table";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchVendorInvoices, recordPayment, fetchPaymentRecord, clearPayments } from "../slice/vendorInvoiceSlice";
+import {
+  fetchVendorInvoices,
+  recordPayment,
+  fetchPaymentRecord,
+  clearPayments,
+} from "../slice/vendorInvoiceSlice";
 
 // Validation Schema
 const validationSchema = Yup.object().shape({
@@ -48,7 +59,8 @@ const validationSchema = Yup.object().shape({
     .required("Please enter the amount"),
   referenceNo: Yup.string().when("paymentMode", {
     is: (val) => val === "upi" || val === "cheque",
-    then: (schema) => schema.required("Reference number is required for this payment mode"),
+    then: (schema) =>
+      schema.required("Reference number is required for this payment mode"),
     otherwise: (schema) => schema.notRequired(),
   }),
 });
@@ -62,7 +74,10 @@ const STATUS_CONFIG = {
 
 // Helper Functions
 const getStatusChip = (status) => {
-  const config = STATUS_CONFIG[status] || { label: "Unknown", color: "default" };
+  const config = STATUS_CONFIG[status] || {
+    label: "Unknown",
+    color: "default",
+  };
   return <Chip label={config.label} color={config.color} size="small" />;
 };
 
@@ -79,7 +94,9 @@ const getItemCount = (materialItems) => {
 const formatDate = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
-  return `${String(date.getDate()).padStart(2, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${date.getFullYear()}`;
+  return `${String(date.getDate()).padStart(2, "0")}-${String(
+    date.getMonth() + 1
+  ).padStart(2, "0")}-${date.getFullYear()}`;
 };
 
 const VendorInvoice = () => {
@@ -88,14 +105,36 @@ const VendorInvoice = () => {
   const dispatch = useDispatch();
 
   // Redux State
-  const { data: tableData = [], total: totalRows = 0, loading = false } = useSelector((state) => state.vendorInvoice);
-  const { payments = [], paymentLoading = false } = useSelector((state) => state.vendorInvoice);
+  const {
+    data: tableData = [],
+    total: totalRows = 0,
+    loading = false,
+  } = useSelector((state) => state.vendorInvoice);
+  const { payments = [], paymentLoading = false } = useSelector(
+    (state) => state.vendorInvoice
+  );
 
   // Local State
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [open, setOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [dueAmount, setDueAmount] = useState(null);
+
+  // Calculate display conditions
+  const shouldShowForm = useMemo(() => {
+    // Show form when: due_amount is null (no payments yet) OR due_amount > 0
+    return dueAmount === null || dueAmount > 0;
+  }, [dueAmount]);
+
+  const shouldShowHistory = useMemo(() => {
+    // Show history when: due_amount is NOT null (at least one payment made)
+    return dueAmount !== null;
+  }, [dueAmount]);
+
+  const dialogMaxWidth = useMemo(() => {
+    // If showing both form and history, use 'lg', otherwise 'md'
+    return shouldShowForm && shouldShowHistory ? "lg" : "md";
+  }, [shouldShowForm, shouldShowHistory]);
 
   // Fetch Data
   const fetchData = useCallback(() => {
@@ -125,8 +164,9 @@ const VendorInvoice = () => {
   const handleClose = useCallback(() => {
     setOpen(false);
     setSelectedInvoice(null);
+    setDueAmount(null);
     dispatch(clearPayments());
-  }, []);
+  }, [dispatch]);
 
   // Navigation Handler
   const handleViewClick = useCallback(
@@ -151,7 +191,7 @@ const VendorInvoice = () => {
 
         // Update due amount
         setDueAmount(result?.due_amount);
-        
+
         // Refresh payment records
         await dispatch(fetchPaymentRecord({ id: selectedInvoice?.id }));
 
@@ -159,7 +199,7 @@ const VendorInvoice = () => {
         if (result?.due_amount !== undefined) {
           setSelectedInvoice((prev) => ({
             ...prev,
-            due_amount: result.remaining_due,
+            due_amount: result.due_amount,
             paid_amount: result.total_paid || prev.paid_amount,
           }));
         }
@@ -236,7 +276,11 @@ const VendorInvoice = () => {
               </IconButton>
             </Tooltip>
             <Tooltip title="Make Payment">
-              <IconButton color="success" onClick={() => handleClickOpen(row.original)} size="small">
+              <IconButton
+                color="success"
+                onClick={() => handleClickOpen(row.original)}
+                size="small"
+              >
                 <GrCurrency size={16} />
               </IconButton>
             </Tooltip>
@@ -250,7 +294,15 @@ const VendorInvoice = () => {
   // CSV Export
   const downloadCSV = useCallback(() => {
     try {
-      const headers = ["PO NO.", "Vendor Invoice", "Date", "Vendor Name", "Order Dated", "QC", "Status"];
+      const headers = [
+        "PO NO.",
+        "Vendor Invoice",
+        "Date",
+        "Vendor Name",
+        "Order Dated",
+        "QC",
+        "Status",
+      ];
       const rows = tableData.map((row) => [
         row.purchase_order?.purchase_no || "",
         row.vendor_invoice_no || "",
@@ -263,14 +315,19 @@ const VendorInvoice = () => {
 
       const csvContent = [
         headers.join(","),
-        ...rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
+        ...rows.map((row) =>
+          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+        ),
       ].join("\n");
 
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `VendorInvoices_${new Date().toISOString().split("T")[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `VendorInvoices_${new Date().toISOString().split("T")[0]}.csv`
+      );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -297,12 +354,23 @@ const VendorInvoice = () => {
   return (
     <>
       {/* Header */}
-      <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+      <Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 2 }}
+      >
         <Grid item>
           <Typography variant="h6">Vendor Invoices</Typography>
         </Grid>
         <Grid item>
-          <Button variant="contained" startIcon={<AddIcon />} component={Link} to="/vendor/purchase-order/create">
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            component={Link}
+            to="/vendor/purchase-order/create"
+          >
             Create PO
           </Button>
         </Grid>
@@ -312,7 +380,13 @@ const VendorInvoice = () => {
       <Paper
         elevation={0}
         ref={tableContainerRef}
-        sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff", px: 2, py: 1 }}
+        sx={{
+          width: "100%",
+          overflow: "hidden",
+          backgroundColor: "#fff",
+          px: 2,
+          py: 1,
+        }}
       >
         <MaterialReactTable
           columns={columns}
@@ -331,11 +405,26 @@ const VendorInvoice = () => {
           enableColumnVisibilityToggle={false}
           initialState={{ density: "compact" }}
           muiTableContainerProps={{
-            sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto", minWidth: "1200px" },
+            sx: {
+              width: "100%",
+              backgroundColor: "#fff",
+              overflowX: "auto",
+              minWidth: "1200px",
+            },
           }}
-          muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
+          muiTablePaperProps={{
+            sx: { backgroundColor: "#fff", boxShadow: "none" },
+          }}
           renderTopToolbar={({ table }) => (
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", p: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
+                p: 1,
+              }}
+            >
               <Typography variant="h6" fontWeight={400}>
                 Vendor Invoices/Payments
               </Typography>
@@ -359,12 +448,22 @@ const VendorInvoice = () => {
       </Paper>
 
       {/* Payment Modal */}
-      <Dialog onClose={handleClose} open={open} fullWidth maxWidth={selectedInvoice?.due_amount > 0 || payments == [] ? "lg" : "md"}>
+      <Dialog
+        onClose={handleClose}
+        open={open}
+        fullWidth
+        maxWidth={dialogMaxWidth}
+      >
         <DialogTitle sx={{ m: 0, p: 1.5 }}>Collect Payment</DialogTitle>
         <IconButton
           aria-label="close"
           onClick={handleClose}
-          sx={{ position: "absolute", right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+          sx={{
+            position: "absolute",
+            right: 8,
+            top: 8,
+            color: (theme) => theme.palette.grey[500],
+          }}
         >
           <CloseIcon />
         </IconButton>
@@ -384,164 +483,248 @@ const VendorInvoice = () => {
             <Form>
               <DialogContent dividers>
                 <Grid container spacing={2}>
-                  {/* Payment Form */}
-                  {selectedInvoice?.due_amount > 0 &&(
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-                      Payment Details
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      margin="dense"
-                      label="Amount to Pay"
-                      name="amountToPay"
-                      value={`₹${Number(values.amountToPay || 0).toLocaleString("en-IN")}`}
-                      InputProps={{ readOnly: true }}
-                      sx={{ mb: 1 }}
-                    />
-                    <TextField
-                      fullWidth
-                      select
-                      margin="dense"
-                      label="Payment Mode"
-                      name="paymentMode"
-                      size="small"
-                      value={values.paymentMode}
-                      onChange={handleChange}
-                      error={touched.paymentMode && Boolean(errors.paymentMode)}
-                      helperText={touched.paymentMode && errors.paymentMode}
-                      sx={{ mb: 1 }}
-                    >
-                      <MenuItem value="cash">Cash</MenuItem>
-                      <MenuItem value="upi">UPI</MenuItem>
-                      <MenuItem value="cheque">Cheque</MenuItem>
-                    </TextField>
-                    {(values.paymentMode === "upi" || values.paymentMode === "cheque") && (
+                  {/* Payment Form - Show when due_amount is null OR > 0 */}
+                  {shouldShowForm && (
+                    <Grid item xs={12} md={shouldShowHistory ? 6 : 12}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ mb: 2, fontWeight: 600 }}
+                      >
+                        Payment Details
+                      </Typography>
                       <TextField
                         fullWidth
                         size="small"
                         margin="dense"
-                        label="Reference Number"
-                        name="referenceNo"
-                        value={values.referenceNo}
-                        onChange={handleChange}
-                        error={touched.referenceNo && Boolean(errors.referenceNo)}
-                        helperText={touched.referenceNo && errors.referenceNo}
+                        label="Amount to Pay"
+                        name="amountToPay"
+                        value={`₹${Number(
+                          values.amountToPay || 0
+                        ).toLocaleString("en-IN")}`}
+                        InputProps={{ readOnly: true }}
                         sx={{ mb: 1 }}
                       />
-                    )}
-                    <TextField
-                      fullWidth
-                      size="small"
-                      margin="dense"
-                      label="Amount"
-                      name="amount"
-                      type="number"
-                      value={values.amount}
-                      onChange={handleChange}
-                      error={touched.amount && Boolean(errors.amount)}
-                      helperText={touched.amount && errors.amount}
-                      sx={{ mb: 1 }}
-                    />
-                  </Grid>
+                      <TextField
+                        fullWidth
+                        select
+                        margin="dense"
+                        label="Payment Mode"
+                        name="paymentMode"
+                        size="small"
+                        value={values.paymentMode}
+                        onChange={handleChange}
+                        error={
+                          touched.paymentMode && Boolean(errors.paymentMode)
+                        }
+                        helperText={touched.paymentMode && errors.paymentMode}
+                        sx={{ mb: 1 }}
+                      >
+                        <MenuItem value="cash">Cash</MenuItem>
+                        <MenuItem value="upi">UPI</MenuItem>
+                        <MenuItem value="cheque">Cheque</MenuItem>
+                      </TextField>
+                      {(values.paymentMode === "upi" ||
+                        values.paymentMode === "cheque") && (
+                        <TextField
+                          fullWidth
+                          size="small"
+                          margin="dense"
+                          label="Reference Number"
+                          name="referenceNo"
+                          value={values.referenceNo}
+                          onChange={handleChange}
+                          error={
+                            touched.referenceNo && Boolean(errors.referenceNo)
+                          }
+                          helperText={touched.referenceNo && errors.referenceNo}
+                          sx={{ mb: 1 }}
+                        />
+                      )}
+                      <TextField
+                        fullWidth
+                        size="small"
+                        margin="dense"
+                        label="Amount"
+                        name="amount"
+                        type="number"
+                        value={values.amount}
+                        onChange={handleChange}
+                        error={touched.amount && Boolean(errors.amount)}
+                        helperText={touched.amount && errors.amount}
+                        sx={{ mb: 1 }}
+                      />
+                    </Grid>
                   )}
 
-                  {/* Payment History */}
-                  <Grid item xs={12} md={6}>
-                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600 }}>
-                      Payment History
-                    </Typography>
-                    <Box
-                      sx={{
-                        border: "1px solid #e0e0e0",
-                        borderRadius: 1,
-                        overflow: "hidden",
-                        maxHeight: 320,
-                        bgcolor: "background.paper",
-                      }}
-                    >
-                      {paymentLoading ? (
-                        <Box sx={{ p: 4, textAlign: "center" }}>
-                          <CircularProgress size={32} />
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                            Loading payment history...
-                          </Typography>
-                        </Box>
-                      ) : payments && payments.length > 0 ? (
-                        <TableContainer sx={{ maxHeight: 300 }}>
-                          <Table stickyHeader size="small">
-                            <TableHead>
-                              <TableRow>
-                                <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>
-                                  Date
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>
-                                  Paid (₹)
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>
-                                  Mode
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>
-                                  Reference No
-                                </TableCell>
-                                <TableCell
-                                  sx={{ fontWeight: 600, fontSize: "13px", textAlign: "right", bgcolor: "grey.100" }}
-                                >
-                                  Due (₹)
-                                </TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {payments.map((payment, index) => (
-                                <TableRow
-                                  key={payment.id || index}
-                                  hover
-                                  sx={{ "&:nth-of-type(even)": { backgroundColor: "grey.50" } }}
-                                >
-                                  <TableCell sx={{ fontSize: "13px" }}>
-                                    {payment.date ? new Date(payment.date).toLocaleDateString("en-IN") : "-"}
-                                  </TableCell>
-                                  <TableCell sx={{ fontSize: "13px", fontWeight: 500 }}>
-                                    ₹{Number(payment.paid_amount || 0).toLocaleString("en-IN")}
-                                  </TableCell>
-                                  <TableCell sx={{ fontSize: "13px", textTransform: "capitalize" }}>
-                                    {payment.payment_mode || "-"}
-                                  </TableCell>
-                                  <TableCell sx={{ fontSize: "13px" }}>{payment.reference_no || "-"}</TableCell>
+                  {/* Payment History - Show when due_amount is NOT null */}
+                  {shouldShowHistory && (
+                    <Grid item xs={12} md={shouldShowForm ? 6 : 12}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ mb: 2, fontWeight: 600 }}
+                      >
+                        Payment History
+                      </Typography>
+                      <Box
+                        sx={{
+                          border: "1px solid #e0e0e0",
+                          borderRadius: 1,
+                          overflow: "hidden",
+                          maxHeight: 320,
+                          bgcolor: "background.paper",
+                        }}
+                      >
+                        {paymentLoading ? (
+                          <Box sx={{ p: 4, textAlign: "center" }}>
+                            <CircularProgress size={32} />
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mt: 2 }}
+                            >
+                              Loading payment history...
+                            </Typography>
+                          </Box>
+                        ) : payments && payments.length > 0 ? (
+                          <TableContainer sx={{ maxHeight: 300 }}>
+                            <Table stickyHeader size="small">
+                              <TableHead>
+                                <TableRow>
                                   <TableCell
                                     sx={{
-                                      fontSize: "13px",
-                                      textAlign: "right",
                                       fontWeight: 600,
-                                      color: Number(payment.due || 0) === 0 ? "success.main" : "warning.main",
+                                      fontSize: "13px",
+                                      bgcolor: "grey.100",
                                     }}
                                   >
-                                    ₹{Number(payment.due || 0).toLocaleString("en-IN")}
+                                    Date
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontWeight: 600,
+                                      fontSize: "13px",
+                                      bgcolor: "grey.100",
+                                    }}
+                                  >
+                                    Paid (₹)
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontWeight: 600,
+                                      fontSize: "13px",
+                                      bgcolor: "grey.100",
+                                    }}
+                                  >
+                                    Mode
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontWeight: 600,
+                                      fontSize: "13px",
+                                      bgcolor: "grey.100",
+                                    }}
+                                  >
+                                    Reference No
+                                  </TableCell>
+                                  <TableCell
+                                    sx={{
+                                      fontWeight: 600,
+                                      fontSize: "13px",
+                                      textAlign: "right",
+                                      bgcolor: "grey.100",
+                                    }}
+                                  >
+                                    Due (₹)
                                   </TableCell>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
-                      ) : (
-                        <Box sx={{ p: 3, textAlign: "center" }}>
-                          <Typography variant="body2" color="text.secondary">
-                            No payment history available
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-                  </Grid>
+                              </TableHead>
+                              <TableBody>
+                                {payments.map((payment, index) => (
+                                  <TableRow
+                                    key={payment.id || index}
+                                    hover
+                                    sx={{
+                                      "&:nth-of-type(even)": {
+                                        backgroundColor: "grey.50",
+                                      },
+                                    }}
+                                  >
+                                    <TableCell sx={{ fontSize: "13px" }}>
+                                      {payment.date
+                                        ? new Date(
+                                            payment.date
+                                          ).toLocaleDateString("en-IN")
+                                        : "-"}
+                                    </TableCell>
+                                    <TableCell
+                                      sx={{ fontSize: "13px", fontWeight: 500 }}
+                                    >
+                                      ₹
+                                      {Number(
+                                        payment.paid_amount || 0
+                                      ).toLocaleString("en-IN")}
+                                    </TableCell>
+                                    <TableCell
+                                      sx={{
+                                        fontSize: "13px",
+                                        textTransform: "capitalize",
+                                      }}
+                                    >
+                                      {payment.payment_mode || "-"}
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: "13px" }}>
+                                      {payment.reference_no || "-"}
+                                    </TableCell>
+                                    <TableCell
+                                      sx={{
+                                        fontSize: "13px",
+                                        textAlign: "right",
+                                        fontWeight: 600,
+                                        color:
+                                          Number(payment.due || 0) === 0
+                                            ? "success.main"
+                                            : "warning.main",
+                                      }}
+                                    >
+                                      ₹
+                                      {Number(payment.due || 0).toLocaleString(
+                                        "en-IN"
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        ) : (
+                          <Box sx={{ p: 3, textAlign: "center" }}>
+                            <Typography variant="body2" color="text.secondary">
+                              No payment history available
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </Grid>
+                  )}
                 </Grid>
               </DialogContent>
 
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleClose} disabled={isSubmitting}>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={handleClose}
+                  disabled={isSubmitting}
+                >
                   Close
                 </Button>
-                {selectedInvoice?.due_amount > 0 && (
-                  <Button type="submit" variant="contained" color="primary" disabled={isSubmitting}>
+                {shouldShowForm && (
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    disabled={isSubmitting}
+                  >
                     {isSubmitting ? "Submitting..." : "Submit"}
                   </Button>
                 )}

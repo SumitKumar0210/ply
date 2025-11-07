@@ -58,15 +58,50 @@ export const editQuotation = createAsyncThunk(
 );
 
 // Update quotation
+// Update this thunk in your quotationSlice.js
+
 export const updateQuotation = createAsyncThunk(
   "quotation/updateQuotation",
-  async (values, { rejectWithValue }) => {
+  async ({ id, formData }, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/quotation-order/update/${values.id}`, values);
+      // ✅ Debug: Log FormData contents properly
+      console.group('📤 Sending FormData to API:');
+      console.log('Endpoint:', `admin/quotation-order/update/${id}`);
+      console.log('FormData type:', formData.constructor.name);
+      console.log('FormData entries:');
+      
+      let entriesCount = 0;
+      for (const [key, value] of formData.entries()) {
+        entriesCount++;
+        if (value instanceof File) {
+          console.log(`  ${key}:`, `[File] ${value.name} (${value.size} bytes)`);
+        } else {
+          console.log(`  ${key}:`, value);
+        }
+      }
+      
+      console.log('Total entries:', entriesCount);
+      console.groupEnd();
+      
+      console.log('🚀 Making API call...');
+
+      // ✅ Send FormData (not values) - let axios handle headers automatically
+      const res = await api.post(`admin/quotation-order/update/${id}`, formData);
+      
+      console.log('✅ API Response received:', res.data);
+      
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
       const errMsg = getErrorMessage(error);
+      
+      // ✅ Enhanced error logging
+      console.error('❌ Update Quotation Error:', {
+        message: errMsg,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      
       errorMessage(errMsg);
       return rejectWithValue(errMsg);
     }

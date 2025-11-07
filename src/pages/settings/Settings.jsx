@@ -48,11 +48,11 @@ import TaxSlab from "./TaxSlab/TaxSlab";
 
 
 const tabConfig = [
-  { value: "tab10", label: "Branch", icon: <GoGitBranch />, component: <Branch/> },
+  // { value: "tab10", label: "Branch", icon: <GoGitBranch />, component: <Branch/> },
   { value: "tab3", label: "Categories", icon: <DescriptionIcon />, component: <Category/>},
   { value: "tab15", label: "Departments", icon: <FaLayerGroup />, component: <Department/> },
   { value: "tab35", label: "General Settings", icon: <IoSettingsOutline />, component: <GeneralSetting/> },
-  { value: "tab6", label: "Grades", icon: <MdOutlineGrade />, component: <Grade/> },
+  // { value: "tab6", label: "Grades", icon: <MdOutlineGrade />, component: <Grade/> },
   { value: "tab2", label: "Groups", icon: <GrGroup />, component: <Group/> },
   { value: "tab9", label: "Machines", icon: <CheckCircleOutlineIcon />, component: <Machine/> },
   { value: "tab5", label: "Material", icon: <FolderOpenIcon />, component: <Material/> },
@@ -64,7 +64,7 @@ const tabConfig = [
 ];
 
 function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("tab1");
+  const [activeTab, setActiveTab] = useState("tab3");
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 

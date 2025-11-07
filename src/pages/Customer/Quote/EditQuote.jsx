@@ -25,6 +25,7 @@ import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { RiDeleteBinLine } from "react-icons/ri";
+import { MdEdit, MdCheck, MdClose } from "react-icons/md";
 import { Autocomplete } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -120,12 +121,11 @@ const quoteValidationSchema = Yup.object({
   gstRate: Yup.number().required("GST rate is required"),
 });
 
-// Helper function to generate unique code
+// Helper functions
 const generateCode = (model) => {
   return `${model}@${Math.floor(1000 + Math.random() * 9000)}`;
 };
 
-// Helper function to parse numeric values safely
 const parseNumericValue = (value, defaultValue = 0) => {
   const parsed = parseFloat(value);
   return isNaN(parsed) ? defaultValue : parsed;
@@ -136,20 +136,34 @@ const EditQuote = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Date and Priority State
   const [creationDate, setCreationDate] = useState(new Date());
   const [deliveryDate, setDeliveryDate] = useState(null);
   const [priority, setPriority] = useState("Normal");
+
+  // Customer and Product State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [groupList, setGroupList] = useState([]);
+
+  // Items and Editing State
+  const [items, setItems] = useState([]);
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [editedQty, setEditedQty] = useState("");
+  const [qtyError, setQtyError] = useState("");
+
+  // Modal State
   const [openAddCustomer, setOpenAddCustomer] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     itemId: null,
   });
-  const [items, setItems] = useState([]);
+
+  // Loading State
   const [savingDraft, setSavingDraft] = useState(false);
   const [savingFinal, setSavingFinal] = useState(false);
+
+  // Form Initial Values
   const [initialValues, setInitialValues] = useState({
     orderTerms: "",
     discount: 0,
@@ -207,7 +221,6 @@ const EditQuote = () => {
     }
 
     try {
-      // Parse product_ids JSON string
       let parsedItems = [];
       if (quotationData.product_ids) {
         try {
@@ -219,7 +232,6 @@ const EditQuote = () => {
         }
       }
 
-      // Extract unique groups and format items
       const uniqueGroups = new Set();
       const formattedItems = parsedItems.map((item) => {
         if (item.group) {
@@ -251,7 +263,6 @@ const EditQuote = () => {
       setItems(formattedItems);
       setGroupList(Array.from(uniqueGroups));
 
-      // Set dates
       if (quotationData.delivery_date) {
         setDeliveryDate(new Date(quotationData.delivery_date));
       }
@@ -259,10 +270,8 @@ const EditQuote = () => {
         setCreationDate(new Date(quotationData.created_at));
       }
 
-      // Set priority
       setPriority(quotationData.priority || "Normal");
 
-      // Set selected customer
       const customer = customerData.find(
         (c) => c.id === quotationData.customer_id
       );
@@ -270,7 +279,6 @@ const EditQuote = () => {
         setSelectedCustomer(customer);
       }
 
-      // Set initial form values
       setInitialValues({
         orderTerms: quotationData.order_terms || "",
         discount: parseNumericValue(quotationData.discount),
@@ -283,7 +291,7 @@ const EditQuote = () => {
     }
   }, [quotationData, customerData, products, imageUrl]);
 
-  // Open customer modal and load states
+  // Customer Modal Handlers
   const openCustomerModal = useCallback(async () => {
     try {
       await dispatch(fetchStates());
@@ -294,7 +302,6 @@ const EditQuote = () => {
     }
   }, [dispatch]);
 
-  // Handle add customer
   const handleAddCustomer = useCallback(
     async (values, { resetForm }) => {
       try {
@@ -312,7 +319,7 @@ const EditQuote = () => {
     [dispatch]
   );
 
-  // Check for duplicate items
+  // Item Management Handlers
   const isDuplicateItem = useCallback(
     (product_id, group) => {
       const normalizedGroup = group?.trim().toLowerCase();
@@ -325,7 +332,6 @@ const EditQuote = () => {
     [items]
   );
 
-  // Handle add item
   const handleAddItem = useCallback(
     (values, { resetForm }) => {
       const { product_id, quantity, group, narration, document } = values;
@@ -374,7 +380,6 @@ const EditQuote = () => {
 
       setItems((prev) => [...prev, newItem]);
 
-      // Add group to list if it's new
       if (group && !groupList.includes(group)) {
         setGroupList((prev) => [...prev, group]);
       }
@@ -385,36 +390,93 @@ const EditQuote = () => {
     [productsMap, isDuplicateItem, groupList]
   );
 
-  // Handle delete item
   const confirmDeleteItem = useCallback(() => {
     setItems((prev) => prev.filter((item) => item.id !== deleteDialog.itemId));
     setDeleteDialog({ open: false, itemId: null });
   }, [deleteDialog.itemId]);
 
-  // Calculate totals - memoized to prevent recalculation
-  const calculateTotals = useCallback((values) => {
-    const subTotal = items.reduce((sum, item) => sum + item.cost, 0);
-    const discountAmount = parseNumericValue(values.discount);
-    const additionalChargesAmount = parseNumericValue(values.additionalCharges);
-    const afterDiscount = subTotal - discountAmount + additionalChargesAmount;
-    const gstAmount = (afterDiscount * parseNumericValue(values.gstRate)) / 100;
-    const grandTotal = afterDiscount + gstAmount;
+  // Editing Handlers
+  const handleEditItem = useCallback((itemId, currentQty) => {
+    setEditingItemId(itemId);
+    setEditedQty(currentQty);
+    setQtyError("");
+  }, []);
 
-    return {
-      subTotal,
-      discountAmount,
-      additionalChargesAmount,
-      gstAmount,
-      grandTotal,
-    };
-  }, [items]);
+  const handleCancelEdit = useCallback(() => {
+    setEditingItemId(null);
+    setEditedQty("");
+    setQtyError("");
+  }, []);
+
+  const handleQtyChange = useCallback((e) => {
+    const value = e.target.value;
+    setEditedQty(value);
+
+    const qty = parseInt(value, 10);
+    if (!value || !qty || qty <= 0) {
+      setQtyError("Must be greater than 0");
+    } else {
+      setQtyError("");
+    }
+  }, []);
+
+  const handleSaveEdit = useCallback(() => {
+    const qty = parseInt(editedQty, 10);
+
+    if (!qty || qty <= 0) {
+      setQtyError("Quantity must be greater than 0");
+      return;
+    }
+
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id === editingItemId) {
+          return {
+            ...item,
+            qty: qty,
+            cost: item.unitPrice * qty,
+          };
+        }
+        return item;
+      })
+    );
+
+    setEditingItemId(null);
+    setEditedQty("");
+    setQtyError("");
+  }, [editedQty, editingItemId]);
+
+  // Calculate totals - memoized to prevent recalculation
+  const calculateTotals = useCallback(
+    (values) => {
+      const subTotal = items.reduce((sum, item) => sum + item.cost, 0);
+      const discountAmount = parseNumericValue(values.discount);
+      const additionalChargesAmount = parseNumericValue(
+        values.additionalCharges
+      );
+      const afterDiscount =
+        subTotal - discountAmount + additionalChargesAmount;
+      const gstAmount =
+        (afterDiscount * parseNumericValue(values.gstRate)) / 100;
+      const grandTotal = afterDiscount + gstAmount;
+
+      return {
+        subTotal,
+        discountAmount,
+        additionalChargesAmount,
+        gstAmount,
+        grandTotal,
+      };
+    },
+    [items]
+  );
 
   // Get unique groups - memoized
   const uniqueGroups = useMemo(() => {
     return [...new Set(items.map((item) => item.group))];
   }, [items]);
 
-  // Handle final quote submission with FormData
+  // Handle final quote submission
   const handleSubmitQuote = useCallback(
     async (values, isDraft = false) => {
       if (!selectedCustomer) {
@@ -435,10 +497,8 @@ const EditQuote = () => {
 
       try {
         const totals = calculateTotals(values);
-
         const formData = new FormData();
 
-        formData.append("_method", "PUT");
         formData.append("customer_id", selectedCustomer.id);
         formData.append("quote_date", creationDate.toISOString());
         formData.append("priority", priority);
@@ -455,31 +515,40 @@ const EditQuote = () => {
         formData.append("grand_total", totals.grandTotal);
         formData.append("is_draft", isDraft ? 1 : 0);
 
-        // ✅ Loop over items properly (no need for index += 1)
         items.forEach((item, index) => {
-          formData.append(`items[${index}][id]`, item.id);
-          formData.append(`items[${index}][group]`, item.group);
-          formData.append(`items[${index}][product_id]`, item.product_id);
-          formData.append(`items[${index}][name]`, item.name);
-          formData.append(`items[${index}][model]`, item.model);
-          formData.append(`items[${index}][unique_code]`, item.unique_code);
-          formData.append(`items[${index}][qty]`, item.qty);
-          formData.append(`items[${index}][size]`, item.size);
-          formData.append(`items[${index}][cost]`, item.cost);
-          formData.append(`items[${index}][unitPrice]`, item.unitPrice);
-          formData.append(`items[${index}][narration]`, item.narration || "");
+          formData.append(`items[${index}][id]`, String(item.id || ""));
+          formData.append(`items[${index}][group]`, String(item.group || ""));
+          formData.append(
+            `items[${index}][product_id]`,
+            String(item.product_id || "")
+          );
+          formData.append(`items[${index}][name]`, String(item.name || ""));
+          formData.append(`items[${index}][model]`, String(item.model || ""));
+          formData.append(
+            `items[${index}][unique_code]`,
+            String(item.unique_code || "")
+          );
+          formData.append(`items[${index}][qty]`, String(item.qty || 0));
+          formData.append(`items[${index}][size]`, String(item.size || ""));
+          formData.append(`items[${index}][cost]`, String(item.cost || 0));
+          formData.append(
+            `items[${index}][unitPrice]`,
+            String(item.unitPrice || 0)
+          );
+          formData.append(
+            `items[${index}][narration]`,
+            String(item.narration || "")
+          );
 
-          if (item.documentFile) {
+          if (item.documentFile instanceof File) {
             formData.append(`items[${index}][document]`, item.documentFile);
+          } else if (item.document && !item.documentFile) {
+            formData.append(
+              `items[${index}][existing_document]`,
+              String(item.document)
+            );
           }
         });
-
-        // ✅ Properly log FormData contents for debugging
-        console.group("FormData contents:");
-        for (const [key, value] of formData.entries()) {
-          console.log(key, value);
-        }
-        console.groupEnd();
 
         const result = await dispatch(updateQuotation({ id, formData }));
 
@@ -513,7 +582,6 @@ const EditQuote = () => {
   const isLoading =
     quotationLoading || customersLoading || productsLoading || gstsLoading;
 
-  // Show centered loader when initial data is loading
   if (isLoading) {
     return (
       <Box
@@ -817,55 +885,130 @@ const EditQuote = () => {
                         <Tbody>
                           {items
                             .filter((item) => item.group === group)
-                            .map((item) => (
-                              <Tr key={item.id}>
-                                <Td>{item.name}</Td>
-                                <Td>{item.model}</Td>
-                                <Td>{item.qty}</Td>
-                                <Td>{item.size}</Td>
-                                <Td>
-                                  ₹{item.unitPrice.toLocaleString("en-IN")}
-                                </Td>
-                                <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
-                                <Td>
-                                  {item.document ? (
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                      }}
-                                    >
-                                      <ImagePreviewDialog
-                                        imageUrl={item.document}
-                                        alt={item.documentName || "Document"}
+                            .map((item) => {
+                              const isEditing = editingItemId === item.id;
+                              const displayQty = isEditing
+                                ? editedQty
+                                : item.qty;
+                              const displayCost = isEditing
+                                ? item.unitPrice *
+                                  (parseInt(editedQty, 10) || 0)
+                                : item.cost;
+
+                              return (
+                                <Tr key={item.id}>
+                                  <Td>{item.name}</Td>
+                                  <Td>{item.model}</Td>
+                                  <Td>
+                                    {isEditing ? (
+                                      <TextField
+                                        type="number"
+                                        value={displayQty}
+                                        onChange={handleQtyChange}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter")
+                                            handleSaveEdit();
+                                          if (e.key === "Escape")
+                                            handleCancelEdit();
+                                        }}
+                                        size="small"
+                                        autoFocus
+                                        error={!!qtyError}
+                                        helperText={qtyError}
+                                        inputProps={{ min: 1 }}
+                                        sx={{ width: "100px" }}
                                       />
-                                      <Typography variant="caption">
-                                        {item.documentName || "Document"}
-                                      </Typography>
+                                    ) : (
+                                      displayQty
+                                    )}
+                                  </Td>
+                                  <Td>{item.size}</Td>
+                                  <Td>
+                                    ₹{item.unitPrice.toLocaleString("en-IN")}
+                                  </Td>
+                                  <Td>
+                                    ₹{displayCost.toLocaleString("en-IN")}
+                                  </Td>
+                                  <Td>
+                                    {item.document ? (
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: 1,
+                                        }}
+                                      >
+                                        <ImagePreviewDialog
+                                          imageUrl={item.document}
+                                          alt={item.documentName || "Document"}
+                                        />
+                                        <Typography variant="caption">
+                                          {item.documentName || "Document"}
+                                        </Typography>
+                                      </Box>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </Td>
+                                  <Td>{item.narration || "-"}</Td>
+                                  <Td>
+                                    <Box sx={{ display: "flex", gap: 0.5 }}>
+                                      {isEditing ? (
+                                        <>
+                                          <Tooltip title="Save">
+                                            <IconButton
+                                              color="success"
+                                              size="small"
+                                              onClick={handleSaveEdit}
+                                              disabled={!!qtyError}
+                                            >
+                                              <MdCheck size={18} />
+                                            </IconButton>
+                                          </Tooltip>
+                                          <Tooltip title="Cancel">
+                                            <IconButton
+                                              color="default"
+                                              size="small"
+                                              onClick={handleCancelEdit}
+                                            >
+                                              <MdClose size={18} />
+                                            </IconButton>
+                                          </Tooltip>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Tooltip title="Edit Quantity">
+                                            <IconButton
+                                              color="primary"
+                                              size="small"
+                                              onClick={() =>
+                                                handleEditItem(item.id, item.qty)
+                                              }
+                                            >
+                                              <MdEdit size={16} />
+                                            </IconButton>
+                                          </Tooltip>
+                                          <Tooltip title="Delete">
+                                            <IconButton
+                                              color="error"
+                                              size="small"
+                                              onClick={() =>
+                                                setDeleteDialog({
+                                                  open: true,
+                                                  itemId: item.id,
+                                                })
+                                              }
+                                            >
+                                              <RiDeleteBinLine size={16} />
+                                            </IconButton>
+                                          </Tooltip>
+                                        </>
+                                      )}
                                     </Box>
-                                  ) : (
-                                    "-"
-                                  )}
-                                </Td>
-                                <Td>{item.narration || "-"}</Td>
-                                <Td>
-                                  <Tooltip title="Delete">
-                                    <IconButton
-                                      color="error"
-                                      onClick={() =>
-                                        setDeleteDialog({
-                                          open: true,
-                                          itemId: item.id,
-                                        })
-                                      }
-                                    >
-                                      <RiDeleteBinLine size={16} />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Td>
-                              </Tr>
-                            ))}
+                                  </Td>
+                                </Tr>
+                              );
+                            })}
                         </Tbody>
                       </Table>
                     </Box>

@@ -5,6 +5,20 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL,
 });
 
+// List of public API endpoints that don't need token
+const PUBLIC_ENDPOINTS = [
+  "/login",
+  "/forgot-password",
+  "/public/quote/",
+  "/public/order/",
+  "/public/invoice/",
+];
+
+// Check if URL is a public endpoint
+const isPublicEndpoint = (url) => {
+  return PUBLIC_ENDPOINTS.some(endpoint => url.includes(endpoint));
+};
+
 //  Attach token to every request
 // api.interceptors.request.use((config) => {
 //   const token = localStorage.getItem("token");
@@ -16,6 +30,15 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+
+    // Skip adding token for public endpoints
+    if (isPublicEndpoint(config.url)) {
+      config.headers = {
+        ...config.headers, // keep other headers
+        "Content-Type": "multipart/form-data",
+      };
+      return config;
+    }
     const token = localStorage.getItem("token");
     if (token) {
       config.headers = {

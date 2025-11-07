@@ -24,6 +24,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { fetchOrder, deleteOrder, fetchSupervisor } from "../slice/orderSlice";
 import { useDispatch, useSelector } from "react-redux";
+import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 
 const CreateOrder = () => {
   const [creationDate, setCreationDate] = useState(null);
@@ -33,6 +34,8 @@ const CreateOrder = () => {
   const [observeId, setObserveId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
+
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
   const { data = [], loading } = useSelector((state) => state.order);
   const { user = [] } = useSelector((state) => state.order);
@@ -72,11 +75,21 @@ const CreateOrder = () => {
     }
   }, [itemRowData]);
 
-  const handleProductionQtyChange = (rowId, value) => {
-    setItems(items.map(item =>
-      item.rowId === rowId ? { ...item, production_qty: value } : item
-    ));
-  };
+  const handleProductionQtyChange = (rowId, value, maxQty) => {
+  let qty = Number(value);
+
+  // Prevent negative or non-numeric input
+  if (isNaN(qty) || qty < 0) qty = 0;
+
+  // Prevent exceeding maxQty
+  if (qty > maxQty) qty = maxQty;
+
+  setItems((prevItems) =>
+    prevItems.map((item) =>
+      item.rowId === rowId ? { ...item, production_qty: qty } : item
+    )
+  );
+};
 
   const handleStartDateChange = (rowId, value) => {
     setItems(items.map(item =>
@@ -250,25 +263,19 @@ const CreateOrder = () => {
                               <TextField
                                 size="small"
                                 type="number"
-                                value={item.production_qty || 0}
-                                onChange={(e) => handleProductionQtyChange(item.rowId, e.target.value)}
+                                value={item.production_qty ?? 0}
+                                onChange={(e) => handleProductionQtyChange(item.rowId, e.target.value, item.qty)}
                                 sx={{ width: 100 }}
-                                inputProps={{ min: 0, max: item.qty }}
+                                inputProps={{min: 0,max: item.qty || 0,}}
                               />
+
                             </Td>
                             <Td>{item.size}</Td>
                             <Td>
                               {item.document && (
-                                <img
-                                  src={item.document}
+                                <ImagePreviewDialog
+                                  imageUrl={mediaUrl + item.document}
                                   alt={item.name}
-                                  style={{
-                                    width: "40px",
-                                    height: "40px",
-                                    objectFit: "cover",
-                                    borderRadius: "4px",
-                                    border: "1px solid #ddd",
-                                  }}
                                 />
                               )}
                             </Td>

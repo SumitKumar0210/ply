@@ -43,6 +43,7 @@ import CreateOrder from "../pages/Customer/Order/CreateOrder";
 import EditOrder from "../pages/Customer/Order/EditOrder";
 import CustomerLedger from "../pages/Customer/Ledger/Ledger";
 import Vendor from "../pages/Vendor/Ledger/vendor";
+import PublicQuoteDetailsView from "../pages/Public/Quotation";
 
 
 import Error404 from "../pages/error/404";
@@ -87,6 +88,7 @@ const AppRoutes = () => {
       <Route path="/customer/quote/view/:id" element={<ProtectedRoute><MainLayout><QuoteDetailsView/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/quote/create" element={<ProtectedRoute><MainLayout><CreateQuote/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/quote/edit/:id" element={<ProtectedRoute><MainLayout><EditQuote/></MainLayout></ProtectedRoute>}/>
+      <Route path="/quotation/:link" element={<AuthLayout><PublicQuoteDetailsView/></AuthLayout>}/>
       <Route path="/customer/order" element={<ProtectedRoute><MainLayout><Order/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/order/view/:id" element={<ProtectedRoute><MainLayout><OrderDetailsView/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/order/create" element={<ProtectedRoute><MainLayout><CreateOrder/></MainLayout></ProtectedRoute>}/>

@@ -1,4 +1,10 @@
-import React, { useRef, useEffect, useCallback, useState, useMemo } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useCallback,
+  useState,
+  useMemo,
+} from "react";
 import {
   Grid,
   Button,
@@ -20,7 +26,14 @@ import {
   TableCell,
   TablePagination,
 } from "@mui/material";
-import { Table as ResponsiveTable, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
+import {
+  Table as ResponsiveTable,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+} from "react-super-responsive-table";
 import { AiOutlinePrinter } from "react-icons/ai";
 import { useReactToPrint } from "react-to-print";
 import { useDispatch, useSelector } from "react-redux";
@@ -37,7 +50,9 @@ const Ledger = () => {
 
   // Redux State
   const { selected: data = {}, loading } = useSelector((state) => state.ledger);
-  const { payments = [], paymentLoading = false } = useSelector((state) => state.vendorInvoice);
+  const { payments = [], paymentLoading = false } = useSelector(
+    (state) => state.vendorInvoice
+  );
 
   // Fetch ledger data on mount
   useEffect(() => {
@@ -50,7 +65,10 @@ const Ledger = () => {
   const itemCount = useCallback((items) => {
     try {
       const parsedItems = items ? JSON.parse(items) : [];
-      return parsedItems.reduce((total, item) => total + (Number(item.qty) || 0), 0);
+      return parsedItems.reduce(
+        (total, item) => total + (Number(item.qty) || 0),
+        0
+      );
     } catch {
       return 0;
     }
@@ -91,12 +109,23 @@ const Ledger = () => {
   return (
     <>
       {/* Header */}
-      <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+      <Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 2 }}
+      >
         <Grid item>
           <Typography variant="h6">Ledger</Typography>
         </Grid>
         <Grid item>
-          <Button variant="contained" color="secondary" startIcon={<AiOutlinePrinter />} onClick={handlePrint}>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<AiOutlinePrinter />}
+            onClick={handlePrint}
+          >
             Print
           </Button>
         </Grid>
@@ -132,8 +161,18 @@ const Ledger = () => {
                       <Td>{item?.vendor_invoice_date || "-"}</Td>
                       <Td>{item?.vendor_invoice_no || "-"}</Td>
                       <Td>{itemCount(item?.material_items)}</Td>
-                      <Td>₹{Number(item?.grand_total || 0).toLocaleString("en-IN")}</Td>
-                      <Td>₹{Number((item?.grand_total || 0) - (item?.due_amount || 0)).toLocaleString("en-IN")}</Td>
+                      <Td>
+                        ₹
+                        {Number(item?.grand_total || 0).toLocaleString("en-IN")}
+                      </Td>
+                      <Td>
+                        ₹
+                        {item?.due_amount === null
+                          ? 0
+                          : Number(
+                              (item?.grand_total || 0) - (item?.due_amount || 0)
+                            ).toLocaleString("en-IN")}
+                      </Td>
                       <Td
                         onClick={() => handlePaymentHistory(item.id)}
                         style={{
@@ -142,13 +181,18 @@ const Ledger = () => {
                           textDecoration: "underline",
                         }}
                       >
-                        ₹{Number(item?.due_amount || 0).toLocaleString("en-IN")}
+                        ₹{item?.due_amount === null
+                        ? Number(item?.grand_total || 0).toLocaleString("en-IN")
+                        : Number(item?.due_amount || 0).toLocaleString("en-IN")}
                       </Td>
                     </Tr>
                   ))
                 ) : (
                   <Tr>
-                    <Td colSpan={6} style={{ textAlign: "center", padding: "20px" }}>
+                    <Td
+                      colSpan={6}
+                      style={{ textAlign: "center", padding: "20px" }}
+                    >
                       {loading ? "Loading..." : "No records found"}
                     </Td>
                   </Tr>
@@ -165,7 +209,12 @@ const Ledger = () => {
         <IconButton
           aria-label="close"
           onClick={handleClose}
-          sx={{ position: "absolute", right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+          sx={{
+            position: "absolute",
+            right: 8,
+            top: 8,
+            color: (theme) => theme.palette.grey[500],
+          }}
         >
           <CloseIcon />
         </IconButton>
@@ -182,7 +231,11 @@ const Ledger = () => {
             {paymentLoading ? (
               <Box sx={{ p: 4, textAlign: "center" }}>
                 <CircularProgress size={32} />
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 2 }}
+                >
                   Loading payment history...
                 </Typography>
               </Box>
@@ -191,36 +244,89 @@ const Ledger = () => {
                 <Table stickyHeader size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>Paid (₹)</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>Mode</TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: "13px", bgcolor: "grey.100" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: "13px",
+                          bgcolor: "grey.100",
+                        }}
+                      >
+                        Date
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: "13px",
+                          bgcolor: "grey.100",
+                        }}
+                      >
+                        Paid (₹)
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: "13px",
+                          bgcolor: "grey.100",
+                        }}
+                      >
+                        Mode
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: "13px",
+                          bgcolor: "grey.100",
+                        }}
+                      >
                         Reference No
                       </TableCell>
-                      <TableCell sx={{ fontWeight: 600, fontSize: "13px", textAlign: "right", bgcolor: "grey.100" }}>
+                      <TableCell
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: "13px",
+                          textAlign: "right",
+                          bgcolor: "grey.100",
+                        }}
+                      >
                         Due (₹)
                       </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {payments.map((payment, index) => (
-                      <TableRow key={payment.id || index} hover sx={{ "&:nth-of-type(even)": { bgcolor: "grey.50" } }}>
+                      <TableRow
+                        key={payment.id || index}
+                        hover
+                        sx={{ "&:nth-of-type(even)": { bgcolor: "grey.50" } }}
+                      >
                         <TableCell sx={{ fontSize: "13px" }}>
-                          {payment.date ? new Date(payment.date).toLocaleDateString("en-IN") : "-"}
+                          {payment.date
+                            ? new Date(payment.date).toLocaleDateString("en-IN")
+                            : "-"}
                         </TableCell>
                         <TableCell sx={{ fontSize: "13px", fontWeight: 500 }}>
-                          ₹{Number(payment.paid_amount || 0).toLocaleString("en-IN")}
+                          ₹
+                          {Number(payment.paid_amount || 0).toLocaleString(
+                            "en-IN"
+                          )}
                         </TableCell>
-                        <TableCell sx={{ fontSize: "13px", textTransform: "capitalize" }}>
+                        <TableCell
+                          sx={{ fontSize: "13px", textTransform: "capitalize" }}
+                        >
                           {payment.payment_mode || "-"}
                         </TableCell>
-                        <TableCell sx={{ fontSize: "13px" }}>{payment.reference_no || "-"}</TableCell>
+                        <TableCell sx={{ fontSize: "13px" }}>
+                          {payment.reference_no || "-"}
+                        </TableCell>
                         <TableCell
                           sx={{
                             fontSize: "13px",
                             textAlign: "right",
                             fontWeight: 600,
-                            color: Number(payment.due || 0) === 0 ? "success.main" : "warning.main",
+                            color:
+                              Number(payment.due || 0) === 0
+                                ? "success.main"
+                                : "warning.main",
                           }}
                         >
                           ₹{Number(payment.due || 0).toLocaleString("en-IN")}
