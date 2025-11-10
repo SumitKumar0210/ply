@@ -41,6 +41,8 @@ import { fetchActiveTaxSlabs } from "../../settings/slices/taxSlabSlice";
 import { addQuotation } from "../slice/quotationSlice";
 import { successMessage, errorMessage } from "../../../toast";
 import { useNavigate } from "react-router-dom";
+import { compressImage } from "../../../components/imageCompressor/imageCompressor";
+import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 
 // Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -111,9 +113,15 @@ const customerValidationSchema = Yup.object({
 });
 
 const quoteValidationSchema = Yup.object({
-  orderTerms: Yup.string().max(500, "Order terms can not exceed 500 characters"),
+  orderTerms: Yup.string().max(
+    500,
+    "Order terms can not exceed 500 characters"
+  ),
   discount: Yup.number().min(0, "Discount can not be negative"),
-  additionalCharges: Yup.number().min(0, "Additional charges can not be negative"),
+  additionalCharges: Yup.number().min(
+    0,
+    "Additional charges can not be negative"
+  ),
   gstRate: Yup.number().required("GST rate is required"),
 });
 
@@ -133,6 +141,7 @@ const CreateQuote = () => {
   const [items, setItems] = useState([]);
   const [savingDraft, setSavingDraft] = useState(false);
   const [savingFinal, setSavingFinal] = useState(false);
+  const [compressingDocument, setCompressingDocument] = useState(false);
 
   const { data: customerData = [], loading: customersLoading } = useSelector(
     (state) => state.customer
@@ -179,22 +188,22 @@ const CreateQuote = () => {
   };
 
   const isDuplicateItem = useCallback(
-  (product_id, group) => {
-    const normalizedGroup = group?.trim().toLowerCase(); // normalize input group
-    return items.some(
-      (item) =>
-        item.product_id === product_id &&
-        item.group?.trim().toLowerCase() === normalizedGroup
-    );
-  },
-  [items]
-)
+    (product_id, group) => {
+      const normalizedGroup = group?.trim().toLowerCase(); // normalize input group
+      return items.some(
+        (item) =>
+          item.product_id === product_id &&
+          item.group?.trim().toLowerCase() === normalizedGroup
+      );
+    },
+    [items]
+  );
 
   const generateCode = (model) => {
-    return model + '@' + Math.floor(1000 + Math.random() * 9000);
+    return model + "@" + Math.floor(1000 + Math.random() * 9000);
   };
 
-  const handleAddItem = (values, { resetForm }) => {
+  const handleAddItem = async (values, { resetForm }) => {
     const { product_id, quantity, group, narration, document } = values;
 
     if (!product_id) {
@@ -214,10 +223,53 @@ const CreateQuote = () => {
     }
 
     if (isDuplicateItem(product_id, group)) {
-      errorMessage("This Product is already added. Update quantity in the table instead.");
+      errorMessage(
+        "This Product is already added. Update quantity in the table instead."
+      );
       return;
     }
 
+    // Handle document compression if it's an image
+    let finalDocument = document;
+    let documentName = document ? document.name : "";
+    let documentPreview = null;
+
+    if (document && document.type.startsWith("image/")) {
+      try {
+        setCompressingDocument(true);
+
+        // Compress the image
+        const compressed = await compressImage(document, {
+          maxSizeMB: 0.5, // Compress to max 500KB
+          maxWidthOrHeight: 1024,
+        });
+
+        finalDocument = compressed;
+        documentName = document.name;
+        documentPreview = documentPreview = URL.createObjectURL(compressed);
+
+        // Log compression results
+        const originalSize = (document.size / 1024).toFixed(2);
+        const compressedSize = (compressed.size / 1024).toFixed(2);
+        const reduction = (
+          ((document.size - compressed.size) / document.size) *
+          100
+        ).toFixed(2);
+
+        console.log(
+          `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
+        );
+        successMessage(
+          `Image compressed successfully! Original: ${originalSize}KB, Compressed: ${compressedSize}KB`
+        );
+      } catch (error) {
+        console.error("Image compression failed:", error);
+        errorMessage("Failed to compress image. Using original file.");
+        // Continue with original file if compression fails
+      } finally {
+        setCompressingDocument(false);
+      }
+    }
 
     const newItem = {
       id: Date.now(),
@@ -231,10 +283,11 @@ const CreateQuote = () => {
       cost: parseFloat(product.rrp) * parseInt(quantity, 10),
       unitPrice: parseFloat(product.rrp),
       narration,
-      documentFile: document || "-",
-      document: document ? document.name : "",
+      documentFile: finalDocument || "-",
+      document: documentPreview || "",
+      documentName: documentName || "",
     };
-    setGroupList(prev => [...prev, group]);
+    setGroupList((prev) => [...prev, group]);
     setItems((prev) => [...prev, newItem]);
     setSelectedProduct(null);
     resetForm();
@@ -291,19 +344,19 @@ const CreateQuote = () => {
 
       const formData = new FormData();
 
-      formData.append('customer_id', selectedCustomer.id);
-      formData.append('quote_date', creationDate.toISOString());
-      formData.append('priority', priority);
+      formData.append("customer_id", selectedCustomer.id);
+      formData.append("quote_date", creationDate.toISOString());
+      formData.append("priority", priority);
       if (deliveryDate) {
-        formData.append('delivery_date', deliveryDate.toISOString());
+        formData.append("delivery_date", deliveryDate.toISOString());
       }
-      formData.append('order_terms', values.orderTerms);
-      formData.append('discount', values.discount);
-      formData.append('additional_charges', values.additionalCharges);
-      formData.append('gst_rate', values.gstRate);
-      formData.append('sub_total', totals.subTotal);
-      formData.append('grand_total', totals.grandTotal);
-      formData.append('is_draft', isDraft ? 1 : 0);
+      formData.append("order_terms", values.orderTerms);
+      formData.append("discount", values.discount);
+      formData.append("additional_charges", values.additionalCharges);
+      formData.append("gst_rate", values.gstRate);
+      formData.append("sub_total", totals.subTotal);
+      formData.append("grand_total", totals.grandTotal);
+      formData.append("is_draft", isDraft ? 1 : 0);
 
       items.forEach((item, index) => {
         formData.append(`items[${index}][id]`, item.id);
@@ -316,7 +369,7 @@ const CreateQuote = () => {
         formData.append(`items[${index}][size]`, item.size);
         formData.append(`items[${index}][cost]`, item.cost);
         formData.append(`items[${index}][unitPrice]`, item.unitPrice);
-        formData.append(`items[${index}][narration]`, item.narration || '');
+        formData.append(`items[${index}][narration]`, item.narration || "");
 
         if (item.documentFile) {
           formData.append(`items[${index}][document]`, item.documentFile);
@@ -325,9 +378,10 @@ const CreateQuote = () => {
 
       const res = await dispatch(addQuotation(formData));
       if (res.error) return;
-      successMessage(`Quote ${isDraft ? "saved as draft" : "submitted"} successfully!`);
-      navigate('/customer/quote');
-
+      successMessage(
+        `Quote ${isDraft ? "saved as draft" : "submitted"} successfully!`
+      );
+      navigate("/customer/quote");
     } catch (error) {
       console.error("Submit quote failed:", error);
       errorMessage("Failed to submit quote");
@@ -529,7 +583,9 @@ const CreateQuote = () => {
                             label="Model Code"
                             variant="outlined"
                             sx={{ width: 150 }}
-                            error={touched.product_id && Boolean(errors.product_id)}
+                            error={
+                              touched.product_id && Boolean(errors.product_id)
+                            }
                             helperText={touched.product_id && errors.product_id}
                           />
                         )}
@@ -590,9 +646,15 @@ const CreateQuote = () => {
                         name="document"
                         size="small"
                         variant="outlined"
-                        onChange={(event) =>
-                          setFieldValue("document", event.currentTarget.files[0])
-                        }
+                        inputProps={{
+                          accept: "image/*", 
+                        }}
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          if (file) {
+                            setFieldValue("document", file);
+                          }
+                        }}
                         error={touched.document && Boolean(errors.document)}
                         helperText={touched.document && errors.document}
                         sx={{ width: 250 }}
@@ -646,9 +708,32 @@ const CreateQuote = () => {
                                 <Td>{item.model}</Td>
                                 <Td>{item.qty}</Td>
                                 <Td>{item.size}</Td>
-                                <Td>₹{item.unitPrice.toLocaleString("en-IN")}</Td>
+                                <Td>
+                                  ₹{item.unitPrice.toLocaleString("en-IN")}
+                                </Td>
                                 <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
-                                <Td>{item.document || "-"}</Td>
+                                <Td>
+                                  {item.document ? (
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 1,
+                                      }}
+                                    >
+                                      <ImagePreviewDialog
+                                        imageUrl={item.document}
+                                        alt={item.documentName || "Document"}
+                                      />
+                                      <Typography variant="caption">
+                                        {item.documentName || "Document"}
+                                      </Typography>
+                                    </Box>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </Td>
+                                {/* <Td>{item.document || "-"}</Td> */}
                                 <Td>{item.narration || "-"}</Td>
                                 <Td>
                                   <Tooltip title="Delete">
@@ -821,7 +906,10 @@ const CreateQuote = () => {
                                 sx={{ width: "55%" }}
                               >
                                 {gsts.map((item) => (
-                                  <MenuItem key={item.id} value={item.percentage}>
+                                  <MenuItem
+                                    key={item.id}
+                                    value={item.percentage}
+                                  >
                                     {item.percentage}%
                                   </MenuItem>
                                 ))}
@@ -860,7 +948,9 @@ const CreateQuote = () => {
                           variant="contained"
                           color="secondary"
                           onClick={() => handleSubmitQuote(values, true)}
-                          disabled={savingDraft || savingFinal || items.length === 0}
+                          disabled={
+                            savingDraft || savingFinal || items.length === 0
+                          }
                           startIcon={
                             savingDraft ? (
                               <CircularProgress size={20} color="inherit" />
@@ -873,7 +963,9 @@ const CreateQuote = () => {
                           type="submit"
                           variant="contained"
                           color="primary"
-                          disabled={savingDraft || savingFinal || items.length === 0}
+                          disabled={
+                            savingDraft || savingFinal || items.length === 0
+                          }
                           startIcon={
                             savingFinal ? (
                               <CircularProgress size={20} color="inherit" />

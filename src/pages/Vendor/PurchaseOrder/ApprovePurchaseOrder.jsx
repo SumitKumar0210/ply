@@ -31,6 +31,7 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import { getApprovePOData, deletePO } from "../slice/purchaseOrderSlice";
+import UploadInvoiceButton from "../../../components/UploadInvoiceButton/UploadInvoiceButton";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -126,6 +127,7 @@ const ApprovePurchaseOrder = () => {
       qcPassed: po.inward
         ? JSON.parse(po.inward.material_items).length
         : 0,
+        qcData: po.inward,
       status: po.quality_status ? "Approved" : "Pending",
     }));
   }, [data]);
@@ -177,6 +179,12 @@ const ApprovePurchaseOrder = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            {row.original?.qcData && (
+              <UploadInvoiceButton 
+              row={row.original?.qcData} 
+            />
+            )}
+            
             <Tooltip title="Quality Check">
               <IconButton color="primary" onClick={() => handleQualitycheckClick(row.original.id)}>
                 <IoMdCheckmarkCircleOutline size={16} />
@@ -254,7 +262,7 @@ const ApprovePurchaseOrder = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Approved Purchase Order</Typography>
+          <Typography variant="h6">Quality Checks Order</Typography>
         </Grid>
         <Grid>
           <Button
@@ -328,7 +336,7 @@ const ApprovePurchaseOrder = () => {
                 }}
               >
                 <Typography variant="h6" fontWeight={400}>
-                  Approved PO
+                  Quality Checks
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <MRT_GlobalFilterTextField table={table} />

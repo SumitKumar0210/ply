@@ -283,7 +283,7 @@ const Vendor = () => {
           <CloseIcon />
         </IconButton>
         <Formik
-          initialValues={{ name: "", mobile: "", address: "", gst: "" }}
+          initialValues={{ name: "", mobile: "", address: "", gst: "", terms: "" }}
           validationSchema={validationSchema}
           onSubmit={(values, { resetForm }) => handleAdd(values, resetForm)}
         >
@@ -366,7 +366,17 @@ const Vendor = () => {
                   onChange={handleChange}
                   error={touched.gst && Boolean(errors.gst)}
                   helperText={touched.gst && errors.gst}
+                  sx={{ mb: 3 }}
                 />
+                  <TextField
+                    fullWidth
+                    id="terms"
+                    name="terms"
+                    label="Terms"
+                    variant="standard"
+                    value={values.terms}
+                    onChange={handleChange}
+                  />
               </DialogContent>
               <DialogActions>
                 <Button onClick={handleClose} color="error" variant="outlined">
@@ -399,6 +409,7 @@ const Vendor = () => {
             category_id: editData?.category_id || "",
             gst: editData?.gst || "",
             address: editData?.address || "",
+            terms: editData?.terms || "",
           }}
           validationSchema={validationSchema}
           enableReinitialize
@@ -483,7 +494,18 @@ const Vendor = () => {
                   onChange={handleChange}
                   error={touched.gst && Boolean(errors.gst)}
                   helperText={touched.gst && errors.gst}
+                  sx={{ mb: 3 }}
                 />
+              <TextField
+                fullWidth
+                id="terms"
+                name="terms"
+                label="Terms"
+                variant="standard"
+                value={values.terms}
+                onChange={handleChange}
+                
+              />
               </DialogContent>
               <DialogActions>
                 <Button onClick={handleEditClose} color="error" variant="outlined">

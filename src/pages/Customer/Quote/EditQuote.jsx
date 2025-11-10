@@ -43,7 +43,7 @@ import { fetchActiveProducts } from "../../settings/slices/productSlice";
 import { fetchActiveTaxSlabs } from "../../settings/slices/taxSlabSlice";
 import { successMessage, errorMessage } from "../../../toast";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
-
+import { compressImage } from "../../../components/imageCompressor/imageCompressor";
 // Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -170,6 +170,8 @@ const EditQuote = () => {
     additionalCharges: 0,
     gstRate: 18,
   });
+
+  const [compressingDocument, setCompressingDocument] = useState(false);
 
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
 
@@ -333,7 +335,7 @@ const EditQuote = () => {
   );
 
   const handleAddItem = useCallback(
-    (values, { resetForm }) => {
+    async (values, { resetForm }) => {
       const { product_id, quantity, group, narration, document } = values;
 
       if (!product_id) {
@@ -360,6 +362,48 @@ const EditQuote = () => {
         return;
       }
 
+      // Handle document compression if it's an image
+      let finalDocument = document;
+      let documentName = document ? document.name : "";
+      let documentPreview = null;
+
+      if (document && document.type.startsWith("image/")) {
+        try {
+          setCompressingDocument(true);
+
+          // Compress the image
+          const compressed = await compressImage(document, {
+            maxSizeMB: 0.5, // Compress to max 500KB
+            maxWidthOrHeight: 1024,
+          });
+
+          finalDocument = compressed;
+          documentName = document.name;
+          documentPreview = documentPreview = URL.createObjectURL(compressed);
+
+          // Log compression results
+          const originalSize = (document.size / 1024).toFixed(2);
+          const compressedSize = (compressed.size / 1024).toFixed(2);
+          const reduction = (
+            ((document.size - compressed.size) / document.size) *
+            100
+          ).toFixed(2);
+
+          console.log(
+            `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
+          );
+          successMessage(
+            `Image compressed successfully! Original: ${originalSize}KB, Compressed: ${compressedSize}KB`
+          );
+        } catch (error) {
+          console.error("Image compression failed:", error);
+          errorMessage("Failed to compress image. Using original file.");
+          // Continue with original file if compression fails
+        } finally {
+          setCompressingDocument(false);
+        }
+      }
+
       const unitPrice = parseNumericValue(product.rrp);
       const newItem = {
         id: `${Date.now()}_${Math.random()}`,
@@ -373,9 +417,9 @@ const EditQuote = () => {
         cost: unitPrice * qty,
         unitPrice,
         narration: narration?.trim() || "",
-        documentFile: document || null,
-        document: document ? URL.createObjectURL(document) : "",
-        documentName: document ? document.name : "",
+        documentFile: finalDocument || "-",
+        document: documentPreview || "",
+        documentName: documentName || "",
       };
 
       setItems((prev) => [...prev, newItem]);
@@ -540,13 +584,10 @@ const EditQuote = () => {
             String(item.narration || "")
           );
 
-          if (item.documentFile instanceof File) {
-            formData.append(`items[${index}][document]`, item.documentFile);
-          } else if (item.document && !item.documentFile) {
-            formData.append(
-              `items[${index}][existing_document]`,
-              String(item.document)
-            );
+          if (item.documentFile && (item.documentFile instanceof File || item.documentFile instanceof Blob)) {
+            formData.append(`items[${index}][document]`, item.documentFile, item.documentName || "document.png");
+          } else if (item.existing_document) {
+            formData.append(`items[${index}][existing_document]`, item.existing_document);
           }
         });
 
@@ -832,12 +873,15 @@ const EditQuote = () => {
                         name="document"
                         size="small"
                         variant="outlined"
-                        onChange={(event) =>
-                          setFieldValue(
-                            "document",
-                            event.currentTarget.files[0]
-                          )
-                        }
+                        inputProps={{
+                          accept: "image/*", 
+                        }}
+                        onChange={(event) => {
+                          const file = event.currentTarget.files?.[0];
+                          if (file) {
+                            setFieldValue("document", file);
+                          }
+                        }}
                         error={touched.document && Boolean(errors.document)}
                         helperText={touched.document && errors.document}
                         sx={{ width: 250 }}
@@ -892,7 +936,7 @@ const EditQuote = () => {
                                 : item.qty;
                               const displayCost = isEditing
                                 ? item.unitPrice *
-                                  (parseInt(editedQty, 10) || 0)
+                                (parseInt(editedQty, 10) || 0)
                                 : item.cost;
 
                               return (

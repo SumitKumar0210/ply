@@ -44,7 +44,11 @@ const PrintPurchaseOrder = () => {
       `,
   });
 
-  const items = po.material_items ? JSON.parse(po?.material_items) : [];
+  const items = typeof po.material_items === "string"
+  ? JSON.parse(po.material_items)
+  : Array.isArray(po.material_items)
+    ? po.material_items
+    : [];
 
   // Loading state
   if (loading) {

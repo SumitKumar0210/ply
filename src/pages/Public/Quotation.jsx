@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import Grid from "@mui/material/Grid";
 import {
   Button,
@@ -17,20 +17,16 @@ import { useReactToPrint } from "react-to-print";
 import api from "../../api";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 
-
 const PublicQuoteDetailsView = () => {
-    console.log('pass')
   const { link } = useParams();
-  const fullUrl = window.location.href;
   const navigate = useNavigate();
   const contentRef = useRef(null);
 
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
 
   // State management
-  const [items, setItems] = useState([]);
   const [quotationDetails, setQuotationDetails] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [approving, setApproving] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -57,42 +53,117 @@ const PublicQuoteDetailsView = () => {
     `,
   });
 
+  // Parse items from quotation details
+  const items = useMemo(() => {
+    if (!quotationDetails?.product_ids) return [];
+
+    try {
+      const parsedItems = JSON.parse(quotationDetails.product_ids);
+      return parsedItems.map((item) => ({
+        id: item.id || `${Date.now()}-${Math.random()}`,
+        group: item.group || "",
+        name: item.name || "",
+        itemCode: item.model || "",
+        qty: parseInt(item.qty, 10) || 0,
+        size: item.size || "",
+        documents: item.document
+          ? typeof item.document === "string"
+            ? imageUrl + item.document
+            : imageUrl + (item.document?.name || "")
+          : "",
+        cost: parseFloat(item.cost) || 0,
+        unitPrice: parseFloat(item.unitPrice) || 0,
+        narration: item.narration || "",
+      }));
+    } catch (error) {
+      console.error("Error parsing product_ids:", error);
+      return [];
+    }
+  }, [quotationDetails, imageUrl]);
+
+  // Get unique groups/areas
+  const uniqueAreas = useMemo(() => {
+    return [...new Set(items.map((item) => item.group))].filter(Boolean);
+  }, [items]);
+
+  // Calculate totals
+  const calculations = useMemo(() => {
+    const subTotal = items.reduce((sum, item) => sum + item.cost, 0);
+    const discount = parseFloat(quotationDetails?.discount || 0);
+    const additionalCharges = parseFloat(quotationDetails?.additional_charges || 0);
+    const gstRate = parseFloat(quotationDetails?.gst_rate || 0);
+    const afterDiscount = subTotal - discount + additionalCharges;
+    const gstAmount = (afterDiscount * gstRate) / 100;
+    const grandTotal = afterDiscount + gstAmount;
+
+    return {
+      subTotal,
+      discount,
+      additionalCharges,
+      gstRate,
+      gstAmount,
+      grandTotal,
+    };
+  }, [items, quotationDetails]);
+
   // ==================== API CALLS ====================
 
   // Fetch Quotation Details
-  const fetchQuotationDetails = async (quotationId) => {
-    try {
+  const fetchQuotationDetails = async () => {
+    if (!link) {
+      setError("Invalid quotation link");
       setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
       setError(null);
 
-      const response = await api.post(`get-customer-quotation`, {link:quotationId});
-      console.log(response)
-      setQuotationDetails(response.data);
-      return response.data;
+      const response = await api.post(`get-customer-quotation`, { link });
+      
+      if (!response.data) {
+        throw new Error("No data received from server");
+      }
+      setQuotationDetails(response.data.data);
     } catch (err) {
       console.error("Error fetching quotation:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Failed to fetch quotation";
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to fetch quotation";
       setError(errorMessage);
       setSnackbar({
         open: true,
         message: `Error: ${errorMessage}`,
         severity: "error",
       });
-      throw err;
     } finally {
       setLoading(false);
     }
   };
 
   // Approve Quotation
-  const approveQuotation = async (quotationId) => {
+  const approveQuotation = async () => {
+    if (!quotationDetails?.id) {
+      setSnackbar({
+        open: true,
+        message: "Invalid quotation ID",
+        severity: "error",
+      });
+      return;
+    }
+
     try {
       setApproving(true);
 
-      const response = await api.post(`/quotations/${quotationId}/approve`, {
-        status: "approved",
-        approved_at: new Date().toISOString(),
-      });
+      const response = await api.post(
+        `/quotations/${quotationDetails.id}/approve`,
+        {
+          status: "approved",
+          approved_at: new Date().toISOString(),
+        }
+      );
 
       setSnackbar({
         open: true,
@@ -100,19 +171,25 @@ const PublicQuoteDetailsView = () => {
         severity: "success",
       });
 
-      // Refresh quotation data
-      await fetchQuotationDetails(quotationId);
-      
+      // Update local state
+      setQuotationDetails((prev) => ({
+        ...prev,
+        status: "approved",
+        approved_at: new Date().toISOString(),
+      }));
+
       return response.data;
     } catch (err) {
       console.error("Error approving quotation:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Failed to approve quotation";
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to approve quotation";
       setSnackbar({
         open: true,
         message: `Error approving: ${errorMessage}`,
         severity: "error",
       });
-      throw err;
     } finally {
       setApproving(false);
     }
@@ -122,79 +199,27 @@ const PublicQuoteDetailsView = () => {
 
   // Load quotation data on mount
   useEffect(() => {
-    if (fullUrl) {
-      fetchQuotationDetails(fullUrl);
-    }
-  }, [fullUrl]);
-
-  // Parse and set quotation data
-  useEffect(() => {
-    if (quotationDetails && quotationDetails.id) {
-      try {
-        // Parse product_ids JSON string
-        let parsedItems = [];
-        if (quotationDetails.product_ids) {
-          try {
-            parsedItems = JSON.parse(quotationDetails.product_ids);
-          } catch (e) {
-            console.error("Error parsing product_ids:", e);
-          }
-        }
-
-        // Format items
-        const formattedItems = parsedItems.map((item) => ({
-          id: item.id || Date.now() + Math.random(),
-          group: item.group || "",
-          name: item.name || "",
-          itemCode: item.model || "",
-          qty: parseInt(item.qty, 10) || 0,
-          size: item.size || "",
-          documents:
-            typeof item.document === "string"
-              ? imageUrl + item.document
-              : imageUrl + item.document?.name || "",
-          cost: parseFloat(item.cost) || 0,
-          unitPrice: parseFloat(item.unitPrice) || 0,
-          narration: item.narration || "",
-        }));
-
-        setItems(formattedItems);
-      } catch (error) {
-        console.error("Error parsing quotation data:", error);
-        setError("Error processing quotation data");
-      }
-    }
-  }, [quotationDetails]);
-
-  const uniqueAreas = [...new Set(items.map((item) => item.group))];
+    fetchQuotationDetails();
+  }, [link]);
 
   // Format date helper
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return "N/A";
+    }
   };
 
-  // Calculate totals
-  const subTotal = items.reduce((sum, item) => sum + item.cost, 0);
-  const discount = parseFloat(quotationDetails?.discount || 0);
-  const additionalCharges = parseFloat(
-    quotationDetails?.additional_charges || 0
-  );
-  const gstRate = parseFloat(quotationDetails?.gst_rate || 0);
-  const afterDiscount = subTotal - discount + additionalCharges;
-  const gstAmount = (afterDiscount * gstRate) / 100;
-  const grandTotal = afterDiscount + gstAmount;
-
   // Handle Approve button click
-  const handleApprove = async () => {
-    if (id) {
-      await approveQuotation(id);
-    }
+  const handleApprove = () => {
+    approveQuotation();
   };
 
   // Close snackbar
@@ -203,7 +228,7 @@ const PublicQuoteDetailsView = () => {
   };
 
   // Show loader while data is loading
-  if (loading || !quotationDetails) {
+  if (loading) {
     return (
       <Box
         sx={{
@@ -242,6 +267,27 @@ const PublicQuoteDetailsView = () => {
     );
   }
 
+  // Show message if no data
+  if (!quotationDetails) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "60vh",
+          gap: 2,
+        }}
+      >
+        <Typography variant="h6">No Quotation Found</Typography>
+        <Button variant="contained" onClick={() => navigate(-1)}>
+          Go Back
+        </Button>
+      </Box>
+    );
+  }
+
   return (
     <>
       <Grid
@@ -259,12 +305,12 @@ const PublicQuoteDetailsView = () => {
             variant="contained"
             color="success"
             onClick={handleApprove}
-            disabled={approving || quotationDetails?.status === "approved"}
+            disabled={approving || quotationDetails.status === "approved"}
             sx={{ mr: 2 }}
           >
             {approving ? (
               <CircularProgress size={24} color="inherit" />
-            ) : quotationDetails?.status === "approved" ? (
+            ) : quotationDetails.status === "approved" ? (
               "Approved"
             ) : (
               "Approve"
@@ -372,90 +418,98 @@ const PublicQuoteDetailsView = () => {
                 )}
 
                 {/* Items Table by Group */}
-                {uniqueAreas.map((area) => (
-                  <React.Fragment key={area}>
-                    <Grid size={12} sx={{ pt: 3 }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 2,
-                          flexWrap: "nowrap",
-                          backgroundColor: "#f5f5f5",
-                          padding: "8px 12px",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        <Typography variant="body1" sx={{ m: 0 }}>
-                          <Box component="span" sx={{ fontWeight: 600 }}>
-                            {area}
-                          </Box>
-                        </Typography>
-                      </Box>
-                    </Grid>
+                {uniqueAreas.length > 0 ? (
+                  uniqueAreas.map((area) => (
+                    <React.Fragment key={area}>
+                      <Grid size={12} sx={{ pt: 3 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 2,
+                            flexWrap: "nowrap",
+                            backgroundColor: "#f5f5f5",
+                            padding: "8px 12px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          <Typography variant="body1" sx={{ m: 0 }}>
+                            <Box component="span" sx={{ fontWeight: 600 }}>
+                              {area}
+                            </Box>
+                          </Typography>
+                        </Box>
+                      </Grid>
 
-                    <Grid size={12} sx={{ mt: 0 }}>
-                      <Table>
-                        <Thead>
-                          <Tr>
-                            <Th>Item Name</Th>
-                            <Th>Item Code</Th>
-                            <Th>Qty</Th>
-                            <Th>Size</Th>
-                            <Th>Unit Price</Th>
-                            <Th>Total Cost</Th>
-                            <Th>Documents</Th>
-                            <Th style={{ width: "200px" }}>Narration</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {items
-                            .filter((item) => item.group === area)
-                            .map((item) => (
-                              <Tr key={item.id}>
-                                <Td>{item.name}</Td>
-                                <Td>{item.itemCode}</Td>
-                                <Td>{item.qty}</Td>
-                                <Td>{item.size}</Td>
-                                <Td>
-                                  ₹{item.unitPrice.toLocaleString("en-IN")}
-                                </Td>
-                                <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
-                                <Td>
-                                  {item.documents ? (
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                      }}
-                                    >
-                                      <ImagePreviewDialog
-                                        imageUrl={item.documents}
-                                        alt={item.documents.split("/").pop()}
-                                      />
-                                      <Typography
-                                        variant="caption"
-                                        sx={{ wordBreak: "break-all" }}
+                      <Grid size={12} sx={{ mt: 0 }}>
+                        <Table>
+                          <Thead>
+                            <Tr>
+                              <Th>Item Name</Th>
+                              <Th>Item Code</Th>
+                              <Th>Qty</Th>
+                              <Th>Size</Th>
+                              <Th>Unit Price</Th>
+                              <Th>Total Cost</Th>
+                              <Th>Documents</Th>
+                              <Th style={{ width: "200px" }}>Narration</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {items
+                              .filter((item) => item.group === area)
+                              .map((item) => (
+                                <Tr key={item.id}>
+                                  <Td>{item.name}</Td>
+                                  <Td>{item.itemCode}</Td>
+                                  <Td>{item.qty}</Td>
+                                  <Td>{item.size}</Td>
+                                  <Td>
+                                    ₹{item.unitPrice.toLocaleString("en-IN")}
+                                  </Td>
+                                  <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
+                                  <Td>
+                                    {item.documents ? (
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: 1,
+                                        }}
                                       >
-                                        {item.documents.split("/").pop()}
-                                      </Typography>
-                                    </Box>
-                                  ) : (
-                                    "-"
-                                  )}
-                                </Td>
-                                <Td style={{ width: "200px" }}>
-                                  {item.narration || "-"}
-                                </Td>
-                              </Tr>
-                            ))}
-                        </Tbody>
-                      </Table>
-                    </Grid>
-                  </React.Fragment>
-                ))}
+                                        <ImagePreviewDialog
+                                          imageUrl={item.documents}
+                                          alt={item.documents.split("/").pop()}
+                                        />
+                                        <Typography
+                                          variant="caption"
+                                          sx={{ wordBreak: "break-all" }}
+                                        >
+                                          {item.documents.split("/").pop()}
+                                        </Typography>
+                                      </Box>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </Td>
+                                  <Td style={{ width: "200px" }}>
+                                    {item.narration || "-"}
+                                  </Td>
+                                </Tr>
+                              ))}
+                          </Tbody>
+                        </Table>
+                      </Grid>
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <Grid size={12} sx={{ pt: 3 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No items found in this quotation
+                    </Typography>
+                  </Grid>
+                )}
 
                 {/* Order Terms and Totals Section */}
                 <Grid size={12} sx={{ mt: 3 }}>
@@ -509,7 +563,9 @@ const PublicQuoteDetailsView = () => {
                         }}
                       >
                         <span>Sub Total</span>
-                        <span>₹{subTotal.toLocaleString("en-IN")}</span>
+                        <span>
+                          ₹{calculations.subTotal.toLocaleString("en-IN")}
+                        </span>
                       </Box>
 
                       <Box
@@ -519,7 +575,9 @@ const PublicQuoteDetailsView = () => {
                         }}
                       >
                         <span>Discount</span>
-                        <span>₹{discount.toLocaleString("en-IN")}</span>
+                        <span>
+                          ₹{calculations.discount.toLocaleString("en-IN")}
+                        </span>
                       </Box>
 
                       <Box
@@ -530,7 +588,10 @@ const PublicQuoteDetailsView = () => {
                       >
                         <span>Additional Charges</span>
                         <span>
-                          ₹{additionalCharges.toLocaleString("en-IN")}
+                          ₹
+                          {calculations.additionalCharges.toLocaleString(
+                            "en-IN"
+                          )}
                         </span>
                       </Box>
 
@@ -540,8 +601,10 @@ const PublicQuoteDetailsView = () => {
                           justifyContent: "space-between",
                         }}
                       >
-                        <span>GST ({gstRate}%)</span>
-                        <span>₹{gstAmount.toLocaleString("en-IN")}</span>
+                        <span>GST ({calculations.gstRate}%)</span>
+                        <span>
+                          ₹{calculations.gstAmount.toLocaleString("en-IN")}
+                        </span>
                       </Box>
 
                       <Box
@@ -555,7 +618,9 @@ const PublicQuoteDetailsView = () => {
                         }}
                       >
                         <span>Grand Total</span>
-                        <span>₹{grandTotal.toLocaleString("en-IN")}</span>
+                        <span>
+                          ₹{calculations.grandTotal.toLocaleString("en-IN")}
+                        </span>
                       </Box>
                     </Box>
                   </Box>

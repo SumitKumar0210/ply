@@ -29,6 +29,8 @@ const LinkGenerator = ({ id }) => {
   const [currentLink, setCurrentLink] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const prefix = URL + 'quotation/';
+
   // Check if link already exists
   const handleGenerateableId = async () => {
     setOpenGenerate(true);
@@ -46,9 +48,9 @@ const LinkGenerator = ({ id }) => {
   const handleExpirySubmit = async () => {
     setIsGenerating(true);
     try {
-      const prefix = URL + 'quotation/';
+      
       const result = await dispatch(
-        generateLink({ id, expiry_days: expiryDays, prefix: prefix })
+        generateLink({ id, expiry_days: expiryDays })
       ).unwrap();
       setCurrentLink(result.link);
     } catch (error) {
@@ -85,8 +87,8 @@ const LinkGenerator = ({ id }) => {
             <Typography sx={{ mt: 2 }}>
               ✅ Public link available:
               <br />
-              <a href={currentLink} target="_blank" rel="noopener noreferrer">
-                {currentLink}
+              <a href={prefix + currentLink} target="_blank" rel="noopener noreferrer">
+                {prefix + currentLink}
               </a>
             </Typography>
           ) : (

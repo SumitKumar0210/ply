@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
-import * as Yup from "yup"; //  Yup for validation
+import * as Yup from "yup";
 import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -39,6 +39,8 @@ import { addUser, fetchUsers, updateUser, statusUpdate, deleteUser } from "./sli
 import {fetchStates} from "../settings/slices/stateSlice";
 import { fetchActiveUserTypes } from "../settings/slices/userTypeSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
+import { compressImage } from "../../components/imageCompressor/imageCompressor";
+
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -78,17 +80,6 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-//  Dropdown options
-const usertype = [
-  { value: "Admin", label: "Admin" },
-  { value: "Production", label: "Production" },
-  { value: "Store", label: "Store" },
-  { value: "Supervisor", label: "Supervisor" },
-  { value: "Management", label: "Management" },
-];
-
-const department = [{ value: "Polish", label: "Polish" }];
-
 //  Validation schema
 const validationSchema = Yup.object({
   name: Yup.string()
@@ -106,7 +97,7 @@ const validationSchema = Yup.object({
   image: Yup.mixed().required("Image is required"),
 });
 
-//  Validation schema
+//  Edit Validation schema
 const editValidationSchema = Yup.object({
   name: Yup.string()
   .min(2, "Name must be at least 2 characters")
@@ -119,34 +110,8 @@ const editValidationSchema = Yup.object({
   city: Yup.string().required("City is required"),
   address: Yup.string().required("Address is required"),
   user_type_id: Yup.string().required("Please select a user type"),
- image: Yup.mixed().nullable(),
+  image: Yup.mixed().nullable(),
 });
-
-//  Initial users
-const users = [
-  {
-    id: 1,
-    profilePic: "",
-    name: "Test User",
-    email: "abc@gmail.com",
-    phone: "9773579146",
-    address: "Patna",
-    usertype: "Admin",
-    department: "Assembly",
-    status: true,
-  },
-  {
-    id: 2,
-    profilePic: "",
-    name: "Demo User",
-    email: "demo@gmail.com",
-    phone: "9876543210",
-    address: "Delhi",
-    usertype: "Store",
-    department: "Polish",
-    status: false,
-  },
-];
 
 const Users = () => {
   const [open, setOpen] = useState(false);
@@ -158,8 +123,8 @@ const Users = () => {
   });
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [compressingImage, setCompressingImage] = useState(false);
   const tableContainerRef = useRef(null);
-
 
   const { data: tableData = [], loading, error } = useSelector((state) => state.user);
   const { data: states = []} = useSelector((state) => state.state);
@@ -168,7 +133,6 @@ const Users = () => {
   const dispatch = useDispatch();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
-  
   useEffect(() => {
     dispatch(fetchUsers());
   }, [dispatch]);
@@ -193,7 +157,7 @@ const Users = () => {
     setDeleteDialog({
       open: true,
       id: row.id,
-      name: row.name, // 👈 Pass customer name here
+      name: row.name,
       loading: false,
     });
   };
@@ -205,10 +169,8 @@ const Users = () => {
 
     try {
       await dispatch(deleteUser(deleteDialog.id)).unwrap(); 
-      //  If API returns success, close modal
     } catch (error) {
       console.error("Delete failed:", error);
-      // show snackbar/toast error
     } finally {
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
     }
@@ -218,15 +180,57 @@ const Users = () => {
     setEditData(row);
     setEditOpen(true);
   };
+
   const handleEditClose = () => {
     setEditOpen(false);
     setEditData(null);
   };
+
   const handleEditSubmit = async (values, resetForm) => {
     const res = await dispatch(updateUser({ id: editData.id, ...values }));
     if(res.error) return ; 
     resetForm();
     handleEditClose();
+  };
+
+  // Handle image compression
+  const handleImageChange = async (event, setFieldValue) => {
+    const file = event.currentTarget.files[0];
+    if (!file) return;
+
+    // Handle image compression
+    if (file.type.startsWith("image/")) {
+      try {
+        setCompressingImage(true);
+
+        // Compress the image
+        const compressed = await compressImage(file, {
+          maxSizeMB: 0.5, // Compress to max 500KB
+          maxWidthOrHeight: 1024,
+        });
+
+        // Log compression results
+        const originalSize = (file.size / 1024).toFixed(2);
+        const compressedSize = (compressed.size / 1024).toFixed(2);
+        const reduction = (
+          ((file.size - compressed.size) / file.size) * 100
+        ).toFixed(2);
+
+        console.log(
+          `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
+        );
+
+        setFieldValue("image", compressed);
+      } catch (error) {
+        console.error("Image compression failed:", error);
+        // Continue with original file if compression fails
+        setFieldValue("image", file);
+      } finally {
+        setCompressingImage(false);
+      }
+    } else {
+      setFieldValue("image", file);
+    }
   };
 
   //  Table columns
@@ -350,6 +354,7 @@ const Users = () => {
           </Button>
         </Grid>
       </Grid>
+
       {/* Users Table */}
       <Grid size={12}>
         <Paper
@@ -410,6 +415,7 @@ const Users = () => {
           />
         </Paper>
       </Grid>
+
       {/* Add Modal */}
       <BootstrapDialog onClose={() => setOpen(false)} open={open} fullWidth maxWidth="sm">
         <BootstrapDialogTitle onClose={() => setOpen(false)}>
@@ -520,16 +526,16 @@ const Users = () => {
                           component="label"
                           startIcon={<FileUploadOutlinedIcon />}
                           fullWidth
+                          disabled={compressingImage}
                         >
-                          Profile Pic
+                          {compressingImage ? "Compressing..." : "Profile Pic"}
                           <input
                             hidden
-                            accept="image/*"
                             type="file"
-                            onChange={(event) => {
-                              const file = event.currentTarget.files[0];
-                              setFieldValue("image", file);
+                            inputProps={{
+                              accept: "image/*", 
                             }}
+                            onChange={(event) => handleImageChange(event, setFieldValue)}
                           />
                         </Button>
                         {touched.image && errors.image && (
@@ -615,6 +621,7 @@ const Users = () => {
           )}
         </Formik>
       </BootstrapDialog>
+
       {/* Edit Modal */}
       <BootstrapDialog onClose={() => setEditOpen(false)} open={editOpen} fullWidth maxWidth="sm">
         <BootstrapDialogTitle onClose={() => setEditOpen(false)}>
@@ -624,7 +631,7 @@ const Users = () => {
             initialValues={{
               name: editData?.name || "",
               email: editData?.email || "",
-              mobile: editData?.mobile || "", //  fixed typo: was "mbile"
+              mobile: editData?.mobile || "",
               state_id: editData?.state_id || "",
               city: editData?.city || "",
               address: editData?.address || "",
@@ -729,16 +736,16 @@ const Users = () => {
                           component="label"
                           startIcon={<FileUploadOutlinedIcon />}
                           fullWidth
+                          disabled={compressingImage}
                         >
-                          Profile Pic
+                          {compressingImage ? "Compressing..." : "Profile Pic"}
                           <input
                             hidden
-                            accept="image/*"
                             type="file"
-                            onChange={(event) => {
-                              const file = event.currentTarget.files[0];
-                              setFieldValue("image", file);
+                            inputProps={{
+                              accept: "image/*", 
                             }}
+                            onChange={(event) => handleImageChange(event, setFieldValue)}
                           />
                         </Button>
                         {touched.image && errors.image && (
@@ -762,7 +769,7 @@ const Users = () => {
                             border: "1px solid #ddd",
                           }}
                           onError={(e) => {
-                            e.target.src = Profile; // fallback
+                            e.target.src = Profile;
                           }}
                         />
                       </Grid>
@@ -840,7 +847,7 @@ const Users = () => {
           setDeleteDialog({ open: false, id: null, name: "", loading: false })
         }
       >
-        <DialogTitle>Delete Customer?</DialogTitle>
+        <DialogTitle>Delete User?</DialogTitle>
         <DialogContent style={{ width: "320px" }}>
           <DialogContentText>
             Are you sure you want to delete User{" "}

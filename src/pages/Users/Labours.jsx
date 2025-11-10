@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
-import * as Yup from "yup"; //  Yup for validation
+import * as Yup from "yup";
 import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -39,6 +39,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { addLabour, deleteLabour, fetchLabours, updateLabour, statusUpdate } from "./slices/labourSlice";
 import { fetchActiveDepartments } from "../settings/slices/departmentSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
+import { compressImage } from "../../components/imageCompressor/imageCompressor";
+
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -78,40 +80,6 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-//  Dropdown options
-const usertype = [
-  { value: "Admin", label: "Admin" },
-  { value: "Production", label: "Production" },
-  { value: "Store", label: "Store" },
-  { value: "Supervisor", label: "Supervisor" },
-  { value: "Management", label: "Management" },
-];
-
-
-//  Initial labours
-const labours = [
-  {
-    id: 1,
-    profilePic: "",
-    name: "Test User",
-    department: "Assembly",
-    perhourcost: "Admin",
-    overtime: "Assembly",
-    status: true,
-  },
-  {
-    id: 2,
-    profilePic: "",
-    name: "Demo User",
-    department: "Assembly",
-    perhourcost: "Store",
-    overtime: "Polish",
-    status: false,
-  },
-];
-
-const department = [{ value: "Polish", label: "Polish" }];
-
 //  Validation schema
 const validationSchema = Yup.object({
   name: Yup.string()
@@ -128,7 +96,8 @@ const validationSchema = Yup.object({
   department_id: Yup.string().required("Please select a department"),
   image: Yup.mixed().required("Image is required"),
 });
-//  Validation schema
+
+//  Edit Validation schema
 const editValidationSchema = Yup.object({
   name: Yup.string().required("Name is required"),
   per_hour_cost: Yup.number()
@@ -140,9 +109,7 @@ const editValidationSchema = Yup.object({
     .positive("Over time hourly rate must be positive")
     .required("Over time hourly rate is required"),
   department_id: Yup.string().required("Please select a department"),
-
 });
-
 
 const Labours = () => {
   const [open, setOpen] = useState(false);
@@ -154,6 +121,7 @@ const Labours = () => {
   });
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [compressingImage, setCompressingImage] = useState(false);
   const tableContainerRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
@@ -163,7 +131,6 @@ const Labours = () => {
   const { data: departments = [] } = useSelector((state) => state.department);
 
   const dispatch = useDispatch();
-
 
   useEffect(() => {
     dispatch(fetchLabours());
@@ -180,7 +147,7 @@ const Labours = () => {
       resetForm();
       setOpen(false);
     } catch (error) {
-      console.error("Add customer failed:", error);
+      console.error("Add labour failed:", error);
     }
   };
 
@@ -200,18 +167,11 @@ const Labours = () => {
 
     try {
       await dispatch(deleteLabour(deleteDialog.id)).unwrap();
-      //  If API returns success, close modal
     } catch (error) {
       console.error("Delete failed:", error);
-      // show snackbar/toast error
     } finally {
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
     }
-  };
-  const notify = () => {
-    successMessage("User created successfully!");
-    errorMessage("Something went wrong!");
-    processMessage("Processing your request...");
   };
 
   const handleUpdate = (row) => {
@@ -224,16 +184,75 @@ const Labours = () => {
     }
     setEditOpen(true);
   };
+
   const handleEditClose = () => {
     setEditOpen(false);
     setEditData(null);
   };
-  const handleEditSubmit = async (values, resetForm) => {
 
+  const handleEditSubmit = async (values, resetForm) => {
     const res = await dispatch(updateLabour({ updated: { id: editData.id, ...values } }));
     if (res.error) return;
     resetForm();
     handleEditClose();
+  };
+
+  // Handle image compression
+  const handleImageChange = async (event, setFieldValue, isEdit = false) => {
+    const file = event.currentTarget.files[0];
+    if (!file) return;
+
+    // Handle image compression
+    if (file.type.startsWith("image/")) {
+      try {
+        setCompressingImage(true);
+
+        // Compress the image
+        const compressed = await compressImage(file, {
+          maxSizeMB: 0.5, // Compress to max 500KB
+          maxWidthOrHeight: 1024,
+        });
+
+        // Log compression results
+        const originalSize = (file.size / 1024).toFixed(2);
+        const compressedSize = (compressed.size / 1024).toFixed(2);
+        const reduction = (
+          ((file.size - compressed.size) / file.size) * 100
+        ).toFixed(2);
+
+        console.log(
+          `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
+        );
+
+        successMessage(
+          `Image compressed successfully! Original: ${originalSize}KB, Compressed: ${compressedSize}KB`
+        );
+
+        setFieldValue("image", compressed);
+        
+        // Update preview for edit mode
+        if (isEdit) {
+          setPreviewUrl(URL.createObjectURL(compressed));
+        }
+      } catch (error) {
+        console.error("Image compression failed:", error);
+        errorMessage("Failed to compress image. Using original file.");
+        // Continue with original file if compression fails
+        setFieldValue("image", file);
+        
+        if (isEdit) {
+          setPreviewUrl(URL.createObjectURL(file));
+        }
+      } finally {
+        setCompressingImage(false);
+      }
+    } else {
+      setFieldValue("image", file);
+      
+      if (isEdit) {
+        setPreviewUrl(URL.createObjectURL(file));
+      }
+    }
   };
 
   //  Table columns
@@ -252,14 +271,15 @@ const Labours = () => {
       },
       { accessorKey: "name", header: "Name" },
       {
-        accessorKey: "department_id", header: "Department", Cell: ({ row }) => {
+        accessorKey: "department_id", 
+        header: "Department", 
+        Cell: ({ row }) => {
           const dept = row.original.department;
           return dept ? dept.name : "N/A";
         }
       },
       { accessorKey: "per_hour_cost", header: "Per Hour Cost" },
       { accessorKey: "overtime_hourly_rate", header: "Over Time Hour" },
-
       {
         accessorKey: "status",
         header: "Status",
@@ -432,7 +452,6 @@ const Labours = () => {
           }}
           validationSchema={validationSchema}
           onSubmit={(values, { resetForm }) => {
-            console.log('pass')
             handleAdd(values, resetForm)
           }}
         >
@@ -481,27 +500,6 @@ const Labours = () => {
                       helperText={touched.overtime_hourly_rate && errors.overtime_hourly_rate}
                     />
                   </Grid>
-                  {/* <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      id="usertype"
-                      name="usertype"
-                      select
-                      label="User Type"
-                      variant="standard"
-                      fullWidth
-                      margin="dense"
-                      value={values.usertype}
-                      onChange={handleChange}
-                      error={touched.usertype && Boolean(errors.usertype)}
-                      helperText={touched.usertype && errors.usertype}
-                    >
-                      {usertype.map((option) => (
-                        <MenuItem key={option.value} value={option.value}>
-                          {option.label}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid> */}
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       id="department_id"
@@ -532,16 +530,16 @@ const Labours = () => {
                           component="label"
                           startIcon={<FileUploadOutlinedIcon />}
                           fullWidth
+                          disabled={compressingImage}
                         >
-                          Profile Pic
+                          {compressingImage ? "Compressing..." : "Profile Pic"}
                           <input
                             hidden
-                            accept="image/*"
                             type="file"
-                            onChange={(event) => {
-                              const file = event.currentTarget.files[0];
-                              setFieldValue("image", file);
+                            inputProps={{
+                              accept: "image/*", 
                             }}
+                            onChange={(event) => handleImageChange(event, setFieldValue, false)}
                           />
                         </Button>
                         {touched.image && errors.image && (
@@ -565,19 +563,6 @@ const Labours = () => {
                       </Grid>
                     </Grid>
                   </Grid>
-                  {/* <Grid size={{ xs: 12, md: 12 }}>
-                    <TextField
-                      id="address"
-                      name="address"
-                      label="Address"
-                      variant="standard"
-                      fullWidth
-                      margin="dense"
-                      onChange={handleChange}
-                      error={touched.address && Boolean(errors.address)}
-                      helperText={touched.address && errors.address}
-                    />
-                  </Grid> */}
                 </Grid>
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
@@ -605,7 +590,7 @@ const Labours = () => {
             per_hour_cost: editData?.per_hour_cost || "",
             overtime_hourly_rate: editData?.overtime_hourly_rate || "",
             department_id: editData?.department_id || "",
-            image: null, // Always start null; we'll show preview separately
+            image: null,
           }}
           validationSchema={editValidationSchema}
           onSubmit={(values, { resetForm }) => {
@@ -694,19 +679,16 @@ const Labours = () => {
                           component="label"
                           startIcon={<FileUploadOutlinedIcon />}
                           fullWidth
+                          disabled={compressingImage}
                         >
-                          Profile Pic
+                          {compressingImage ? "Compressing..." : "Profile Pic"}
                           <input
                             hidden
-                            accept="image/*"
                             type="file"
-                            onChange={(event) => {
-                              const file = event.currentTarget.files[0];
-                              if (file) {
-                                setFieldValue("image", file);
-                                setPreviewUrl(URL.createObjectURL(file));
-                              }
+                            inputProps={{
+                              accept: "image/*", 
                             }}
+                            onChange={(event) => handleImageChange(event, setFieldValue, true)}
                           />
                         </Button>
                         {touched.image && errors.image && (
@@ -730,7 +712,7 @@ const Labours = () => {
                             border: "1px solid #ddd",
                           }}
                           onError={(e) => {
-                            e.target.src = Profile; // fallback
+                            e.target.src = Profile;
                           }}
                         />
                       </Grid>
@@ -750,7 +732,6 @@ const Labours = () => {
             </Form>
           )}
         </Formik>
-
       </BootstrapDialog>
 
       {/* Delete Modal */}
@@ -760,7 +741,7 @@ const Labours = () => {
           setDeleteDialog({ open: false, id: null, name: "", loading: false })
         }
       >
-        <DialogTitle>Delete Customer?</DialogTitle>
+        <DialogTitle>Delete Labour?</DialogTitle>
         <DialogContent style={{ width: "320px" }}>
           <DialogContentText>
             Are you sure you want to delete labour{" "}
