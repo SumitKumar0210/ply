@@ -79,20 +79,7 @@ export const statusUpdate = createAsyncThunk(
   }
 );
 
-export const sequenceUpdate = createAsyncThunk(
-  'category/sequenceUpdate',
-  async (updated, { rejectWithValue }) => {
-    try {
-      const res = await api.post("admin/category/sequence-update", updated);
-      successMessage(res.data.message);
-      return updated;
-    } catch (error) {
-      const errMsg = getErrorMessage(error);
-      errorMessage(errMsg);
-      return rejectWithValue(errMsg);
-    }
-  }
-);
+
 
 export const deleteCategory = createAsyncThunk(
   'category/delete',
@@ -199,29 +186,6 @@ const categorySlice = createSlice({
         state.loading = false;
         state.error = action.payload || action.error.message;
       })
-
-      // Sequence Update
-      .addCase(sequenceUpdate.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(sequenceUpdate.fulfilled, (state, action) => {
-        state.loading = false;
-        // Update the sequence for affected items
-        if (Array.isArray(action.payload)) {
-          action.payload.forEach((updated) => {
-            const index = state.data.findIndex((d) => d.id === updated.id);
-            if (index !== -1) {
-              state.data[index].sequence = updated.sequence;
-            }
-          });
-        }
-      })
-      .addCase(sequenceUpdate.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || action.error.message;
-      })
-
       // Delete Category
       .addCase(deleteCategory.pending, (state) => {
         state.loading = true;

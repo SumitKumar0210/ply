@@ -7,12 +7,30 @@ export const fetchOrder = createAsyncThunk(
   "order/fetchOrder",
   async ({ pageIndex, pageLimit }, { rejectWithValue }) => {
     try {
-      const res = await api.get(`admin/quotation-product/get-data`, {
+      const res = await api.get(`admin/production-order/get-data`, {
         params: {
           page: pageIndex + 1,
           limit: pageLimit + 10
         }
       });
+      console.log(res.data.data);
+      return {
+        data: res.data.data,
+        totalRecords: res.data.total || res.data.data.length
+      };
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+export const fetchQuotation = createAsyncThunk(
+  "order/fetchQuotation",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/quotation-order/get-quotation-data`);
       console.log(res.data.data);
       return {
         data: res.data.data,
@@ -50,7 +68,7 @@ export const addOrder = createAsyncThunk(
   "order/addOrder",
   async (values, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/quotation-product/store`, values);
+      const res = await api.post(`admin/production-order/store`, values);
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
@@ -66,7 +84,7 @@ export const editOrder = createAsyncThunk(
   "order/editOrder",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/quotation-product/edit/${id}`);
+      const res = await api.post(`admin/production-order/edit/${id}`);
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
@@ -82,7 +100,7 @@ export const updateOrder = createAsyncThunk(
   "order/updateOrder",
   async (values, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/quotation-product/update/${values.id}`, values);
+      const res = await api.post(`admin/production-order/update/${values.id}`, values);
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
@@ -98,7 +116,7 @@ export const deleteOrder = createAsyncThunk(
   "order/deleteOrder",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/quotation-product/delete/${id}`);
+      const res = await api.post(`admin/quotation-order/delete/${id}`);
       successMessage(res.data.message);
       return { id };
     } catch (error) {
@@ -137,7 +155,21 @@ const orderSlice = createSlice({
         state.error = action.payload;
       })
 
-
+      // Fetch orders
+      .addCase(fetchQuotation.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchQuotation.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload.data || [];
+        state.totalRecords = action.payload.totalRecords || 0;
+      })
+      .addCase(fetchQuotation.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
       // Fetch orders
       .addCase(fetchSupervisor.pending, (state) => {
         state.loading = true;
@@ -167,13 +199,13 @@ const orderSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Edit order
       .addCase(editOrder.fulfilled, (state, action) => {
         state.loading = false;
         state.selected = action.payload;
       })
-      
+
       // Delete order
       .addCase(deleteOrder.pending, (state) => {
         state.loading = true;

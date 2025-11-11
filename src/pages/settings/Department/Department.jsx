@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Typography,
   Grid,
@@ -27,12 +27,19 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
+import { debounce } from "lodash";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
-
-import { addDepartment, fetchDepartments, statusUpdate, deleteDepartment, updateDepartment } from "../slices/departmentSlice";
+import {
+  addDepartment,
+  fetchDepartments,
+  statusUpdate,
+  deleteDepartment,
+  updateDepartment,
+  sequenceUpdate,
+} from "../slices/departmentSlice";
 import { useDispatch, useSelector } from "react-redux";
 
-//  Error Boundary
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -57,81 +64,125 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": { padding: theme.spacing(2) },
   "& .MuiDialogActions-root": { padding: theme.spacing(1) },
 }));
 
+
 const Department = () => {
   const dispatch = useDispatch();
-
-  //  Validation Schema
-  const validationSchema = Yup.object({
-    name: Yup.string()
-    .min(2, "Department must be at least 2 characters")
-    .required("Department is required"),
-  });
-
   const tableContainerRef = useRef(null);
-  const [open, setOpen] = useState(false);
 
-  const handleClickOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-
-  const handleAdd = async (value, resetForm) => {
-    const res = await dispatch(addDepartment(value));
-    if(res.error) return ;
-    resetForm();
-    handleClose();
-  };
-
-  // Delete
-    const handleDelete = (id) => {
-      dispatch(deleteDepartment(id));
-    };
   
+  const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [sequenceValues, setSequenceValues] = useState({});
 
-  const { data: tableData = [], loading, error } = useSelector(
+  const { data: tableData = [], loading } = useSelector(
     (state) => state.department
   );
 
+  
+  const validationSchema = Yup.object({
+    name: Yup.string()
+      .min(2, "Department must be at least 2 characters")
+      .required("Department is required"),
+  });
+
+  
   useEffect(() => {
     dispatch(fetchDepartments());
   }, [dispatch]);
 
-    const [editOpen, setEditOpen] = useState(false);
-    const [editData, setEditData] = useState(null);
+ 
+  useEffect(() => {
+    if (tableData.length > 0) {
+      const init = {};
+      tableData.forEach((d) => (init[d.id] = d.sequence || ""));
+      setSequenceValues(init);
+    }
+  }, [tableData]);
+
   
-    // open modal with row data
-  const handleUpdate = (row) => {
-    setEditData(row);   // save selected row
-    setEditOpen(true);  // open modal
+  const debouncedSequenceUpdate = useMemo(
+    () =>
+      debounce((id, value) => {
+        if (!value || isNaN(value)) return;
+        dispatch(sequenceUpdate({ id, sequence: Number(value) }));
+      }, 1500),
+    [dispatch]
+  );
+
+  const handleSequenceChange = useCallback(
+    (id, value) => {
+      setSequenceValues((prev) => ({ ...prev, [id]: value }));
+      debouncedSequenceUpdate(id, value);
+    },
+    [debouncedSequenceUpdate]
+  );
+
+  useEffect(() => {
+    return () => debouncedSequenceUpdate.cancel();
+  }, [debouncedSequenceUpdate]);
+
+  
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+
+  const handleEditOpen = (row) => {
+    setEditData(row);
+    setEditOpen(true);
   };
-  
-  // close modal
   const handleEditClose = () => {
     setEditOpen(false);
     setEditData(null);
   };
-  
-  // update dispatch
-  const handleEditSubmit = async (values, resetForm) => {
-  try {
-    const res = await dispatch(updateDepartment({ id: editData.id, ...values }));
-    if (res.error) {
-      console.log("Update failed:", res.payload);
-      return;
-    }
-    resetForm();
-    handleEditClose();
-  } catch (err) {
-    console.error("Update failed:", err);
-  }
-};
 
+  
+  const handleAdd = async (values, resetForm) => {
+    const res = await dispatch(addDepartment(values));
+    if (!res.error) {
+      resetForm();
+      handleClose();
+    }
+  };
+
+  const handleEditSubmit = async (values, resetForm) => {
+    const res = await dispatch(updateDepartment({ id: editData.id, ...values }));
+    if (!res.error) {
+      resetForm();
+      handleEditClose();
+    }
+  };
+
+  const handleDelete = (id) => {
+    if (window.confirm("Are you sure you want to delete this department?")) {
+      dispatch(deleteDepartment(id));
+    }
+  };
+
+  
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "Department" },
+      {
+        accessorKey: "sequence",
+        header: "Sequence",
+        Cell: ({ row }) => (
+          <TextField
+            type="number"
+            size="small"
+            disabled={(row.original.sequence == 1 || row.original.sequence ==2)}
+            value={sequenceValues[row.original.id] ?? row.original.sequence ?? ""}
+            onChange={(e) => handleSequenceChange(row.original.id, e.target.value)}
+            inputProps={{ min: 0 }}
+            sx={{ width: 80 }}
+          />
+        ),
+      },
       {
         accessorKey: "status",
         header: "Status",
@@ -140,10 +191,14 @@ const Department = () => {
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
+            onChange={(e) =>
+              dispatch(
+                statusUpdate({
+                  ...row.original,
+                  status: e.target.checked ? 1 : 0,
+                })
+              )
+            }
           />
         ),
       },
@@ -157,62 +212,64 @@ const Department = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Edit">
-              <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+              <IconButton onClick={() => handleEditOpen(row.original)}>
                 <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Delete">
+            {!(row.original.sequence == 1 || row.original.sequence ==2) &&(
+              <Tooltip title="Delete">
               <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
                 <RiDeleteBinLine size={16} />
               </IconButton>
             </Tooltip>
+            )}
           </Box>
         ),
       },
     ],
-    [dispatch]
+    [dispatch, handleSequenceChange, sequenceValues]
   );
-  //  Tell MRT which field is the unique row id
-  const getRowId = (originalRow) => originalRow.id;
 
-  //  Download CSV
+  
+  const getRowId = (row) => row.id;
+
   const downloadCSV = () => {
     if (!tableData.length) return;
-    const headers = columns
-      .filter((col) => col.accessorKey)
-      .map((col) => col.header);
-    const rows = tableData.map((row) =>
+    const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
+    const rows = tableData.map((r) =>
       columns
-        .filter((col) => col.accessorKey)
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
+        .filter((c) => c.accessorKey)
+        .map((c) => `"${r[c.accessorKey] ?? ""}"`)
         .join(",")
     );
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "department_data.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const a = document.createElement("a");
+    a.href = url;
+    a.setAttribute(
+      "download",
+      `departments_${new Date().toISOString().split("T")[0]}.csv`
+    );
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  //  Better Print
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
-    const win = window.open("", "", "width=900,height=650");
-    win.document.write(printContents);
-    win.document.close();
-    win.print();
+    const w = window.open("", "", "width=900,height=650");
+    w.document.write(printContents);
+    w.document.close();
+    w.print();
   };
 
+  
   return (
     <ErrorBoundary>
-     <Grid container spacing={2}>
+      <Grid container spacing={2}>
         <Grid size={12}>
           <Paper
             elevation={0}
@@ -222,58 +279,45 @@ const Department = () => {
             <MaterialReactTable
               columns={columns}
               data={tableData}
-              getRowId={getRowId} //  FIXED
+              getRowId={getRowId}
+              state={{ isLoading: loading }}
               enableTopToolbar
               enableColumnFilters
               enableSorting
               enablePagination
-              enableBottomToolbar
               enableGlobalFilter
+              enableBottomToolbar
               enableDensityToggle={false}
               enableColumnActions={false}
               enableColumnVisibilityToggle={false}
               initialState={{ density: "compact" }}
-              muiTableContainerProps={{
-                sx: { width: "100%", backgroundColor: "#fff" },
-              }}
-              muiTablePaperProps={{
-                sx: { backgroundColor: "#fff" },
-              }}
+              muiTableContainerProps={{ sx: { backgroundColor: "#fff" } }}
               renderTopToolbar={({ table }) => (
                 <Box
                   sx={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    width: "100%",
                     p: 1,
                   }}
                 >
-                  <Typography variant="h6" fontWeight={400}>
+                  <Typography variant="h6" fontWeight={500}>
                     Department
                   </Typography>
-
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <MRT_GlobalFilterTextField table={table} />
                     <MRT_ToolbarInternalButtons table={table} />
-
                     <Tooltip title="Print">
-                      <IconButton color="default" onClick={handlePrint}>
+                      <IconButton onClick={handlePrint}>
                         <FiPrinter size={20} />
                       </IconButton>
                     </Tooltip>
-
                     <Tooltip title="Download CSV">
-                      <IconButton color="default" onClick={downloadCSV}>
+                      <IconButton onClick={downloadCSV}>
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleClickOpen}
-                    >
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
                       Add Department
                     </Button>
                   </Box>
@@ -284,18 +328,13 @@ const Department = () => {
         </Grid>
       </Grid>
 
-      {/* Modal */}
+      {/* Add Modal */}
       <BootstrapDialog onClose={handleClose} open={open} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ m: 0, p: 1.5 }}>Add Department</DialogTitle>
+        <DialogTitle>Add Department</DialogTitle>
         <IconButton
           aria-label="close"
           onClick={handleClose}
-          sx={(theme) => ({
-            position: "absolute",
-            right: 8,
-            top: 8,
-            color: theme.palette.grey[500],
-          })}
+          sx={{ position: "absolute", right: 8, top: 8 }}
         >
           <CloseIcon />
         </IconButton>
@@ -303,16 +342,13 @@ const Department = () => {
         <Formik
           initialValues={{ name: "" }}
           validationSchema={validationSchema}
-          onSubmit={async (values, { resetForm }) => {
-            await handleAdd(values, resetForm);
-          }}
+          onSubmit={async (values, { resetForm }) => handleAdd(values, resetForm)}
         >
           {({ values, errors, touched, handleChange }) => (
             <Form>
               <DialogContent dividers>
                 <TextField
                   fullWidth
-                  id="department"
                   name="name"
                   label="Department"
                   variant="standard"
@@ -320,14 +356,13 @@ const Department = () => {
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}
                   helperText={touched.name && errors.name}
-                  sx={{ mb: 3 }}
                 />
               </DialogContent>
-              <DialogActions sx={{ gap: 1, mb: 1 }}>
+              <DialogActions>
                 <Button variant="outlined" color="error" onClick={handleClose}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained" color="primary">
+                <Button type="submit" variant="contained">
                   Submit
                 </Button>
               </DialogActions>
@@ -336,19 +371,13 @@ const Department = () => {
         </Formik>
       </BootstrapDialog>
 
-
       {/* Edit Modal */}
       <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit Department</DialogTitle>
+        <DialogTitle>Edit Department</DialogTitle>
         <IconButton
           aria-label="close"
           onClick={handleEditClose}
-          sx={(theme) => ({
-            position: "absolute",
-            right: 8,
-            top: 8,
-            color: theme.palette.grey[500],
-          })}
+          sx={{ position: "absolute", right: 8, top: 8 }}
         >
           <CloseIcon />
         </IconButton>
@@ -356,6 +385,7 @@ const Department = () => {
         <Formik
           initialValues={{ name: editData?.name || "" }}
           validationSchema={validationSchema}
+          enableReinitialize
           onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
         >
           {({ values, errors, touched, handleChange }) => (
@@ -363,7 +393,6 @@ const Department = () => {
               <DialogContent dividers>
                 <TextField
                   fullWidth
-                  id="edit_department"
                   name="name"
                   label="Department"
                   variant="standard"
@@ -371,10 +400,9 @@ const Department = () => {
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}
                   helperText={touched.name && errors.name}
-                  sx={{ mb: 3 }}
                 />
               </DialogContent>
-              <DialogActions sx={{ gap: 1, mb: 1 }}>
+              <DialogActions>
                 <Button variant="outlined" color="error" onClick={handleEditClose}>
                   Close
                 </Button>

@@ -46,7 +46,7 @@ export const updateDepartment = createAsyncThunk(
 export const statusUpdate = createAsyncThunk(
   'department/update',
   async (updated) => {
-    try{
+    try {
       const res = await api.post("admin/department/status-update", {
         id: updated.id,
         status: updated.status,
@@ -65,10 +65,25 @@ export const statusUpdate = createAsyncThunk(
 export const deleteDepartment = createAsyncThunk(
   'department/delete',
   async (id) => {
-    try{
+    try {
       const res = await api.post(`admin/department/delete/${id}`, id);
       successMessage(res.data.message || "Department deleted successfully!");
       return id;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+export const sequenceUpdate = createAsyncThunk(
+  'category/sequenceUpdate',
+  async (updated, { rejectWithValue }) => {
+    try {
+      const res = await api.post("admin/department/sequence-update", updated);
+      successMessage(res.data.message);
+      return updated;
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
@@ -114,9 +129,32 @@ const departmentSlice = createSlice({
         }
       })
 
+      // Sequence Update
+      .addCase(sequenceUpdate.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(sequenceUpdate.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update the sequence for affected items
+        if (Array.isArray(action.payload)) {
+          action.payload.forEach((updated) => {
+            const index = state.data.findIndex((d) => d.id === updated.id);
+            if (index !== -1) {
+              state.data[index].sequence = updated.sequence;
+            }
+          });
+        }
+      })
+      .addCase(sequenceUpdate.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message;
+      })
+
+
       // Delete
       .addCase(deleteDepartment.fulfilled, (state, action) => {
-        const deletedId = action.meta.arg; 
+        const deletedId = action.meta.arg;
         state.data = state.data.filter((item) => item.id !== deletedId);
       });
   },

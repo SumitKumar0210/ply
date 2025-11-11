@@ -14,7 +14,9 @@ import {
   CardContent,
   Stack,
   Box,
-  TextField
+  TextField,
+  CircularProgress,
+  Backdrop
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -22,7 +24,7 @@ import { Autocomplete } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { fetchOrder, deleteOrder, fetchSupervisor } from "../slice/orderSlice";
+import { fetchQuotation, deleteOrder, fetchSupervisor, addOrder } from "../slice/orderSlice";
 import { useDispatch, useSelector } from "react-redux";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 
@@ -30,9 +32,10 @@ const CreateOrder = () => {
   const [creationDate, setCreationDate] = useState(null);
   const [eddDate, setEddDate] = useState(null);
   const [openDelete, setOpenDelete] = useState(false);
-  const [openProductionModal, setOpenProductionModal] = useState(false);
-  const [observeId, setObserveId] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [selectedDeleteId, setSelectedDeleteId] = useState(null);
+  const [selectedSupervisor, setSelectedSupervisor] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const dispatch = useDispatch();
 
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
@@ -41,20 +44,27 @@ const CreateOrder = () => {
   const { user = [] } = useSelector((state) => state.order);
 
   useEffect(() => {
-    const params = {
-      pageIndex: 0,
-      pageLimit: 10,
-    };
-    dispatch(fetchOrder(params));
+    dispatch(fetchQuotation());
     dispatch(fetchSupervisor());
   }, [dispatch]);
 
-  // Parse product_ids from the order data
   const [itemRowData, setItemRowData] = useState(null);
   const [items, setItems] = useState([]);
 
-  const handleSelectedQuote = (row) => {
-    setItemRowData(row);
+  const handleSelectedQuote = async (row) => {
+    if (!row) {
+      setItemRowData(null);
+      setItems([]);
+      return;
+    }
+
+    setIsLoadingQuote(true);
+    try {
+      setItemRowData(row);
+    } finally {
+      // Small delay to show loader for better UX
+      setTimeout(() => setIsLoadingQuote(false), 300);
+    }
   };
 
   useEffect(() => {
@@ -71,25 +81,23 @@ const CreateOrder = () => {
         setItems(parsedItems);
       } catch (error) {
         console.error("Error parsing product_ids:", error);
+        setItems([]);
       }
     }
   }, [itemRowData]);
 
   const handleProductionQtyChange = (rowId, value, maxQty) => {
-  let qty = Number(value);
+    let qty = Number(value);
 
-  // Prevent negative or non-numeric input
-  if (isNaN(qty) || qty < 0) qty = 0;
+    if (isNaN(qty) || qty < 0) qty = 0;
+    if (qty > maxQty) qty = maxQty;
 
-  // Prevent exceeding maxQty
-  if (qty > maxQty) qty = maxQty;
-
-  setItems((prevItems) =>
-    prevItems.map((item) =>
-      item.rowId === rowId ? { ...item, production_qty: qty } : item
-    )
-  );
-};
+    setItems((prevItems) =>
+      prevItems.map((item) =>
+        item.rowId === rowId ? { ...item, production_qty: qty } : item
+      )
+    );
+  };
 
   const handleStartDateChange = (rowId, value) => {
     setItems(items.map(item =>
@@ -103,21 +111,127 @@ const CreateOrder = () => {
     ));
   };
 
-  const handleAddToProduction = () => {
-    setOpenProductionModal(true);
+  const handleDeleteItem = (rowId) => {
+    setSelectedDeleteId(rowId);
+    setOpenDelete(true);
   };
 
-  const handleSubmitProduction = () => {
-    // Handle production submission with observeId
-    console.log("Observe ID:", observeId);
-    console.log("Items:", items);
-    setOpenProductionModal(false);
+  const confirmDelete = () => {
+    setItems(items.filter(item => item.rowId !== selectedDeleteId));
+    setOpenDelete(false);
+    setSelectedDeleteId(null);
+  };
+
+  const validateForm = () => {
+    if (!itemRowData) {
+      alert("Please select a quotation");
+      return false;
+    }
+
+    if (!selectedSupervisor) {
+      alert("Please select a supervisor");
+      return false;
+    }
+
+    if (!creationDate) {
+      alert("Please select project start date");
+      return false;
+    }
+
+    if (!eddDate) {
+      alert("Please select EDD");
+      return false;
+    }
+
+    if (items.length === 0) {
+      alert("No items to add to production");
+      return false;
+    }
+
+    // Validate each item
+    for (const item of items) {
+      if (!item.production_qty || item.production_qty <= 0) {
+        alert(`Please enter production quantity for ${item.name}`);
+        return false;
+      }
+
+      if (!item.start_date) {
+        alert(`Please select start date for ${item.name}`);
+        return false;
+      }
+
+      if (!item.end_date) {
+        alert(`Please select end date for ${item.name}`);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleAddToProduction = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const poData = {
+        quotation_id: itemRowData.id,
+        batch_no: itemRowData.batch_no,
+        customer_id: itemRowData.customer.id,
+        supervisor_id: selectedSupervisor.id,
+        project_start_date: creationDate,
+        edd: eddDate,
+        items: items.map(item => ({
+          product_id: item.product_id,
+          group: item.group,
+          name: item.name,
+          model: item.model,
+          unique_code: item.unique_code,
+          original_qty: item.qty,
+          production_qty: item.production_qty,
+          size: item.size,
+          document: item.document,
+          start_date: item.start_date,
+          end_date: item.end_date,
+        }))
+      };
+
+      await dispatch(addOrder(poData)).unwrap();
+
+      // Reset form on success
+      setItemRowData(null);
+      setItems([]);
+      setSelectedSupervisor(null);
+      setCreationDate(null);
+      setEddDate(null);
+
+    } catch (error) {
+      console.error("Error creating production order:", error);
+      alert("Failed to create production order. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const quoteList = data;
 
   return (
     <>
+      <Backdrop
+        sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={isSubmitting || isLoadingQuote}
+      >
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress color="inherit" />
+          <Typography sx={{ mt: 2 }}>
+            {isLoadingQuote ? "Loading quotation..." : "Creating production order..."}
+          </Typography>
+        </Box>
+      </Backdrop>
+
       <Grid
         container
         spacing={2}
@@ -153,7 +267,7 @@ const CreateOrder = () => {
                   <Autocomplete
                     options={quoteList}
                     size="small"
-                    getOptionLabel={(option) => `Quote ${option.id}`}
+                    getOptionLabel={(option) => `Quote ${option.batch_no}`}
                     loading={loading}
                     onChange={(event, option) => handleSelectedQuote(option)}
                     renderInput={(params) => (
@@ -162,6 +276,15 @@ const CreateOrder = () => {
                         label="Select Quote"
                         variant="outlined"
                         sx={{ width: 300 }}
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
                       />
                     )}
                     sx={{ width: 300 }}
@@ -172,9 +295,9 @@ const CreateOrder = () => {
                     size="small"
                     getOptionLabel={(option) => option?.name || ""}
                     loading={loading}
-                    value={user.find((u) => u.id === observeId) || null}
+                    value={selectedSupervisor}
                     onChange={(event, newValue) => {
-                      setObserveId(newValue ? newValue.id : null);
+                      setSelectedSupervisor(newValue);
                     }}
                     renderInput={(params) => (
                       <TextField
@@ -230,8 +353,8 @@ const CreateOrder = () => {
                     <br />
                   </Typography>
                 )}
-
               </Grid>
+
               {items.length > 0 && (
                 <Grid size={12} sx={{ mt: 3 }}>
                   <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -263,12 +386,11 @@ const CreateOrder = () => {
                               <TextField
                                 size="small"
                                 type="number"
-                                value={item.production_qty ?? 0}
+                                value={item.production_qty ?? ""}
                                 onChange={(e) => handleProductionQtyChange(item.rowId, e.target.value, item.qty)}
                                 sx={{ width: 100 }}
-                                inputProps={{min: 0,max: item.qty || 0,}}
+                                inputProps={{ min: 0, max: item.qty || 0 }}
                               />
-
                             </Td>
                             <Td>{item.size}</Td>
                             <Td>
@@ -309,7 +431,7 @@ const CreateOrder = () => {
                               <Tooltip title="Delete">
                                 <IconButton
                                   color="error"
-                                  onClick={() => setOpenDelete(true)}
+                                  onClick={() => handleDeleteItem(item.rowId)}
                                 >
                                   <RiDeleteBinLine size={16} />
                                 </IconButton>
@@ -322,7 +444,6 @@ const CreateOrder = () => {
                   </LocalizationProvider>
                 </Grid>
               )}
-
 
               <Grid size={12} sx={{ mt: 4 }}>
                 <Stack
@@ -337,8 +458,10 @@ const CreateOrder = () => {
                     variant="contained"
                     color="primary"
                     onClick={handleAddToProduction}
+                    disabled={isSubmitting || items.length === 0}
+                    startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
                   >
-                    Add to Production
+                    {isSubmitting ? "Processing..." : "Add to Production"}
                   </Button>
                 </Stack>
               </Grid>
@@ -355,34 +478,8 @@ const CreateOrder = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={() => setOpenDelete(false)}>
+          <Button variant="contained" color="error" onClick={confirmDelete}>
             Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Add to Production Modal */}
-      <Dialog maxWidth="sm" fullWidth open={openProductionModal} onClose={() => setOpenProductionModal(false)}>
-        <DialogTitle>Add to Production</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <TextField
-              fullWidth
-              label="Observe ID"
-              value={observeId}
-              onChange={(e) => setObserveId(e.target.value)}
-              variant="outlined"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenProductionModal(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSubmitProduction}
-          >
-            Submit
           </Button>
         </DialogActions>
       </Dialog>

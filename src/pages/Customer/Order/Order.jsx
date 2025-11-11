@@ -76,14 +76,10 @@ BootstrapDialogTitle.propTypes = {
 //  Status colors
 const getStatusChip = (status) => {
   switch (status) {
-    case 1:
+    case 0:
       return <Chip label="Pending" color="warning" size="small" />;
-    case 3:
-      return <Chip label="Delivered" color="success" size="small" />;
-    case 2:
-      return <Chip label="Production" color="info" size="small" />;
     default:
-      return <Chip label="Unknown" size="small" />;
+      return <Chip label="In Production" color="info" size="small" />;
   }
 };
 
@@ -141,15 +137,21 @@ const Order = () => {
   };
 
   const handleIQtyCount = (items) => {
-    try {
-      const parsed = JSON.parse(items); 
-      if (!Array.isArray(parsed)) return 0;
-      return parsed.reduce((total, item) => total + Number(item.qty || 0), 0);
-    } catch (e) {
-      console.error("Invalid product_ids format:", e);
-      return 0;
-    }
-  };
+  try {
+    const parsed = JSON.parse(items);
+    if (!Array.isArray(parsed)) return 0;
+
+    // sum up 'production_qty' (or fallback to 'original_qty' if needed)
+    // return parsed.reduce(
+    //   (total, item) => total + Number(item.production_qty || item.original_qty || 0),
+    //   0
+    // );
+   return parsed.length?? 0;
+  } catch (e) {
+    console.error("Invalid product_ids format:", e);
+    return 0;
+  }
+};
 
   const calculateQCPassed = (items) => {
     try {
@@ -176,13 +178,13 @@ const Order = () => {
   //  Table columns
   const columns = useMemo(
     () => [
-      { accessorKey: "orderNumber", header: "Order No.", Cell: ({row}) => row.original?.order_number ?? '' },
+      { accessorKey: "orderNumber", header: "Order No.", Cell: ({row}) => row.original?.batch_no ?? '' },
       { accessorKey: "customerName", header: "Customer Name", Cell: ({row}) => row.original?.customer?.name ?? '' },
       { accessorKey: "dated", header: "Dated", Cell: ({row}) => handleDateFormate(row.original.created_at) },
-      { accessorKey: "orderTotal", header: "Order Total", Cell: ({row}) => row.original?.grand_total ? parseInt(row.original?.grand_total) : '' },
       { accessorKey: "itemOrdered", header: "Item Ordered", Cell: ({row}) => handleIQtyCount(row.original?.product_ids) },
-      { accessorKey: "qcPassedItem", header: "QC Passed Item", Cell: ({row}) => calculateQCPassed(row.original?.product_ids) },
-      { accessorKey: "deliveredTotal", header: "Delivered Total", Cell: ({row}) => calculateDelivered(row.original?.product_ids) },
+      { accessorKey: "commencement_date", header: "Commencement Date", Cell: ({row}) => handleDateFormate(row.original.commencement_date) },
+      // { accessorKey: "qcPassedItem", header: "QC Passed Item", Cell: ({row}) => calculateQCPassed(row.original?.product_ids) },
+      { accessorKey: "delivered_date", header: "Delivered Date", Cell: ({row}) =>handleDateFormate(row.original.delivery_date) },
       {
         accessorKey: "status",
         header: "Status",
