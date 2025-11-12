@@ -127,6 +127,58 @@ export const deleteOrder = createAsyncThunk(
   }
 );
 
+// Approve All Product
+export const approveAllProduct = createAsyncThunk(
+  "order/approveAllProduct",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/approve-all-product`,id);
+      successMessage(res.data.message);
+      return res.data.data;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+// Approve All Product
+export const approveSingleProduct = createAsyncThunk(
+  "order/approveSingleProduct",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/approve-single-product`,values);
+      successMessage(res.data.message);
+      return res.data.data;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+// Approve All Product
+export const getPreviousPO = createAsyncThunk(
+  "order/getPreviousPO",
+  async ({ id, orderId }, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/get-previous-po`, {
+        id: id,
+        orderId: orderId ?? null,
+      });
+      successMessage(res.data.message);
+      return res.data.data;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+
+
 const orderSlice = createSlice({
   name: "order",
   initialState: {

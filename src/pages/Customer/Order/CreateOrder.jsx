@@ -24,9 +24,10 @@ import { Autocomplete } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { fetchQuotation, deleteOrder, fetchSupervisor, addOrder } from "../slice/orderSlice";
+import { fetchQuotation, deleteOrder, fetchSupervisor, addOrder, getPreviousPO } from "../slice/orderSlice";
 import { useDispatch, useSelector } from "react-redux";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
+import { Chip } from "@mui/material";
 
 const CreateOrder = () => {
   const [creationDate, setCreationDate] = useState(null);
@@ -36,6 +37,7 @@ const CreateOrder = () => {
   const [selectedSupervisor, setSelectedSupervisor] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  const [previousPOData, setPreviousPOData] = useState([]);
   const dispatch = useDispatch();
 
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
@@ -61,6 +63,9 @@ const CreateOrder = () => {
     setIsLoadingQuote(true);
     try {
       setItemRowData(row);
+
+      const res = await dispatch(getPreviousPO({ id:row.id }));
+      setPreviousPOData(res.payload);
     } finally {
       // Small delay to show loader for better UX
       setTimeout(() => setIsLoadingQuote(false), 300);
@@ -86,11 +91,13 @@ const CreateOrder = () => {
     }
   }, [itemRowData]);
 
-  const handleProductionQtyChange = (rowId, value, maxQty) => {
+  const handleProductionQtyChange = (rowId, value, totalQty, prevProducedQty = 0) => {
     let qty = Number(value);
 
+    const remainingQty = totalQty - prevProducedQty;
+
     if (isNaN(qty) || qty < 0) qty = 0;
-    if (qty > maxQty) qty = maxQty;
+    if (qty > remainingQty) qty = remainingQty;
 
     setItems((prevItems) =>
       prevItems.map((item) =>
@@ -98,6 +105,7 @@ const CreateOrder = () => {
       )
     );
   };
+
 
   const handleStartDateChange = (rowId, value) => {
     setItems(items.map(item =>
@@ -150,20 +158,22 @@ const CreateOrder = () => {
 
     // Validate each item
     for (const item of items) {
-      if (!item.production_qty || item.production_qty <= 0) {
+      if (item.production_qty && item.production_qty <= 0) {
         alert(`Please enter production quantity for ${item.name}`);
         return false;
       }
+      if (item.production_qty) {
+        if (!item.start_date) {
+          alert(`Please select start date for ${item.name}`);
+          return false;
+        }
 
-      if (!item.start_date) {
-        alert(`Please select start date for ${item.name}`);
-        return false;
+        if (!item.end_date) {
+          alert(`Please select end date for ${item.name}`);
+          return false;
+        }
       }
 
-      if (!item.end_date) {
-        alert(`Please select end date for ${item.name}`);
-        return false;
-      }
     }
 
     return true;
@@ -184,19 +194,21 @@ const CreateOrder = () => {
         supervisor_id: selectedSupervisor.id,
         project_start_date: creationDate,
         edd: eddDate,
-        items: items.map(item => ({
-          product_id: item.product_id,
-          group: item.group,
-          name: item.name,
-          model: item.model,
-          unique_code: item.unique_code,
-          original_qty: item.qty,
-          production_qty: item.production_qty,
-          size: item.size,
-          document: item.document,
-          start_date: item.start_date,
-          end_date: item.end_date,
-        }))
+        items: items
+          .filter(item => item.production_qty)
+          .map(item => ({
+            product_id: item.product_id,
+            group: item.group,
+            name: item.name,
+            model: item.model,
+            unique_code: item.unique_code,
+            original_qty: item.qty,
+            production_qty: item.production_qty,
+            size: item.size,
+            document: item.document,
+            start_date: item.start_date,
+            end_date: item.end_date,
+          }))
       };
 
       await dispatch(addOrder(poData)).unwrap();
@@ -366,6 +378,7 @@ const CreateOrder = () => {
                           <Th>Model</Th>
                           <Th>Unique Code</Th>
                           <Th>Qty</Th>
+                          {previousPOData.length > 0 && <Th>Qty in Production</Th>}
                           <Th>Production Qty</Th>
                           <Th>Size</Th>
                           <Th>Document</Th>
@@ -375,70 +388,122 @@ const CreateOrder = () => {
                         </Tr>
                       </Thead>
                       <Tbody>
-                        {items.map((item) => (
-                          <Tr key={item.rowId}>
-                            <Td>{item.group}</Td>
-                            <Td>{item.name}</Td>
-                            <Td>{item.model}</Td>
-                            <Td>{item.unique_code}</Td>
-                            <Td>{item.qty}</Td>
-                            <Td>
-                              <TextField
-                                size="small"
-                                type="number"
-                                value={item.production_qty ?? ""}
-                                onChange={(e) => handleProductionQtyChange(item.rowId, e.target.value, item.qty)}
-                                sx={{ width: 100 }}
-                                inputProps={{ min: 0, max: item.qty || 0 }}
-                              />
-                            </Td>
-                            <Td>{item.size}</Td>
-                            <Td>
-                              {item.document && (
-                                <ImagePreviewDialog
-                                  imageUrl={mediaUrl + item.document}
-                                  alt={item.name}
-                                />
+                        {items.map((item) => {
+                          const prevMatch = previousPOData.find(
+                            (p) =>
+                              p.product_id == item.product_id &&
+                              p.group.trim() === item.group.trim()
+                          );
+
+                          return (
+                            <Tr key={item.rowId}>
+                              <Td>{item.group}</Td>
+                              <Td>{item.name}</Td>
+                              <Td>{item.model}</Td>
+                              <Td>{item.unique_code}</Td>
+                              <Td>{item.qty}</Td>
+                              {previousPOData.length > 0 && (
+                                <Td style={{ textAlign: "center" }}>
+                                  {prevMatch ? (
+                                    <Chip
+                                      label={prevMatch.total_qty}
+                                      color="info"
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                  ) : (
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
+                                      sx={{ display: "inline-block", textAlign: "center" }}
+                                    >
+                                      0
+                                    </Typography>
+                                  )}
+                                </Td>
                               )}
-                            </Td>
-                            <Td>
-                              <DatePicker
-                                value={item.start_date}
-                                onChange={(newValue) => handleStartDateChange(item.rowId, newValue)}
-                                disablePast
-                                slotProps={{
-                                  textField: {
-                                    size: 'small',
-                                    sx: { width: 150 },
-                                  },
-                                }}
-                              />
-                            </Td>
-                            <Td>
-                              <DatePicker
-                                value={item.end_date}
-                                onChange={(newValue) => handleEndDateChange(item.rowId, newValue)}
-                                disablePast
-                                slotProps={{
-                                  textField: {
-                                    size: 'small',
-                                    sx: { width: 150 },
-                                  },
-                                }}
-                              />
-                            </Td>
-                            <Td>
-                              <Tooltip title="Delete">
-                                <IconButton
-                                  color="error"
-                                  onClick={() => handleDeleteItem(item.rowId)}
-                                >
-                                  <RiDeleteBinLine size={16} />
-                                </IconButton>
-                              </Tooltip>
-                            </Td>
-                          </Tr>
-                        ))}
+
+                              <Td style={{ textAlign: "center" }}>
+                                {prevMatch && parseInt(prevMatch.total_qty) === parseInt(item.qty) ? (
+                                  <Typography
+                                    variant="body2"
+                                    color="success.main"
+                                    sx={{ fontWeight: 500 }}
+                                  >
+                                    ✓ Completed
+                                  </Typography>
+                                ) : (
+                                  <TextField
+                                    size="small"
+                                    type="number"
+                                    value={item.production_qty ?? ""}
+                                    onChange={(e) =>
+                                      handleProductionQtyChange(
+                                        item.rowId,
+                                        e.target.value,
+                                        item.qty,
+                                        prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
+                                      )
+                                    }
+                                    sx={{ width: 100 }}
+                                    inputProps={{
+                                      min: 0,
+                                      max: prevMatch
+                                        ? item.qty - parseInt(prevMatch.total_qty || 0)
+                                        : item.qty,
+                                    }}
+                                  />
+
+                                )}
+                              </Td>
+                              <Td>{item.size}</Td>
+                              <Td>
+                                {item.document && (
+                                  <ImagePreviewDialog
+                                    imageUrl={mediaUrl + item.document}
+                                    alt={item.name}
+                                  />
+                                )}
+                              </Td>
+                              <Td>
+                                <DatePicker
+                                  value={item.start_date}
+                                  onChange={(newValue) => handleStartDateChange(item.rowId, newValue)}
+                                  disablePast
+                                  slotProps={{
+                                    textField: {
+                                      size: 'small',
+                                      sx: { width: 150 },
+                                    },
+                                  }}
+                                />
+                              </Td>
+                              <Td>
+                                <DatePicker
+                                  value={item.end_date}
+                                  onChange={(newValue) => handleEndDateChange(item.rowId, newValue)}
+                                  disablePast
+                                  slotProps={{
+                                    textField: {
+                                      size: 'small',
+                                      sx: { width: 150 },
+                                    },
+                                  }}
+                                />
+                              </Td>
+                              <Td>
+                                <Tooltip title="Delete">
+                                  <IconButton
+                                    color="error"
+                                    onClick={() => handleDeleteItem(item.rowId)}
+                                  >
+                                    <RiDeleteBinLine size={16} />
+                                  </IconButton>
+                                </Tooltip>
+                              </Td>
+                            </Tr>
+                          );
+                        })}
                       </Tbody>
                     </Table>
                   </LocalizationProvider>

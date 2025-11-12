@@ -24,10 +24,11 @@ import { Autocomplete } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { fetchQuotation, fetchSupervisor, updateOrder, editOrder } from "../slice/orderSlice";
+import { fetchQuotation, fetchSupervisor, updateOrder, editOrder, getPreviousPO } from "../slice/orderSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
+import { Chip } from "@mui/material";
 
 const EditOrder = () => {
   const { id: orderId } = useParams();
@@ -60,6 +61,8 @@ const EditOrder = () => {
     itemId: null
   });
 
+  const [previousPOData, setPreviousPOData] = useState([]);
+
   // Initialize data on mount
   useEffect(() => {
     const initializeData = async () => {
@@ -67,7 +70,7 @@ const EditOrder = () => {
         dispatch(fetchQuotation()),
         dispatch(fetchSupervisor())
       ]);
-      
+
       if (orderId) {
         await loadOrderData();
       }
@@ -79,20 +82,23 @@ const EditOrder = () => {
   // Load existing order data for editing
   const loadOrderData = async () => {
     setLoadingState(prev => ({ ...prev, orderData: true }));
-    
+
     try {
       const response = await dispatch(editOrder(orderId)).unwrap();
       const orderData = response.data || response;
-      
+
       if (!orderData) {
         throw new Error("Order not found");
       }
 
+      const res = await dispatch(getPreviousPO({ id: orderData.quotation_id, orderId }));
+      setPreviousPOData(res.payload);
+
       // Parse product_ids from JSON string
       let productItems = [];
       try {
-        productItems = typeof orderData.product_ids === 'string' 
-          ? JSON.parse(orderData.product_ids) 
+        productItems = typeof orderData.product_ids === 'string'
+          ? JSON.parse(orderData.product_ids)
           : orderData.product_ids || [];
       } catch (parseError) {
         console.error("Error parsing product_ids:", parseError);
@@ -107,7 +113,6 @@ const EditOrder = () => {
 
       const matchedSupervisor = supervisorList.find(s => s.id === orderData.supervisor_id) || null;
 
-      // Parse and format items
       const formattedItems = productItems.map((item, index) => ({
         rowId: index,
         product_id: item.product_id || item.id,
@@ -123,7 +128,6 @@ const EditOrder = () => {
         end_date: item.end_date ? new Date(item.end_date) : null
       }));
 
-      // Update form with loaded data (using correct field names from API)
       setFormData({
         selectedQuote: matchedQuote,
         selectedSupervisor: matchedSupervisor,
@@ -198,12 +202,16 @@ const EditOrder = () => {
   };
 
   // Handle production quantity change with validation
-  const handleProductionQtyChange = (rowId, value, maxQty) => {
+  const handleProductionQtyChange = (rowId, value, maxQty, prevQty = 0) => {
     let qty = Number(value);
+    const remainingQty = Math.max(0, maxQty - prevQty);
+
     if (isNaN(qty) || qty < 0) qty = 0;
-    if (qty > maxQty) qty = maxQty;
+    if (qty > remainingQty) qty = remainingQty;
+
     updateItem(rowId, "production_qty", qty);
   };
+
 
   // Delete item handlers
   const handleDeleteItem = (rowId) => {
@@ -317,8 +325,8 @@ const EditOrder = () => {
 
   const isLoading = loadingState.orderData || loadingState.quotation || loadingState.submitting;
   const loadingMessage = loadingState.orderData ? "Loading order data..." :
-                         loadingState.quotation ? "Loading quotation..." :
-                         "Updating order...";
+    loadingState.quotation ? "Loading quotation..." :
+      "Updating order...";
 
   return (
     <>
@@ -411,10 +419,10 @@ const EditOrder = () => {
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2">
                 <strong>{formData.selectedQuote?.customer?.name ?? formData.customer?.name}</strong><br />
-                {formData.selectedQuote?.customer?.address ?? formData.customer?.address }<br />
-                {formData.selectedQuote?.customer?.city ?? formData.customer?.city }, 
-                {formData.selectedQuote?.customer?.state?.name ?? formData.customer?.state?.name  }
-                 {formData.selectedQuote?.customer?.zip_code ?? formData.customer?.zip_code  }
+                {formData.selectedQuote?.customer?.address ?? formData.customer?.address}<br />
+                {formData.selectedQuote?.customer?.city ?? formData.customer?.city},
+                {formData.selectedQuote?.customer?.state?.name ?? formData.customer?.state?.name}
+                {formData.selectedQuote?.customer?.zip_code ?? formData.customer?.zip_code}
               </Typography>
             </Box>
           )}
@@ -430,6 +438,7 @@ const EditOrder = () => {
                     <Th>Model</Th>
                     <Th>Unique Code</Th>
                     <Th>Qty</Th>
+                    {previousPOData.length > 0 && <Th>Qty in Production</Th>}
                     <Th>Production Qty</Th>
                     <Th>Size</Th>
                     <Th>Document</Th>
@@ -439,60 +448,101 @@ const EditOrder = () => {
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {formData.items.map((item) => (
-                    <Tr key={item.rowId}>
-                      <Td>{item.group}</Td>
-                      <Td>{item.name}</Td>
-                      <Td>{item.model}</Td>
-                      <Td>{item.unique_code}</Td>
-                      <Td>{item.original_qty}</Td>
-                      <Td>
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.production_qty}
-                          onChange={(e) => handleProductionQtyChange(item.rowId, e.target.value, item.original_qty)}
-                          sx={{ width: 100 }}
-                          inputProps={{ min: 0, max: item.original_qty }}
-                        />
-                      </Td>
-                      <Td>{item.size}</Td>
-                      <Td>
-                        {item.document && (
-                          <ImagePreviewDialog
-                            imageUrl={mediaUrl + item.document}
-                            alt={item.name}
-                          />
+                  {formData.items.map((item) => {
+                    const prevMatch = previousPOData.find(
+                      (p) =>
+                        p.product_id == item.product_id &&
+                        p.group.trim() === item.group.trim()
+                    );
+                    return (
+                      <Tr key={item.rowId}>
+                        <Td>{item.group}</Td>
+                        <Td>{item.name}</Td>
+                        <Td>{item.model}</Td>
+                        <Td>{item.unique_code}</Td>
+                        <Td>{item.original_qty}</Td>
+                        {previousPOData?.length > 0 && (
+                          <Td style={{ textAlign: "center" }}>
+                            {prevMatch ? (
+                              <Chip
+                                label={prevMatch.total_qty}
+                                color="info"
+                                size="small"
+                                variant="outlined"
+                              />
+                            ) : (
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ display: "inline-block", textAlign: "center" }}
+                              >
+                                0
+                              </Typography>
+                            )}
+                          </Td>
                         )}
-                      </Td>
-                      <Td>
-                        <DatePicker
-                          value={item.start_date}
-                          onChange={(newValue) => updateItem(item.rowId, 'start_date', newValue)}
-                          disablePast
-                          slotProps={{ textField: { size: 'small', sx: { width: 150 } } }}
-                        />
-                      </Td>
-                      <Td>
-                        <DatePicker
-                          value={item.end_date}
-                          onChange={(newValue) => updateItem(item.rowId, 'end_date', newValue)}
-                          disablePast
-                          slotProps={{ textField: { size: 'small', sx: { width: 150 } } }}
-                        />
-                      </Td>
-                      <Td>
-                        <Tooltip title="Delete">
-                          <IconButton
-                            color="error"
-                            onClick={() => handleDeleteItem(item.rowId)}
-                          >
-                            <RiDeleteBinLine size={16} />
-                          </IconButton>
-                        </Tooltip>
-                      </Td>
-                    </Tr>
-                  ))}
+
+                        <Td>
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={item.production_qty ?? ""}
+                            onChange={(e) =>
+                              handleProductionQtyChange(
+                                item.rowId,
+                                e.target.value,
+                                item.original_qty,
+                                prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
+                              )
+                            }
+                            sx={{ width: 100 }}
+                            inputProps={{
+                              min: 0,
+                              max:
+                                prevMatch && prevMatch.total_qty
+                                  ? Math.max(0, item.original_qty - parseInt(prevMatch.total_qty || 0))
+                                  : item.original_qty,
+                            }}
+                          />
+                        </Td>
+                        <Td>{item.size}</Td>
+                        <Td>
+                          {item.document && (
+                            <ImagePreviewDialog
+                              imageUrl={mediaUrl + item.document}
+                              alt={item.name}
+                            />
+                          )}
+                        </Td>
+                        <Td>
+                          <DatePicker
+                            value={item.start_date}
+                            onChange={(newValue) => updateItem(item.rowId, 'start_date', newValue)}
+                            disablePast
+                            slotProps={{ textField: { size: 'small', sx: { width: 150 } } }}
+                          />
+                        </Td>
+                        <Td>
+                          <DatePicker
+                            value={item.end_date}
+                            onChange={(newValue) => updateItem(item.rowId, 'end_date', newValue)}
+                            disablePast
+                            slotProps={{ textField: { size: 'small', sx: { width: 150 } } }}
+                          />
+                        </Td>
+                        <Td>
+                          <Tooltip title="Delete">
+                            <IconButton
+                              color="error"
+                              onClick={() => handleDeleteItem(item.rowId)}
+                            >
+                              <RiDeleteBinLine size={16} />
+                            </IconButton>
+                          </Tooltip>
+                        </Td>
+                      </Tr>
+                    )
+                  })}
                 </Tbody>
               </Table>
             </LocalizationProvider>
