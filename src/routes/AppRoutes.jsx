@@ -37,14 +37,15 @@ import Quote from "../pages/Customer/Quote/Quote";
 import QuoteDetailsView from "../pages/Customer/Quote/QuoteDetailsView";
 import CreateQuote from "../pages/Customer/Quote/CreateQuote";
 import EditQuote from "../pages/Customer/Quote/EditQuote";
-import Order from "../pages/Customer/Order/Order";
 import OrderDetailsView from "../pages/Customer/Order/OrderDetailsView";
 import CreateOrder from "../pages/Customer/Order/CreateOrder";
 import EditOrder from "../pages/Customer/Order/EditOrder";
 import CustomerLedger from "../pages/Customer/Ledger/Ledger";
 import Vendor from "../pages/Vendor/Ledger/vendor";
 import PublicQuoteDetailsView from "../pages/Public/Quotation";
-
+import Order from "../pages/Customer/Order/Order";
+import OwnProductionOrder from "../pages/Production/order";
+import AddOrder from "../pages/Production/addOrder";
 
 import Error404 from "../pages/error/404";
 
@@ -94,6 +95,10 @@ const AppRoutes = () => {
       <Route path="/customer/order/create" element={<ProtectedRoute><MainLayout><CreateOrder/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/order/edit/:id" element={<ProtectedRoute><MainLayout><EditOrder/></MainLayout></ProtectedRoute>}/>
       <Route path="/customer/ledger" element={<ProtectedRoute><MainLayout><CustomerLedger/></MainLayout></ProtectedRoute>}/>
+
+      {/* Production */}
+      <Route path="/production/create-order" element={<ProtectedRoute><MainLayout><AddOrder/></MainLayout></ProtectedRoute>}/>
+      <Route path="/production/orders" element={<ProtectedRoute><MainLayout><OwnProductionOrder/></MainLayout></ProtectedRoute>}/>
 
       {/* Catch-all */}
        <Route path="*" element={<Error404 />} />

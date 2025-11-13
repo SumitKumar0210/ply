@@ -157,24 +157,18 @@ const PublicQuoteDetailsView = () => {
     try {
       setApproving(true);
 
-      const response = await api.post(
-        `/quotations/${quotationDetails.id}/approve`,
-        {
-          status: "approved",
-          approved_at: new Date().toISOString(),
-        }
-      );
+      const response = await api.post(`admin/quotation-order/status-update`, {id:quotationDetails.id});
 
-      setSnackbar({
-        open: true,
-        message: "Quotation approved successfully!",
-        severity: "success",
-      });
+      // setSnackbar({
+      //   open: true,
+      //   message: "Quotation approved successfully!",
+      //   severity: "success",
+      // });
 
       // Update local state
       setQuotationDetails((prev) => ({
         ...prev,
-        status: "approved",
+        status: "2",
         approved_at: new Date().toISOString(),
       }));
 
@@ -305,7 +299,7 @@ const PublicQuoteDetailsView = () => {
             variant="contained"
             color="success"
             onClick={handleApprove}
-            disabled={approving || quotationDetails.status === "approved"}
+            disabled={approving || quotationDetails.status == "2"}
             sx={{ mr: 2 }}
           >
             {approving ? (

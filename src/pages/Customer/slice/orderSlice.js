@@ -13,7 +13,6 @@ export const fetchOrder = createAsyncThunk(
           limit: pageLimit + 10
         }
       });
-      console.log(res.data.data);
       return {
         data: res.data.data,
         totalRecords: res.data.total || res.data.data.length
@@ -31,7 +30,6 @@ export const fetchQuotation = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/quotation-order/get-quotation-data`);
-      console.log(res.data.data);
       return {
         data: res.data.data,
         totalRecords: res.data.total || res.data.data.length
@@ -50,7 +48,6 @@ export const fetchSupervisor = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/user/get-supervisor`);
-      console.log(res.data.data);
       return {
         data: res.data.data,
         totalRecords: res.data.total || res.data.data.length

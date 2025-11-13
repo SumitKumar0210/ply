@@ -124,6 +124,22 @@ export const deleteQuotation = createAsyncThunk(
   }
 );
 
+// Approve quotation
+export const approveQuotation = createAsyncThunk(
+  "quotation/deleteQuotation",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/quotation-order/status-update`, {id:id});
+      successMessage(res.data.message);
+      return { id };
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 const quotationSlice = createSlice({
   name: "quotation",
   initialState: {

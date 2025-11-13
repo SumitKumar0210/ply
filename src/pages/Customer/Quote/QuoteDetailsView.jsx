@@ -15,7 +15,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AiOutlinePrinter } from "react-icons/ai";
 import { useReactToPrint } from "react-to-print";
 import { useDispatch, useSelector } from "react-redux";
-import { editQuotation } from "../slice/quotationSlice";
+import { editQuotation, approveQuotation } from "../slice/quotationSlice";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 
 const QuoteDetailsView = () => {
@@ -31,6 +31,7 @@ const QuoteDetailsView = () => {
 
   const { selected: quotationData = {}, loading: quotationLoading } =
     useSelector((state) => state.quotation);
+
 
   const handlePrint = useReactToPrint({
     contentRef,
@@ -52,10 +53,20 @@ const QuoteDetailsView = () => {
   // Load quotation data
   useEffect(() => {
     if (id) {
-      dispatch(editQuotation(id?? 26));
+      fetchQuotation(id);
     }
   }, [dispatch, id]);
 
+  const fetchQuotation = (id) =>{
+    dispatch(editQuotation(id));
+  }
+
+  const handleApprove = async(id) => {
+    await dispatch(approveQuotation(id));
+    fetchQuotation(id);
+
+
+  }
   // Parse and set quotation data
   useEffect(() => {
     if (quotationData && quotationData.id) {
@@ -148,14 +159,17 @@ const QuoteDetailsView = () => {
           <Typography variant="h6">Quotation Details</Typography>
         </Grid>
         <Grid>
-          <Button
-            variant="contained"
-            color="success"
-           
-            sx={{ mr: 2 }} 
-          >
-            Approve
-          </Button>
+          {(quotationDetails.status !== 2) && (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => handleApprove(quotationData.id)}
+              sx={{ mr: 2 }}
+            >
+              Approve
+            </Button>
+          )}
+
 
           <Button
             variant="contained"

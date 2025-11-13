@@ -70,6 +70,13 @@ const menuSections = [
         ],
       },
       {
+        text: "Production",
+        icon: <FiUsers/>,
+        children: [
+          { text: "Order", to: "/production/orders", icon: <MdOutlineDashboard/> },
+        ],
+      },
+      {
         text: "Users",
         icon: <FiUsers />,
         children: [

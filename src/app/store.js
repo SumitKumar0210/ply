@@ -24,6 +24,7 @@ import ledgerReducer from '../pages/Vendor/slice/ledgerSlice';
 import quotationReducer from '../pages/Customer/slice/quotationSlice';
 import orderReducer from '../pages/Customer/slice/orderSlice';
 import linkManagementReducer from '../components/Links/slice/linkManagementSlice';
+import productionOrderReducer from '../pages/Production/slice/orderSlice';
 export const store = configureStore({
     reducer: {
         userType: userTypeReducer,
@@ -51,5 +52,6 @@ export const store = configureStore({
         quotation: quotationReducer,
         order: orderReducer,
         link: linkManagementReducer,
+        productionOrder: productionOrderReducer,
     }
 })
