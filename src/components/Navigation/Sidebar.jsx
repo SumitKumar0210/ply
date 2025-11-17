@@ -33,6 +33,9 @@ import { TbUsersPlus } from "react-icons/tb";
 
 
 import Logo from "../../assets/images/logo.svg";
+const storedHLogo = localStorage.getItem("horizontalLogo");
+const storedAppName = localStorage.getItem("application_name");
+
 
 const drawerWidth = 220;
 
@@ -48,9 +51,9 @@ const menuSections = [
     items: [
       {
         text: "Vendors",
-        icon: <MdStorefront/>,
+        icon: <MdStorefront />,
         children: [
-          { text: "Dashboard", to: "/vendor/dashboard", icon: <MdOutlineDashboard/> },
+          { text: "Dashboard", to: "/vendor/dashboard", icon: <MdOutlineDashboard /> },
           { text: "Purchase Order", to: "/vendor/purchase-order", icon: <RiFileList3Line /> },
           { text: "QC PO", to: "/vendor/purchase-order/approve", icon: <RiFileList3Line /> },
           { text: "Vendor Invoice", to: "/vendor/invoice", icon: <LiaFileInvoiceSolid /> },
@@ -61,9 +64,9 @@ const menuSections = [
       },
       {
         text: "Customers",
-        icon: <FiUsers/>,
+        icon: <FiUsers />,
         children: [
-          { text: "Dashboard", to: "/customer/dashboard", icon: <MdOutlineDashboard/> },
+          { text: "Dashboard", to: "/customer/dashboard", icon: <MdOutlineDashboard /> },
           { text: "Quotation", to: "/customer/quote", icon: <RiFileList3Line /> },
           { text: "Order", to: "/customer/order", icon: <RiFileList3Line /> },
           { text: "Customer Ledger", to: "/customer/ledger", icon: <LuTable /> },
@@ -71,9 +74,9 @@ const menuSections = [
       },
       {
         text: "Production",
-        icon: <FiUsers/>,
+        icon: <FiUsers />,
         children: [
-          { text: "Order", to: "/production/orders", icon: <MdOutlineDashboard/> },
+          { text: "Order", to: "/production/orders", icon: <MdOutlineDashboard /> },
         ],
       },
       {
@@ -110,15 +113,16 @@ const Sidebar = ({ mobileOpen, onClose }) => {
   const drawerContent = (
     <>
       {/* Logo */}
-      <Box display="flex" alignItems="center" sx={{ p: 2 }}>
+      <Box display="flex" alignItems="center" justifyContent="center" sx={{ p: 2 }}>
         <img
-          src={Logo}
+          src={storedHLogo ?? Logo}
           alt="logo"
-          style={{ width: "40px", marginRight: "10px" }}
+          style={{ width: "-webkit-fill-available", marginRight: "10px" }}
+          // style={{ width: "40px", marginRight: "10px" }}
         />
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          Aarish Ply
-        </Typography>
+        {/* <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          {storedAppName ?? 'Aarish Ply'}
+        </Typography> */}
       </Box>
 
       {/* Menu */}
@@ -189,7 +193,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                           sx={{
                             pl: 4,
                             mx: 1,
-                             mb: 0.25,
+                            mb: 0.25,
                             borderRadius: 1,
                             color: "text.primary",
                             "& .MuiListItemIcon-root": {

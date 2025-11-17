@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import Grid from "@mui/material/Grid";
 import {
   Button,
@@ -74,28 +74,58 @@ function BootstrapDialogTitle({ children, onClose, ...other }) {
   );
 }
 
+// GST validation regex: 2 digits (state code) + 10 alphanumeric + 1 alphabet + 1 digit + 1 alphabet + 1 alphanumeric
+const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
 // Validation schema
 const validationSchema = Yup.object({
   name: Yup.string()
     .min(2, "Name must be at least 2 characters")
+    .max(100, "Name cannot exceed 100 characters")
     .required("Name is required"),
   mobile: Yup.string()
-    .matches(/^[0-9]{10}$/, "Mobile must be 10 digits")
+    .matches(/^[6-9][0-9]{9}$/, "Enter valid 10-digit mobile number")
     .required("Mobile is required"),
   email: Yup.string()
     .email("Invalid email format")
+    .max(100, "Email cannot exceed 100 characters")
     .required("E-mail is required"),
-  address: Yup.string().required("Address is required"),
-  alternate_mobile: Yup.string().matches(
-    /^[0-9]{10}$/,
-    "Alternate Mobile must be 10 digits"
-  ),
-  city: Yup.string().required("City is required"),
+  address: Yup.string()
+    .min(5, "Address must be at least 5 characters")
+    .max(200, "Address cannot exceed 200 characters")
+    .required("Address is required"),
+  alternate_mobile: Yup.string()
+    .matches(/^[6-9][0-9]{9}$/, "Enter valid 10-digit mobile number")
+    .notOneOf([Yup.ref('mobile')], "Alternate mobile must be different from primary mobile")
+    .nullable(),
+  city: Yup.string()
+    .min(2, "City must be at least 2 characters")
+    .max(50, "City cannot exceed 50 characters")
+    .required("City is required"),
   state_id: Yup.string().required("State is required"),
   zip_code: Yup.string()
-    .matches(/^[0-9]{6}$/, "ZIP must be 6 digits")
-    .required("ZIP code is required"),
-  note: Yup.string(),
+    .matches(/^[1-9][0-9]{5}$/, "Enter valid 6-digit PIN code")
+    .required("PIN code is required"),
+  gst_no: Yup.string()
+    .matches(GST_REGEX, "Enter valid GST number (e.g., 22AAAAA0000A1Z5)")
+    .uppercase()
+    .nullable()
+    .transform((value) => value ? value.toUpperCase() : null),
+  note: Yup.string().max(500, "Note cannot exceed 500 characters"),
+});
+
+// Initial form values
+const getInitialValues = (data = null) => ({
+  name: data?.name || "",
+  mobile: data?.mobile || "",
+  email: data?.email || "",
+  address: data?.address || "",
+  alternate_mobile: data?.alternate_mobile || "",
+  city: data?.city || "",
+  state_id: data?.state_id || "",
+  zip_code: data?.zip_code || "",
+  gst_no: data?.gst_no || "",
+  note: data?.note || "",
 });
 
 const Customers = () => {
@@ -125,20 +155,19 @@ const Customers = () => {
   useEffect(() => {
     dispatch(
       fetchCustomers({
-        page: pagination.pageIndex + 1, // API pages usually start at 1
+        page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       })
     );
   }, [dispatch, pagination.pageIndex, pagination.pageSize]);
 
-  // Fetch states once on mount or when modals open
+  // Fetch states once on mount
   useEffect(() => {
-    if (open || editOpen) {
-      dispatch(fetchStates());
-    }
-  }, [dispatch, open, editOpen]);
+    dispatch(fetchStates());
+  }, [dispatch]);
 
-  const handleAdd = async (values, { resetForm }) => {
+  // Handle add customer
+  const handleAdd = useCallback(async (values, { resetForm }) => {
     try {
       const res = await dispatch(addCustomer(values));
       if (res.error) return;
@@ -147,18 +176,20 @@ const Customers = () => {
     } catch (error) {
       console.error("Add customer failed:", error);
     }
-  };
+  }, [dispatch]);
 
-  const handleDeleteClick = (row) => {
+  // Handle delete click
+  const handleDeleteClick = useCallback((row) => {
     setDeleteDialog({
       open: true,
       id: row.id,
       name: row.name,
       loading: false,
     });
-  };
+  }, []);
 
-  const confirmDelete = async () => {
+  // Confirm delete
+  const confirmDelete = useCallback(async () => {
     if (!deleteDialog.id) return;
 
     setDeleteDialog((prev) => ({ ...prev, loading: true }));
@@ -170,62 +201,70 @@ const Customers = () => {
     } finally {
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
     }
-  };
+  }, [deleteDialog.id, dispatch]);
 
-  const handleUpdate = (row) => {
+  // Handle update click
+  const handleUpdate = useCallback((row) => {
     setEditData(row);
     setEditOpen(true);
-  };
+  }, []);
 
-  const handleEditClose = () => {
+  // Handle edit close
+  const handleEditClose = useCallback(() => {
     setEditOpen(false);
     setEditData(null);
-  };
+  }, []);
 
-  const handleEditSubmit = async (values, { resetForm }) => {
+  // Handle edit submit
+  const handleEditSubmit = useCallback(async (values, { resetForm }) => {
     const res = await dispatch(
       updateCustomer({ updated: { id: editData.id, ...values } })
     );
     if (res.error) return;
     resetForm();
     handleEditClose();
-  };
+  }, [dispatch, editData, handleEditClose]);
+
+  // Handle status change
+  const handleStatusChange = useCallback((row, checked) => {
+    const newStatus = checked ? 1 : 0;
+    dispatch(statusUpdate({ ...row, status: newStatus }));
+  }, [dispatch]);
 
   // Table Columns
   const columns = useMemo(
     () => [
-      { accessorKey: "name", header: "Name" },
-      { accessorKey: "mobile", header: "Mobile", size: 70 },
-      { accessorKey: "email", header: "E-mail" },
-      { accessorKey: "address", header: "Address" },
-      { accessorKey: "city", header: "City", size: 50 },
+      { accessorKey: "name", header: "Name", size: 150 },
+      { accessorKey: "mobile", header: "Mobile", size: 120 },
+      { accessorKey: "email", header: "E-mail", size: 180 },
+      { accessorKey: "gst_no", header: "GST No.", size: 150 },
+      { accessorKey: "address", header: "Address", size: 200 },
+      { accessorKey: "city", header: "City", size: 100 },
       {
         accessorKey: "state_id",
         header: "State",
-        size: 50,
-        Cell: ({ row }) => row.original.state?.name || "",
+        size: 100,
+        Cell: ({ row }) => row.original.state?.name || "N/A",
       },
-      { accessorKey: "zip_code", header: "ZIP", size: 50 },
-      { accessorKey: "note", header: "Note" },
+      { accessorKey: "zip_code", header: "PIN", size: 80 },
+      { accessorKey: "note", header: "Note", size: 150 },
       {
         accessorKey: "status",
         header: "Status",
+        size: 80,
         enableSorting: false,
         enableColumnFilter: false,
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
+            onChange={(e) => handleStatusChange(row.original, e.target.checked)}
           />
         ),
       },
       {
         id: "actions",
         header: "Actions",
-        size: 80,
+        size: 100,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
@@ -234,34 +273,42 @@ const Customers = () => {
               <IconButton
                 color="primary"
                 onClick={() => handleUpdate(row.original)}
+                size="small"
               >
-                <BiSolidEditAlt size={16} />
+                <BiSolidEditAlt size={18} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
               <IconButton
                 color="error"
                 onClick={() => handleDeleteClick(row.original)}
+                size="small"
               >
-                <RiDeleteBinLine size={16} />
+                <RiDeleteBinLine size={18} />
               </IconButton>
             </Tooltip>
           </Box>
         ),
       },
     ],
-    [dispatch]
+    [handleStatusChange, handleUpdate, handleDeleteClick]
   );
 
   // CSV export
-  const downloadCSV = () => {
+  const downloadCSV = useCallback(() => {
     const headers = columns
       .filter((col) => col.accessorKey && col.id !== "actions")
       .map((col) => col.header);
     const rows = customerData.map((row) =>
       columns
         .filter((col) => col.accessorKey && col.id !== "actions")
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
+        .map((col) => {
+          let value = row[col.accessorKey];
+          if (col.accessorKey === "state_id") {
+            value = row.state?.name || "N/A";
+          }
+          return `"${value ?? ""}"`;
+        })
         .join(",")
     );
     const csvContent = [headers.join(","), ...rows].join("\n");
@@ -269,14 +316,15 @@ const Customers = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "Customers.csv");
+    link.setAttribute("download", `Customers_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+    URL.revokeObjectURL(url);
+  }, [columns, customerData]);
 
   // Print handler
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
     const originalContents = document.body.innerHTML;
@@ -284,7 +332,12 @@ const Customers = () => {
     window.print();
     document.body.innerHTML = originalContents;
     window.location.reload();
-  };
+  }, []);
+
+  // Close delete dialog
+  const closeDeleteDialog = useCallback(() => {
+    setDeleteDialog({ open: false, id: null, name: "", loading: false });
+  }, []);
 
   return (
     <>
@@ -337,21 +390,20 @@ const Customers = () => {
             enableGlobalFilter
             enableDensityToggle={false}
             enableColumnActions={false}
-            enableColumnVisibilityToggle={false}
+            enableFullScreenToggle={false}
             initialState={{ density: "compact" }}
             muiTableContainerProps={{
               sx: {
                 width: "100%",
                 backgroundColor: "#fff",
-                overflowX: "hidden",
-                minWidth: "1200px",
+                overflowX: "auto",
               },
             }}
             muiTableBodyCellProps={{
-              sx: { whiteSpace: "wrap", width: "100px" },
+              sx: { whiteSpace: "nowrap" },
             }}
             muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-            muiTableBodyRowProps={{ hover: false }}
+            muiTableBodyRowProps={{ hover: true }}
             renderTopToolbar={({ table }) => (
               <Box
                 sx={{
@@ -386,388 +438,40 @@ const Customers = () => {
       </Grid>
 
       {/* Add Customer Modal */}
-      <BootstrapDialog
+      <CustomerFormDialog
         open={open}
         onClose={() => setOpen(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <BootstrapDialogTitle onClose={() => setOpen(false)}>
-          Add Customer
-        </BootstrapDialogTitle>
-        <Formik
-          initialValues={{
-            name: "",
-            mobile: "",
-            email: "",
-            address: "",
-            alternate_mobile: "",
-            city: "",
-            state_id: "",
-            zip_code: "",
-            note: "",
-          }}
-          validationSchema={validationSchema}
-          onSubmit={handleAdd}
-        >
-          {({ handleChange, handleSubmit, values, touched, errors }) => (
-            <Form onSubmit={handleSubmit}>
-              <DialogContent dividers>
-                <Grid container rowSpacing={1} columnSpacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="name"
-                      label="Name"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      onChange={handleChange}
-                      value={values.name}
-                      error={touched.name && Boolean(errors.name)}
-                      helperText={touched.name && errors.name}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="mobile"
-                      label="Mobile"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      onChange={handleChange}
-                      value={values.mobile}
-                      error={touched.mobile && Boolean(errors.mobile)}
-                      helperText={touched.mobile && errors.mobile}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="alternate_mobile"
-                      label="Alternate Mobile"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.alternate_mobile}
-                      onChange={handleChange}
-                      error={
-                        touched.alternate_mobile &&
-                        Boolean(errors.alternate_mobile)
-                      }
-                      helperText={
-                        touched.alternate_mobile && errors.alternate_mobile
-                      }
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="email"
-                      label="E-mail"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      onChange={handleChange}
-                      value={values.email}
-                      error={touched.email && Boolean(errors.email)}
-                      helperText={touched.email && errors.email}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="address"
-                      label="Address"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.address}
-                      onChange={handleChange}
-                      error={touched.address && Boolean(errors.address)}
-                      helperText={touched.address && errors.address}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="city"
-                      label="City"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.city}
-                      onChange={handleChange}
-                      error={touched.city && Boolean(errors.city)}
-                      helperText={touched.city && errors.city}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="state_id"
-                      label="State"
-                      select
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.state_id}
-                      onChange={handleChange}
-                      error={touched.state_id && Boolean(errors.state_id)}
-                      helperText={touched.state_id && errors.state_id}
-                    >
-                      {states.map((s) => (
-                        <MenuItem key={s.id} value={s.id}>
-                          {s.name}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="zip_code"
-                      label="ZIP Code"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.zip_code}
-                      onChange={handleChange}
-                      error={touched.zip_code && Boolean(errors.zip_code)}
-                      helperText={touched.zip_code && errors.zip_code}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <TextField
-                      name="note"
-                      label="Note"
-                      fullWidth
-                      multiline
-                      rows={3}
-                      margin="dense"
-                      variant="standard"
-                      value={values.note}
-                      onChange={handleChange}
-                    />
-                  </Grid>
-                </Grid>
-              </DialogContent>
-              <DialogActions>
-                <Button
-                  onClick={() => setOpen(false)}
-                  variant="outlined"
-                  color="error"
-                >
-                  Close
-                </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Submit
-                </Button>
-              </DialogActions>
-            </Form>
-          )}
-        </Formik>
-      </BootstrapDialog>
+        title="Add Customer"
+        initialValues={getInitialValues()}
+        onSubmit={handleAdd}
+        states={states}
+      />
 
       {/* Edit Customer Modal */}
-      <BootstrapDialog
+      <CustomerFormDialog
         open={editOpen}
         onClose={handleEditClose}
-        fullWidth
-        maxWidth="sm"
-      >
-        <BootstrapDialogTitle onClose={handleEditClose}>
-          Edit Customer
-        </BootstrapDialogTitle>
-        <Formik
-          enableReinitialize
-          initialValues={{
-            name: editData?.name || "",
-            mobile: editData?.mobile || "",
-            email: editData?.email || "",
-            address: editData?.address || "",
-            alternate_mobile: editData?.alternate_mobile || "",
-            city: editData?.city || "",
-            state_id: editData?.state_id || "",
-            zip_code: editData?.zip_code || "",
-            note: editData?.note || "",
-          }}
-          validationSchema={validationSchema}
-          onSubmit={handleEditSubmit}
-        >
-          {({ handleChange, handleSubmit, values, touched, errors }) => (
-            <Form onSubmit={handleSubmit}>
-              <DialogContent dividers>
-                <Grid container rowSpacing={1} columnSpacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="name"
-                      label="Name"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      onChange={handleChange}
-                      value={values.name}
-                      error={touched.name && Boolean(errors.name)}
-                      helperText={touched.name && errors.name}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="mobile"
-                      label="Mobile"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      onChange={handleChange}
-                      value={values.mobile}
-                      error={touched.mobile && Boolean(errors.mobile)}
-                      helperText={touched.mobile && errors.mobile}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="alternate_mobile"
-                      label="Alternate Mobile"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.alternate_mobile}
-                      onChange={handleChange}
-                      error={
-                        touched.alternate_mobile &&
-                        Boolean(errors.alternate_mobile)
-                      }
-                      helperText={
-                        touched.alternate_mobile && errors.alternate_mobile
-                      }
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="email"
-                      label="E-mail"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      onChange={handleChange}
-                      value={values.email}
-                      error={touched.email && Boolean(errors.email)}
-                      helperText={touched.email && errors.email}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="address"
-                      label="Address"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.address}
-                      onChange={handleChange}
-                      error={touched.address && Boolean(errors.address)}
-                      helperText={touched.address && errors.address}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="city"
-                      label="City"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.city}
-                      onChange={handleChange}
-                      error={touched.city && Boolean(errors.city)}
-                      helperText={touched.city && errors.city}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="state_id"
-                      label="State"
-                      select
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.state_id}
-                      onChange={handleChange}
-                      error={touched.state_id && Boolean(errors.state_id)}
-                      helperText={touched.state_id && errors.state_id}
-                    >
-                      {states.map((s) => (
-                        <MenuItem key={s.id} value={s.id}>
-                          {s.name}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="zip_code"
-                      label="ZIP Code"
-                      fullWidth
-                      margin="dense"
-                      variant="standard"
-                      value={values.zip_code}
-                      onChange={handleChange}
-                      error={touched.zip_code && Boolean(errors.zip_code)}
-                      helperText={touched.zip_code && errors.zip_code}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <TextField
-                      name="note"
-                      label="Note"
-                      fullWidth
-                      multiline
-                      rows={3}
-                      margin="dense"
-                      variant="standard"
-                      value={values.note}
-                      onChange={handleChange}
-                    />
-                  </Grid>
-                </Grid>
-              </DialogContent>
-              <DialogActions>
-                <Button
-                  onClick={handleEditClose}
-                  variant="outlined"
-                  color="error"
-                >
-                  Close
-                </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Save changes
-                </Button>
-              </DialogActions>
-            </Form>
-          )}
-        </Formik>
-      </BootstrapDialog>
+        title="Edit Customer"
+        initialValues={getInitialValues(editData)}
+        onSubmit={handleEditSubmit}
+        states={states}
+        isEdit
+      />
 
       {/* Delete Modal */}
-      <Dialog
-        open={deleteDialog.open}
-        onClose={() =>
-          setDeleteDialog({ open: false, id: null, name: "", loading: false })
-        }
-      >
+      <Dialog open={deleteDialog.open} onClose={closeDeleteDialog} maxWidth="xs">
         <DialogTitle>Delete Customer?</DialogTitle>
-        <DialogContent style={{ width: "320px" }}>
+        <DialogContent>
           <DialogContentText>
             Are you sure you want to delete customer{" "}
-            <strong>{deleteDialog.name}</strong>? <br />
+            <strong>{deleteDialog.name}</strong>?
+            <br />
             This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() =>
-              setDeleteDialog({
-                open: false,
-                id: null,
-                name: "",
-                loading: false,
-              })
-            }
-            disabled={deleteDialog.loading}
-          >
-            Close
+          <Button onClick={closeDeleteDialog} disabled={deleteDialog.loading}>
+            Cancel
           </Button>
           <Button
             variant="contained"
@@ -780,6 +484,182 @@ const Customers = () => {
         </DialogActions>
       </Dialog>
     </>
+  );
+};
+
+// Reusable Customer Form Dialog Component
+const CustomerFormDialog = ({ open, onClose, title, initialValues, onSubmit, states, isEdit = false }) => {
+  return (
+    <BootstrapDialog open={open} onClose={onClose} fullWidth maxWidth="md">
+      <BootstrapDialogTitle onClose={onClose}>{title}</BootstrapDialogTitle>
+      <Formik
+        enableReinitialize
+        initialValues={initialValues}
+        validationSchema={validationSchema}
+        onSubmit={onSubmit}
+      >
+        {({ handleChange, handleSubmit, values, touched, errors, setFieldValue }) => (
+          <Form onSubmit={handleSubmit}>
+            <DialogContent dividers>
+              <Grid container rowSpacing={2} columnSpacing={3}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    name="name"
+                    label="Name"
+                    fullWidth
+                    size="small"
+                    onChange={handleChange}
+                    value={values.name}
+                    error={touched.name && Boolean(errors.name)}
+                    helperText={touched.name && errors.name}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    name="mobile"
+                    label="Mobile"
+                    fullWidth
+                    size="small"
+                    onChange={handleChange}
+                    value={values.mobile}
+                    error={touched.mobile && Boolean(errors.mobile)}
+                    helperText={touched.mobile && errors.mobile}
+                    inputProps={{ maxLength: 10 }}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    name="alternate_mobile"
+                    label="Alternate Mobile"
+                    fullWidth
+                    size="small"
+                    value={values.alternate_mobile}
+                    onChange={handleChange}
+                    error={touched.alternate_mobile && Boolean(errors.alternate_mobile)}
+                    helperText={touched.alternate_mobile && errors.alternate_mobile}
+                    inputProps={{ maxLength: 10 }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    name="email"
+                    label="E-mail"
+                    fullWidth
+                    size="small"
+                    onChange={handleChange}
+                    value={values.email}
+                    error={touched.email && Boolean(errors.email)}
+                    helperText={touched.email && errors.email}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    name="gst_no"
+                    label="GST Number (Optional)"
+                    fullWidth
+                    size="small"
+                    value={values.gst_no}
+                    onChange={(e) => setFieldValue("gst_no", e.target.value.toUpperCase())}
+                    error={touched.gst_no && Boolean(errors.gst_no)}
+                    helperText={touched.gst_no && errors.gst_no}
+                    placeholder="22AAAAA0000A1Z5"
+                    inputProps={{ maxLength: 15, style: { textTransform: 'uppercase' } }}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    name="state_id"
+                    label="State"
+                    select
+                    fullWidth
+                    size="small"
+                    value={values.state_id}
+                    onChange={handleChange}
+                    error={touched.state_id && Boolean(errors.state_id)}
+                    helperText={touched.state_id && errors.state_id}
+                    required
+                  >
+                    <MenuItem value="">Select State</MenuItem>
+                    {states.map((s) => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    name="city"
+                    label="City"
+                    fullWidth
+                    size="small"
+                    value={values.city}
+                    onChange={handleChange}
+                    error={touched.city && Boolean(errors.city)}
+                    helperText={touched.city && errors.city}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    name="zip_code"
+                    label="PIN Code"
+                    fullWidth
+                    size="small"
+                    value={values.zip_code}
+                    onChange={handleChange}
+                    error={touched.zip_code && Boolean(errors.zip_code)}
+                    helperText={touched.zip_code && errors.zip_code}
+                    inputProps={{ maxLength: 6 }}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    name="address"
+                    label="Address"
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={2}
+                    value={values.address}
+                    onChange={handleChange}
+                    error={touched.address && Boolean(errors.address)}
+                    helperText={touched.address && errors.address}
+                    required
+                  />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <TextField
+                    name="note"
+                    label="Note"
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={2}
+                    value={values.note}
+                    onChange={handleChange}
+                    error={touched.note && Boolean(errors.note)}
+                    helperText={touched.note && errors.note}
+                  />
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={onClose} variant="outlined" color="error">
+                Cancel
+              </Button>
+              <Button type="submit" variant="contained" color="primary">
+                {isEdit ? "Save Changes" : "Add Customer"}
+              </Button>
+            </DialogActions>
+          </Form>
+        )}
+      </Formik>
+    </BootstrapDialog>
   );
 };
 

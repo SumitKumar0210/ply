@@ -13,7 +13,7 @@ import { forgotPassword } from "./authSlice";
 import { useDispatch } from "react-redux";
 
 const ForgotPassword = () => {
-  const paperStyle = { padding: "20px 30px", height: "350px", width: 350 };
+  const paperStyle = { padding: "20px 30px", height: "420px", width: 350 };
   const dispatch = useDispatch();
 
   const [email, setEmail] = useState("");

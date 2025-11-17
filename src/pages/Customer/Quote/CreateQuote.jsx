@@ -150,7 +150,7 @@ const CreateQuote = () => {
   const { data: products = [], loading: productsLoading } = useSelector(
     (state) => state.product
   );
-  const { data: gsts = [], loading: gstsLoading } = useSelector(
+  const { activeData: gsts = [], loading: gstsLoading } = useSelector(
     (state) => state.taxSlab
   );
 

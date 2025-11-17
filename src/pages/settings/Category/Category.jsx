@@ -278,17 +278,6 @@ const Category = () => {
             <Form>
               <DialogContent dividers>
                 <TextField
-                  fullWidth
-                  name="name"
-                  label="Category"
-                  variant="standard"
-                  value={values.name}
-                  onChange={handleChange}
-                  error={touched.name && Boolean(errors.name)}
-                  helperText={touched.name && errors.name}
-                  sx={{ mb: 3 }}
-                />
-                <TextField
                   select
                   fullWidth
                   name="group_id"
@@ -298,6 +287,7 @@ const Category = () => {
                   onChange={handleChange}
                   error={touched.group_id && Boolean(errors.group_id)}
                   helperText={touched.group_id && errors.group_id}
+                  sx={{marginBottom: 1}}
                 >
                   {groups.map((group) => (
                     <MenuItem key={group.id} value={String(group.id)}>
@@ -305,6 +295,17 @@ const Category = () => {
                     </MenuItem>
                   ))}
                 </TextField>
+                  <TextField
+                    fullWidth
+                    name="name"
+                    label="Category"
+                    variant="standard"
+                    value={values.name}
+                    onChange={handleChange}
+                    error={touched.name && Boolean(errors.name)}
+                    helperText={touched.name && errors.name}
+                    sx={{ mb: 3 }}
+                  />
               </DialogContent>
               <DialogActions>
                 <Button onClick={handleCloseAdd} variant="outlined" color="error">
@@ -347,17 +348,6 @@ const Category = () => {
             <Form>
               <DialogContent dividers>
                 <TextField
-                  fullWidth
-                  name="name"
-                  label="Category"
-                  variant="standard"
-                  value={values.name}
-                  onChange={handleChange}
-                  error={touched.name && Boolean(errors.name)}
-                  helperText={touched.name && errors.name}
-                  sx={{ mb: 3 }}
-                />
-                <TextField
                   select
                   fullWidth
                   name="group_id"
@@ -367,6 +357,7 @@ const Category = () => {
                   onChange={handleChange}
                   error={touched.group_id && Boolean(errors.group_id)}
                   helperText={touched.group_id && errors.group_id}
+                  sx={{marginBottom: 1}}
                 >
                   {groups.map((group) => (
                     <MenuItem key={group.id} value={String(group.id)}>
@@ -374,6 +365,17 @@ const Category = () => {
                     </MenuItem>
                   ))}
                 </TextField>
+                  <TextField
+                    fullWidth
+                    name="name"
+                    label="Category"
+                    variant="standard"
+                    value={values.name}
+                    onChange={handleChange}
+                    error={touched.name && Boolean(errors.name)}
+                    helperText={touched.name && errors.name}
+                    sx={{ mb: 3 }}
+                  />
               </DialogContent>
               <DialogActions>
                 <Button variant="outlined" color="error" onClick={handleCloseEdit}>

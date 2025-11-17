@@ -16,11 +16,13 @@ import { IoMdCloudUpload, IoMdDocument } from "react-icons/io";
 import api from "../../api";
 
 const UploadInvoiceButton = ({ row }) => {
+    const mediaUrl = import.meta.env.VITE_MEDIA_URL;
     const [document, setDocument] = useState({ id: null, isOpen: false });
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
-    const [uploadedFileUrl, setUploadedFileUrl] = useState(row.document || null);
-    const [snackbar, setSnackbar] = useState({
+    const [uploadedFileUrl, setUploadedFileUrl] = useState(
+        row?.document ? mediaUrl + row.document : null
+    ); const [snackbar, setSnackbar] = useState({
         open: false,
         message: "",
         severity: "success",

@@ -66,10 +66,13 @@ const Login = () => {
     },
   });
 
+
+  const storedLogo = localStorage.getItem("logo");
+
   return (
     <Paper elevation={10} style={paperStyle}>
       <Grid align="center">
-        <img src={Logo} alt="logo" style={{ width: "80px" }} />
+        <img src={storedLogo??Logo} alt="logo" style={{ width: "80px" }} />
         <Typography variant="h5" component="h2" sx={{ mb: 1 }}>
           Sign In
         </Typography>

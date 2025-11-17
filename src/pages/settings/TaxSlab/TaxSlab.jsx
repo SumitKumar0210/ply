@@ -29,11 +29,16 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 
-import { addTaxSlab, updateTaxSlab, deleteTaxSlab, statusUpdate } from "../slices/taxSlabSlice";
-import { useDispatch } from "react-redux";
-import api from "../../../api";
+import {
+    fetchTaxSlabs,
+    addTaxSlab,
+    updateTaxSlab,
+    deleteTaxSlab,
+    statusUpdate
+} from "../slices/taxSlabSlice";
+import { useDispatch, useSelector } from "react-redux";
 
-//  Error Boundary
+// Error Boundary
 class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
@@ -65,8 +70,10 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 
 const TaxSlab = () => {
     const dispatch = useDispatch();
+    
+    const { data: tableData, total: totalRows, loading } = useSelector((state) => state.taxSlab);
 
-    //  Validation Schema
+    // Validation Schema
     const validationSchema = Yup.object({
         percentage: Yup.number()
             .moreThan(0, "Percentage must be greater than 0")
@@ -76,109 +83,90 @@ const TaxSlab = () => {
 
     const tableContainerRef = useRef(null);
     const [open, setOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
+    const [editData, setEditData] = useState(null);
 
-    const handleClickOpen = () => setOpen(true);
-    const handleClose = () => setOpen(false);
-
-    const [tableData, setTableData] = useState([]);
-    const [totalRows, setTotalRows] = useState(0);
     const [pagination, setPagination] = useState({
         pageIndex: 0,
         pageSize: 10,
     });
-    const [loading, setLoading] = useState(false);
 
-    //  Fetch data function that uses current pagination state
-    const fetchData = async (customPagination = null) => {
-        setLoading(true);
-        const currentPagination = customPagination || pagination;
-        const { pageIndex, pageSize } = currentPagination;
-        
-        try {
-            const res = await api.get(
-                `admin/tax-slab/get-data?page=${pageIndex + 1}&per_page=${pageSize}`
-            );
-            setTableData(res.data.data || []);
-            setTotalRows(res.data.total || 0);
-        } catch (err) {
-            console.error("Fetch error:", err);
-            setTableData([]);
-            setTotalRows(0);
-        } finally {
-            setLoading(false);
-        }
-    };
+    //  Search + Debounce
+    const [search, setSearch] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
 
-    //  Fetch when pagination changes
     useEffect(() => {
-        fetchData();
-    }, [pagination.pageIndex, pagination.pageSize]);
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 1000);
 
-    //  Add handler - goes to first page after adding
-    const handleAdd = async (value, resetForm) => {
-        const res = await dispatch(addTaxSlab(value));
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    // Fetch data
+    useEffect(() => {
+        dispatch(fetchTaxSlabs({
+            page: pagination.pageIndex + 1,
+            per_page: pagination.pageSize,
+            query: debouncedSearch
+        }));
+    }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
+
+    const handleAdd = async (values, resetForm) => {
+        const res = await dispatch(addTaxSlab(values));
         if (res.error) return;
-        
-        // Reset to first page after adding
+
         setPagination(prev => ({ ...prev, pageIndex: 0 }));
+        await dispatch(fetchTaxSlabs({ page: 1, per_page: pagination.pageSize, query: debouncedSearch }));
+
         resetForm();
-        handleClose();
+        setOpen(false);
     };
 
-    //  Delete handler - stays on current page
     const handleDelete = async (id) => {
-        await dispatch(deleteTaxSlab(id));
-        
-        // Check if we need to go back a page (if we deleted the last item on current page)
+        const res = await dispatch(deleteTaxSlab(id));
+        if (res.error) return;
+
         const itemsOnCurrentPage = tableData.length;
         if (itemsOnCurrentPage === 1 && pagination.pageIndex > 0) {
-            // If this is the last item on the page and not the first page, go back one page
             setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }));
         } else {
-            // Otherwise, refresh current page
-            await fetchData(pagination);
+            await dispatch(fetchTaxSlabs({
+                page: pagination.pageIndex + 1,
+                per_page: pagination.pageSize,
+                query: debouncedSearch
+            }));
         }
     };
 
-    const [editOpen, setEditOpen] = useState(false);
-    const [editData, setEditData] = useState(null);
-
-    // open modal with row data
     const handleUpdate = (row) => {
         setEditData(row);
         setEditOpen(true);
     };
 
-    // close modal
-    const handleEditClose = () => {
-        setEditOpen(false);
-        setEditData(null);
-    };
-
-    //  Update handler - stays on current page after update
     const handleEditSubmit = async (values, resetForm) => {
-        try {
-            const res = await dispatch(updateTaxSlab({ id: editData.id, ...values }));
-            if (res.error) {
-                console.log("Update failed:", res.payload);
-                return;
-            }
-            
-            // Stay on current page after update
-            await fetchData(pagination);
-            resetForm();
-            handleEditClose();
-        } catch (err) {
-            console.error("Update failed:", err);
-        }
+        const res = await dispatch(updateTaxSlab({ id: editData.id, ...values }));
+        if (res.error) return;
+
+        await dispatch(fetchTaxSlabs({
+            page: pagination.pageIndex + 1,
+            per_page: pagination.pageSize,
+            query: debouncedSearch
+        }));
+
+        resetForm();
+        setEditOpen(false);
     };
 
-    //  Status update handler - stays on current page
     const handleStatusChange = async (row, newStatus) => {
-        await dispatch(statusUpdate({ ...row, status: newStatus }));
-        
-        // Stay on current page after status change
-        await fetchData(pagination);
+        const res = await dispatch(statusUpdate({ ...row, status: newStatus }));
+        if (res.error) return;
+
+        await dispatch(fetchTaxSlabs({
+            page: pagination.pageIndex + 1,
+            per_page: pagination.pageSize,
+            query: debouncedSearch
+        }));
     };
 
     const columns = useMemo(
@@ -187,8 +175,6 @@ const TaxSlab = () => {
             {
                 accessorKey: "status",
                 header: "Status",
-                enableSorting: false,
-                enableColumnFilter: false,
                 Cell: ({ row }) => (
                     <CustomSwitch
                         checked={!!row.original.status}
@@ -202,10 +188,6 @@ const TaxSlab = () => {
             {
                 id: "actions",
                 header: "Actions",
-                enableSorting: false,
-                enableColumnFilter: false,
-                muiTableHeadCellProps: { align: "right" },
-                muiTableBodyCellProps: { align: "right" },
                 Cell: ({ row }) => (
                     <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                         <Tooltip title="Edit">
@@ -222,28 +204,23 @@ const TaxSlab = () => {
                 ),
             },
         ],
-        [pagination] // Add pagination as dependency
+        []
     );
 
-    //  Tell MRT which field is the unique row id
     const getRowId = (originalRow) => originalRow.id;
 
-    //  Download CSV
     const downloadCSV = () => {
         if (!tableData.length) return;
-        const headers = columns
-            .filter((col) => col.accessorKey)
-            .map((col) => col.header);
-        const rows = tableData.map((row) =>
+        const headers = columns.filter(col => col.accessorKey).map(col => col.header);
+        const rows = tableData.map(row =>
             columns
-                .filter((col) => col.accessorKey)
-                .map((col) => `"${row[col.accessorKey] ?? ""}"`)
+                .filter(col => col.accessorKey)
+                .map(col => `"${row[col.accessorKey] ?? ""}"`)
                 .join(",")
         );
+
         const csvContent = [headers.join(","), ...rows].join("\n");
-        const blob = new Blob([csvContent], {
-            type: "text/csv;charset=utf-8;",
-        });
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
@@ -253,7 +230,6 @@ const TaxSlab = () => {
         document.body.removeChild(link);
     };
 
-    //  Better Print
     const handlePrint = () => {
         if (!tableContainerRef.current) return;
         const printContents = tableContainerRef.current.innerHTML;
@@ -267,11 +243,7 @@ const TaxSlab = () => {
         <ErrorBoundary>
             <Grid container spacing={2}>
                 <Grid size={12}>
-                    <Paper
-                        elevation={0}
-                        sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
-                        ref={tableContainerRef}
-                    >
+                    <Paper elevation={0} sx={{ width: "100%", overflow: "hidden" }} ref={tableContainerRef}>
                         <MaterialReactTable
                             columns={columns}
                             data={tableData}
@@ -279,7 +251,7 @@ const TaxSlab = () => {
                             manualPagination
                             rowCount={totalRows}
                             state={{
-                                pagination: pagination,
+                                pagination,
                                 isLoading: loading,
                             }}
                             onPaginationChange={setPagination}
@@ -293,47 +265,29 @@ const TaxSlab = () => {
                             enableColumnActions={false}
                             enableColumnVisibilityToggle={false}
                             initialState={{ density: "compact" }}
-                            muiTableContainerProps={{
-                                sx: { width: "100%", backgroundColor: "#fff" },
-                            }}
-                            muiTablePaperProps={{
-                                sx: { backgroundColor: "#fff" },
-                            }}
                             renderTopToolbar={({ table }) => (
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "space-between",
-                                        width: "100%",
-                                        p: 1,
-                                    }}
-                                >
-                                    <Typography variant="h6" fontWeight={400}>
-                                        Tax Slab
-                                    </Typography>
+                                <Box sx={{ display: "flex", justifyContent: "space-between", p: 1 }}>
+                                    <Typography variant="h6" fontWeight={400}>Tax Slab</Typography>
 
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                        <MRT_GlobalFilterTextField table={table} />
+                                        <MRT_GlobalFilterTextField
+                                            table={table}
+                                            value={search}
+                                            onChange={(e) => setSearch(e.target.value)}
+                                            placeholder="Search..."
+                                        />
+
                                         <MRT_ToolbarInternalButtons table={table} />
 
                                         <Tooltip title="Print">
-                                            <IconButton color="default" onClick={handlePrint}>
-                                                <FiPrinter size={20} />
-                                            </IconButton>
+                                            <IconButton onClick={handlePrint}><FiPrinter size={20} /></IconButton>
                                         </Tooltip>
 
                                         <Tooltip title="Download CSV">
-                                            <IconButton color="default" onClick={downloadCSV}>
-                                                <BsCloudDownload size={20} />
-                                            </IconButton>
+                                            <IconButton onClick={downloadCSV}><BsCloudDownload size={20} /></IconButton>
                                         </Tooltip>
 
-                                        <Button
-                                            variant="contained"
-                                            startIcon={<AddIcon />}
-                                            onClick={handleClickOpen}
-                                        >
+                                        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
                                             Add Tax Slab
                                         </Button>
                                     </Box>
@@ -345,27 +299,17 @@ const TaxSlab = () => {
             </Grid>
 
             {/* Add Modal */}
-            <BootstrapDialog onClose={handleClose} open={open} fullWidth maxWidth="xs">
-                <DialogTitle sx={{ m: 0, p: 1.5 }}>Add Tax Slab</DialogTitle>
-                <IconButton
-                    aria-label="close"
-                    onClick={handleClose}
-                    sx={(theme) => ({
-                        position: "absolute",
-                        right: 8,
-                        top: 8,
-                        color: theme.palette.grey[500],
-                    })}
-                >
+            <BootstrapDialog onClose={() => setOpen(false)} open={open} fullWidth maxWidth="xs">
+                <DialogTitle>Add Tax Slab</DialogTitle>
+                <IconButton aria-label="close" onClick={() => setOpen(false)}
+                    sx={{ position: "absolute", right: 8, top: 8 }}>
                     <CloseIcon />
                 </IconButton>
 
                 <Formik
                     initialValues={{ percentage: "" }}
                     validationSchema={validationSchema}
-                    onSubmit={async (values, { resetForm }) => {
-                        await handleAdd(values, resetForm);
-                    }}
+                    onSubmit={(values, { resetForm }) => handleAdd(values, resetForm)}
                 >
                     {({ values, errors, touched, handleChange }) => (
                         <Form>
@@ -381,17 +325,12 @@ const TaxSlab = () => {
                                     onChange={handleChange}
                                     error={touched.percentage && Boolean(errors.percentage)}
                                     helperText={touched.percentage && errors.percentage}
-                                    sx={{ mb: 3 }}
-                                    inputProps={{ min: 0, max: 100 }}
+                                    sx={{ mb: 2 }}
                                 />
                             </DialogContent>
-                            <DialogActions sx={{ gap: 1, mb: 1 }}>
-                                <Button variant="outlined" color="error" onClick={handleClose}>
-                                    Close
-                                </Button>
-                                <Button type="submit" variant="contained" color="primary">
-                                    Submit
-                                </Button>
+                            <DialogActions>
+                                <Button color="error" onClick={() => setOpen(false)}>Close</Button>
+                                <Button type="submit" variant="contained">Submit</Button>
                             </DialogActions>
                         </Form>
                     )}
@@ -399,18 +338,10 @@ const TaxSlab = () => {
             </BootstrapDialog>
 
             {/* Edit Modal */}
-            <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
-                <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit Tax Slab</DialogTitle>
-                <IconButton
-                    aria-label="close"
-                    onClick={handleEditClose}
-                    sx={(theme) => ({
-                        position: "absolute",
-                        right: 8,
-                        top: 8,
-                        color: theme.palette.grey[500],
-                    })}
-                >
+            <BootstrapDialog onClose={() => setEditOpen(false)} open={editOpen} fullWidth maxWidth="xs">
+                <DialogTitle>Edit Tax Slab</DialogTitle>
+                <IconButton aria-label="close" onClick={() => setEditOpen(false)}
+                    sx={{ position: "absolute", right: 8, top: 8 }}>
                     <CloseIcon />
                 </IconButton>
 
@@ -435,17 +366,12 @@ const TaxSlab = () => {
                                     onChange={handleChange}
                                     error={touched.percentage && Boolean(errors.percentage)}
                                     helperText={touched.percentage && errors.percentage}
-                                    sx={{ mb: 3 }}
-                                    inputProps={{ min: 0, max: 100 }}
+                                    sx={{ mb: 2 }}
                                 />
                             </DialogContent>
-                            <DialogActions sx={{ gap: 1, mb: 1 }}>
-                                <Button variant="outlined" color="error" onClick={handleEditClose}>
-                                    Close
-                                </Button>
-                                <Button type="submit" variant="contained">
-                                    Save Changes
-                                </Button>
+                            <DialogActions>
+                                <Button color="error" onClick={() => setEditOpen(false)}>Close</Button>
+                                <Button type="submit" variant="contained">Save Changes</Button>
                             </DialogActions>
                         </Form>
                     )}

@@ -45,7 +45,7 @@ const PurchaseOrderQC = () => {
 
   // Fetch master data
   useEffect(() => {
-   
+
     dispatch(fetchActiveMaterials());
   }, [dispatch]);
 
@@ -57,7 +57,7 @@ const PurchaseOrderQC = () => {
   // Set initial values after PO data is loaded
   useEffect(() => {
     if (po && po.id) {
-      const parsedItems = po.material_items ? JSON.parse(po.inward? po.inward.material_items : po.material_items) : [];
+      const parsedItems = po.material_items ? JSON.parse(po.inward ? po.inward.material_items : po.material_items) : [];
       setItems(
         parsedItems.map((item, index) => ({
           id: index + 1,
@@ -130,17 +130,40 @@ const PurchaseOrderQC = () => {
   }, [selectedItemCode, selectedQty, materials, validateItemInput, isDuplicateItem]);
 
   const handleQtyChange = useCallback((itemId, newQty) => {
-    const qty = parseInt(newQty);
-    if (isNaN(qty) || qty <= 0) {
+    const qty = Number(newQty);
+
+    if (isNaN(qty) || qty < 0) {
+      errorMessage("Please enter a valid quantity");
+      return;
+    }
+
+    if (qty === 0) {
       errorMessage("Quantity must be greater than 0");
       return;
     }
+
+    // Find the original item to get max quantity from PO
+    const originalItem = items.find(item => item.id === itemId);
+    if (!originalItem) return;
+
+    // Get the original PO quantity (this should come from server data)
+    const parsedItems = po?.material_items ? JSON.parse(po.material_items) : [];
+    const poItem = parsedItems.find(item => item.material_id === originalItem.materialId);
+    const maxQty = poItem ? Number(poItem.qty) : null;
+
+    if (maxQty && qty > maxQty) {
+      errorMessage(`Quantity cannot exceed ordered quantity of ${maxQty}`);
+      return;
+    }
+
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, qty, total: qty * item.rate } : item
+        item.id === itemId
+          ? { ...item, qty, total: qty * Number(item.rate) }
+          : item
       )
     );
-  }, []);
+  }, [items, po]);
 
   const handleDeleteConfirm = useCallback(() => {
     setItems((prev) => prev.filter((item) => item.id !== deleteItemId));
@@ -221,7 +244,7 @@ const PurchaseOrderQC = () => {
 
     await dispatch(addInward(approveData)).unwrap();
     if (id) dispatch(editPO(id));
-    
+
   };
 
   if (poLoading) {
@@ -252,20 +275,22 @@ const PurchaseOrderQC = () => {
                   </Button>
                 </Box>
               </Grid>
+              {po?.vendor && (
+                <Grid size={{ xs: 12, md: 3 }} sx={{ pt: 2 }}>
+                  <Typography variant="p">
+                    From
+                    <br />
+                    <b>{po.vendor?.name}</b>
+                    <br />
+                    {po.vendor?.address}
+                    <br />
+                    GSTIN: {po.vendor?.gst}
+                    <br />
+                    Dated: {po.order_date}
+                  </Typography>
+                </Grid>
+              )}
 
-              <Grid size={{ xs: 12, md: 3 }} sx={{ pt: 2 }}>
-                <Typography variant="p">
-                  From
-                  <br />
-                  <b>{po.vendor?.name}</b>
-                  <br />
-                  {po.vendor?.address}
-                  <br />
-                  GSTIN: {po.vendor?.gst}
-                  <br />
-                  Dated: {po.order_date}
-                </Typography>
-              </Grid>
 
               <Grid size={12} sx={{ pt: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'nowrap' }}>
@@ -297,49 +322,49 @@ const PurchaseOrderQC = () => {
                     </Box>
                   </Box>
                   {!po.inward && (
-                  <Button variant="contained" color="primary" onClick={handleApprove}>
-                    Approve
-                  </Button>
+                    <Button variant="contained" color="primary" onClick={handleApprove}>
+                      Approve
+                    </Button>
                   )}
                 </Box>
               </Grid>
-              
+
               {!po.inward && (
-              <Grid size={12} sx={{ pt: 2 }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
-                  <Autocomplete
-                    options={materials}
-                    value={selectedItemCode}
-                    onChange={(e, value) => setSelectedItemCode(value)}
-                    size="small"
-                    getOptionLabel={(option) => option?.name || ""}
-                    renderInput={(params) => (
-                      <TextField {...params} label="Select Material" variant="outlined" />
-                    )}
-                    sx={{ width: 300 }}
-                    noOptionsText="No materials available"
-                  />
-                  <TextField
-                    label="Qty"
-                    name="qty"
-                    size="small"
-                    onChange={(e) => setSelectedQty(e.target.value)}
-                    type="number"
-                    value={selectedQty}
-                    sx={{ width: 150 }}
-                    inputProps={{ min: 1 }}
-                    placeholder="Enter quantity"
-                  />
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleAddItem}
-                    sx={{ height: 40 }}
-                  >
-                    Add Item
-                  </Button>
-                </Box>
-              </Grid>
+                <Grid size={12} sx={{ pt: 2 }}>
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+                    <Autocomplete
+                      options={materials}
+                      value={selectedItemCode}
+                      onChange={(e, value) => setSelectedItemCode(value)}
+                      size="small"
+                      getOptionLabel={(option) => option?.name || ""}
+                      renderInput={(params) => (
+                        <TextField {...params} label="Select Material" variant="outlined" />
+                      )}
+                      sx={{ width: 300 }}
+                      noOptionsText="No materials available"
+                    />
+                    <TextField
+                      label="Qty"
+                      name="qty"
+                      size="small"
+                      onChange={(e) => setSelectedQty(e.target.value)}
+                      type="number"
+                      value={selectedQty}
+                      sx={{ width: 150 }}
+                      inputProps={{ min: 1 }}
+                      placeholder="Enter quantity"
+                    />
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleAddItem}
+                      sx={{ height: 40 }}
+                    >
+                      Add Item
+                    </Button>
+                  </Box>
+                </Grid>
               )}
               <Grid size={12} sx={{ mt: 3, overflowX: 'auto' }}>
                 <Table>
@@ -363,6 +388,7 @@ const PurchaseOrderQC = () => {
                             <TextField
                               type="number"
                               size="small"
+                              disabled={po?.quality_status !== '1'}
                               value={item.qty}
                               onChange={(e) => handleQtyChange(item.id, e.target.value)}
                               inputProps={{ min: 1 }}

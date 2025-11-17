@@ -73,7 +73,7 @@ const CreatePurchaseOrder = () => {
 
   const { data: vendors = [], loading: vendorLoading } = useSelector((state) => state.vendor);
   const { data: materials = [] } = useSelector((state) => state.material);
-  const { data: gst = [] } = useSelector((state) => state.taxSlab);
+  const { activeData: gst = [] } = useSelector((state) => state.taxSlab);
 
   useEffect(() => {
     dispatch(fetchActiveVendors());

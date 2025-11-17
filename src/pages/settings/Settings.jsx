@@ -49,22 +49,22 @@ import TaxSlab from "./TaxSlab/TaxSlab";
 
 const tabConfig = [
   // { value: "tab10", label: "Branch", icon: <GoGitBranch />, component: <Branch/> },
-  { value: "tab3", label: "Categories", icon: <DescriptionIcon />, component: <Category/>},
-  { value: "tab15", label: "Departments", icon: <FaLayerGroup />, component: <Department/> },
-  { value: "tab35", label: "General Settings", icon: <IoSettingsOutline />, component: <GeneralSetting/> },
-  // { value: "tab6", label: "Grades", icon: <MdOutlineGrade />, component: <Grade/> },
   { value: "tab2", label: "Groups", icon: <GrGroup />, component: <Group/> },
+  { value: "tab3", label: "Categories", icon: <DescriptionIcon />, component: <Category/>},
+  // { value: "tab6", label: "Grades", icon: <MdOutlineGrade />, component: <Grade/> },
   { value: "tab9", label: "Machines", icon: <CheckCircleOutlineIcon />, component: <Machine/> },
+  { value: "tab8", label: "UOM", icon: <TbRosetteNumber1 />, component: <UOM/> },
   { value: "tab5", label: "Material", icon: <FolderOpenIcon />, component: <Material/> },
   { value: "tab7", label: "Products", icon: <LayersIcon />, component: <Product/> },
   { value: "tab33", label: "Tax Slabs", icon: <ListAltIcon />, component: <TaxSlab/> },
-  { value: "tab8", label: "UOM", icon: <TbRosetteNumber1 />, component: <UOM/> },
   { value: "tab1", label: "User Roles", icon: <LuUserRoundCog />, component: <UserType/> },
   { value: "tab4", label: "Vendors", icon: <MdOutlineStorefront />, component: <Vendor/> },
+  { value: "tab15", label: "Departments", icon: <FaLayerGroup />, component: <Department/> },
+  { value: "tab35", label: "General Settings", icon: <IoSettingsOutline />, component: <GeneralSetting/> },
 ];
 
 function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("tab3");
+  const [activeTab, setActiveTab] = useState("tab2");
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 

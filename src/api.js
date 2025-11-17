@@ -34,7 +34,7 @@ api.interceptors.request.use(
     // Skip adding token for public endpoints
     if (isPublicEndpoint(config.url)) {
       config.headers = {
-        ...config.headers, // keep other headers
+        ...config.headers, 
         "Content-Type": "multipart/form-data",
       };
       return config;
@@ -42,7 +42,7 @@ api.interceptors.request.use(
     const token = localStorage.getItem("token");
     if (token) {
       config.headers = {
-        ...config.headers, // keep other headers
+        ...config.headers, 
         "Content-Type": "multipart/form-data",
         Authorization: `Bearer ${token}`,
       };
@@ -62,7 +62,7 @@ api.interceptors.response.use(
 
       if (message.includes("Token expired")) {
         // Show popup
-        alert("⚠️ Session expired. Please login again."); // replace with custom modal if you want
+        alert("⚠️ Session expired. Please login again."); 
 
         // Clear token
         localStorage.removeItem("token");

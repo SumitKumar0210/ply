@@ -36,7 +36,7 @@ import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 
 import { useDispatch, useSelector } from "react-redux";
 import { addUser, fetchUsers, updateUser, statusUpdate, deleteUser } from "./slices/userSlice";
-import {fetchStates} from "../settings/slices/stateSlice";
+import { fetchStates } from "../settings/slices/stateSlice";
 import { fetchActiveUserTypes } from "../settings/slices/userTypeSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { compressImage } from "../../components/imageCompressor/imageCompressor";
@@ -80,36 +80,85 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-//  Validation schema
+//  Validation schema for Add
 const validationSchema = Yup.object({
   name: Yup.string()
-  .min(2, "Name must be at least 2 characters")
-  .required("Name is required"),
+    .min(2, "Name must be at least 2 characters")
+    .max(100, "Name must not exceed 100 characters")
+    .required("Name is required"),
+
   password: Yup.string()
-  .min(4, "Password must be at least 4 characters")
-  .required("Password is required"),
-  email: Yup.string().email("Invalid email format").required("E-mail is required"),
-  mobile: Yup.string().matches(/^[0-9]{10}$/, "Mobile must be 10 digits").required("Mobile is required"),
+    .min(6, "Password must be at least 6 characters")
+    .max(50, "Password must not exceed 50 characters")
+    .required("Password is required"),
+
+  email: Yup.string()
+    .email("Enter a valid email address")
+    .required("Email is required"),
+
+  mobile: Yup.string()
+    .matches(/^[0-9]{10}$/, "Mobile must be exactly 10 digits")
+    .required("Mobile is required"),
+
   state_id: Yup.string().required("State is required"),
-  city: Yup.string().required("City is required"),
-  address: Yup.string().required("Address is required"),
-  user_type_id: Yup.string().required("Please select a user type"),
-  image: Yup.mixed().required("Image is required"),
+
+  city: Yup.string()
+    .min(2, "City must be at least 2 characters")
+    .max(100, "City must not exceed 100 characters")
+    .required("City is required"),
+
+  address: Yup.string()
+    .min(10, "Address must be at least 10 characters")
+    .max(500, "Address must not exceed 500 characters")
+    .required("Address is required"),
+
+  zip_code: Yup.string()
+    .matches(/^[0-9]{6}$/, "PIN code must be exactly 6 digits")
+    .required("PIN code is required"),
+
+  user_type_id: Yup.string().required("User type is required"),
+
+  image: Yup.mixed().nullable(),
 });
 
 //  Edit Validation schema
 const editValidationSchema = Yup.object({
   name: Yup.string()
-  .min(2, "Name must be at least 2 characters")
-  .required("Name is required"),
+    .min(2, "Name must be at least 2 characters")
+    .max(100, "Name must not exceed 100 characters")
+    .required("Name is required"),
+
   password: Yup.string()
-  .min(4, "Password must be at least 4 characters"),
-  email: Yup.string().email("Invalid email format").required("E-mail is required"),
-  mobile: Yup.string().matches(/^[0-9]{10}$/, "Mobile must be 10 digits").required("Mobile is required"),
+    .min(6, "Password must be at least 6 characters")
+    .max(50, "Password must not exceed 50 characters")
+    .nullable(),
+
+  email: Yup.string()
+    .email("Enter a valid email address")
+    .required("Email is required"),
+
+  mobile: Yup.string()
+    .matches(/^[0-9]{10}$/, "Mobile must be exactly 10 digits")
+    .required("Mobile is required"),
+
   state_id: Yup.string().required("State is required"),
-  city: Yup.string().required("City is required"),
-  address: Yup.string().required("Address is required"),
-  user_type_id: Yup.string().required("Please select a user type"),
+
+  city: Yup.string()
+    .min(2, "City must be at least 2 characters")
+    .max(100, "City must not exceed 100 characters")
+    .required("City is required"),
+
+  address: Yup.string()
+    .min(10, "Address must be at least 10 characters")
+    .max(500, "Address must not exceed 500 characters")
+    .required("Address is required"),
+
+  zip_code: Yup.string()
+    .matches(/^[0-9]{6}$/, "PIN code must be exactly 6 digits")
+    .required("PIN code is required"),
+
+  user_type_id: Yup.string().required("User type is required"),
+
   image: Yup.mixed().nullable(),
 });
 
@@ -127,29 +176,27 @@ const Users = () => {
   const tableContainerRef = useRef(null);
 
   const { data: tableData = [], loading, error } = useSelector((state) => state.user);
-  const { data: states = []} = useSelector((state) => state.state);
-  const { data: userTypes = []} = useSelector((state) => state.userType);
+  const { data: states = [] } = useSelector((state) => state.state);
+  const { data: userTypes = [] } = useSelector((state) => state.userType);
 
   const dispatch = useDispatch();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
   useEffect(() => {
     dispatch(fetchUsers());
+    dispatch(fetchStates());
+    dispatch(fetchActiveUserTypes());
   }, [dispatch]);
 
-  useEffect(() => {
-   dispatch(fetchStates());
-   dispatch(fetchActiveUserTypes());
-  }, [open, editOpen]);
-
-  const handleAdd = async (values, resetForm) => {
+  const handleAdd = async (values, { resetForm, setSubmitting }) => {
     try {
-      const res = await dispatch(addUser(values));
-      if(res.error) return ; 
+      const res = await dispatch(addUser(values)).unwrap();
       resetForm();
       setOpen(false);
     } catch (error) {
       console.error("Add user failed:", error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -168,14 +215,14 @@ const Users = () => {
     setDeleteDialog((prev) => ({ ...prev, loading: true }));
 
     try {
-      await dispatch(deleteUser(deleteDialog.id)).unwrap(); 
+      await dispatch(deleteUser(deleteDialog.id)).unwrap();
+      setDeleteDialog({ open: false, id: null, name: "", loading: false });
     } catch (error) {
       console.error("Delete failed:", error);
-    } finally {
-      setDeleteDialog({ open: false, id: null, name: "", loading: false });
+      setDeleteDialog((prev) => ({ ...prev, loading: false }));
     }
   };
-  
+
   const handleUpdate = (row) => {
     setEditData(row);
     setEditOpen(true);
@@ -186,11 +233,16 @@ const Users = () => {
     setEditData(null);
   };
 
-  const handleEditSubmit = async (values, resetForm) => {
-    const res = await dispatch(updateUser({ id: editData.id, ...values }));
-    if(res.error) return ; 
-    resetForm();
-    handleEditClose();
+  const handleEditSubmit = async (values, { resetForm, setSubmitting }) => {
+    try {
+      const res = await dispatch(updateUser({ id: editData.id, ...values })).unwrap();
+      resetForm();
+      handleEditClose();
+    } catch (error) {
+      console.error("Update failed:", error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Handle image compression
@@ -198,38 +250,45 @@ const Users = () => {
     const file = event.currentTarget.files[0];
     if (!file) return;
 
-    // Handle image compression
-    if (file.type.startsWith("image/")) {
-      try {
-        setCompressingImage(true);
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload a valid image file");
+      return;
+    }
 
-        // Compress the image
-        const compressed = await compressImage(file, {
-          maxSizeMB: 0.5, // Compress to max 500KB
-          maxWidthOrHeight: 1024,
-        });
+    // Validate file size (max 5MB before compression)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size must be less than 5MB");
+      return;
+    }
 
-        // Log compression results
-        const originalSize = (file.size / 1024).toFixed(2);
-        const compressedSize = (compressed.size / 1024).toFixed(2);
-        const reduction = (
-          ((file.size - compressed.size) / file.size) * 100
-        ).toFixed(2);
+    try {
+      setCompressingImage(true);
 
-        console.log(
-          `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
-        );
+      // Compress the image
+      const compressed = await compressImage(file, {
+        maxSizeMB: 0.5, // Compress to max 500KB
+        maxWidthOrHeight: 1024,
+      });
 
-        setFieldValue("image", compressed);
-      } catch (error) {
-        console.error("Image compression failed:", error);
-        // Continue with original file if compression fails
-        setFieldValue("image", file);
-      } finally {
-        setCompressingImage(false);
-      }
-    } else {
+      // Log compression results
+      const originalSize = (file.size / 1024).toFixed(2);
+      const compressedSize = (compressed.size / 1024).toFixed(2);
+      const reduction = (
+        ((file.size - compressed.size) / file.size) * 100
+      ).toFixed(2);
+
+      console.log(
+        `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
+      );
+
+      setFieldValue("image", compressed);
+    } catch (error) {
+      console.error("Image compression failed:", error);
+      // Continue with original file if compression fails
       setFieldValue("image", file);
+    } finally {
+      setCompressingImage(false);
     }
   };
 
@@ -239,6 +298,8 @@ const Users = () => {
       {
         accessorKey: "profilePic",
         header: "Image",
+        enableSorting: false,
+        enableColumnFilter: false,
         Cell: ({ row }) => (
           <ImagePreviewDialog
             imageUrl={row.original.image ? mediaUrl + row.original.image : Profile}
@@ -248,16 +309,13 @@ const Users = () => {
         size: 80,
       },
       { accessorKey: "name", header: "Name" },
-      { accessorKey: "email", header: "E-mail Address" },
+      { accessorKey: "email", header: "Email" },
       { accessorKey: "mobile", header: "Mobile" },
-      { accessorKey: "address", header: "Address" },
+      { accessorKey: "city", header: "City" },
       {
         accessorKey: "user_type_id",
         header: "User Type",
-        Cell: ({ row }) => {
-          const userType = row.original.user_type?.name;
-          return userType ?? "N/A";
-        },
+        Cell: ({ row }) => row.original.user_type?.name ?? "N/A",
       },
       {
         accessorKey: "status",
@@ -277,7 +335,7 @@ const Users = () => {
       {
         id: "actions",
         header: "Actions",
-        size: 80,
+        size: 120,
         enableSorting: false,
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
@@ -294,7 +352,6 @@ const Users = () => {
             </Tooltip>
             <Tooltip title="Delete">
               <IconButton
-                aria-label="delete"
                 color="error"
                 onClick={() => handleDeleteClick(row.original)}
               >
@@ -305,29 +362,30 @@ const Users = () => {
         ),
       },
     ],
-    []
+    [dispatch, mediaUrl]
   );
 
-  //  CSV export using tableData
+  //  CSV export
   const downloadCSV = () => {
-    const headers = columns
-      .filter((col) => col.accessorKey && col.accessorKey !== "action")
-      .map((col) => col.header);
-    const rows = tableData.map((row) =>
-      columns
-        .filter((col) => col.accessorKey && col.accessorKey !== "action")
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
-        .join(",")
-    );
+    const headers = ["Name", "Email", "Mobile", "City", "User Type"];
+    const rows = tableData.map((row) => [
+      `"${row.name ?? ""}"`,
+      `"${row.email ?? ""}"`,
+      `"${row.mobile ?? ""}"`,
+      `"${row.city ?? ""}"`,
+      `"${row.user_type?.name ?? ""}"`,
+    ].join(","));
+
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "Users.csv");
+    link.setAttribute("download", "users.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   //  Print handler
@@ -343,18 +401,6 @@ const Users = () => {
 
   return (
     <>
-      {/* Header Row */}
-      <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Grid>
-          <Typography variant="h6">Users</Typography>
-        </Grid>
-        <Grid>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
-            Add User
-          </Button>
-        </Grid>
-      </Grid>
-
       {/* Users Table */}
       <Grid size={12}>
         <Paper
@@ -376,13 +422,9 @@ const Users = () => {
             enableColumnVisibilityToggle={false}
             initialState={{ density: "compact" }}
             muiTableContainerProps={{
-              sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto", minWidth: "1200px" },
+              sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto" },
             }}
-            muiTableBodyCellProps={{ sx: { whiteSpace: "wrap", width: "100px" } }}
             muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-            muiTableBodyRowProps={() => ({
-              hover: false,
-            })}
             renderTopToolbar={({ table }) => (
               <Box
                 sx={{
@@ -409,6 +451,13 @@ const Users = () => {
                       <BsCloudDownload size={20} />
                     </IconButton>
                   </Tooltip>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setOpen(true)}
+                  >
+                    Add User
+                  </Button>
                 </Box>
               </Box>
             )}
@@ -427,30 +476,31 @@ const Users = () => {
             email: "",
             mobile: "",
             state_id: "",
-            city : "",
+            city: "",
             address: "",
             user_type_id: "",
             password: "",
+            zip_code: "",
             image: null,
           }}
           validationSchema={validationSchema}
-          onSubmit={ (values, { resetForm }) => {
-           handleAdd(values, resetForm)
-          }}
+          onSubmit={handleAdd}
         >
-          {({ handleChange, handleSubmit, setFieldValue, touched, errors, values }) => (
-            <Form onSubmit={handleSubmit}>
+          {({ handleChange, handleBlur, setFieldValue, touched, errors, values, isSubmitting }) => (
+            <Form>
               <DialogContent dividers>
-                <Grid container  rowSpacing={1} columnSpacing={3}>
+                <Grid container rowSpacing={1} columnSpacing={3}>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       id="name"
                       name="name"
-                      label="Name"
+                      label="Name *"
                       variant="standard"
                       fullWidth
                       margin="dense"
+                      value={values.name}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.name && Boolean(errors.name)}
                       helperText={touched.name && errors.name}
                     />
@@ -459,11 +509,13 @@ const Users = () => {
                     <TextField
                       id="email"
                       name="email"
-                      label="E-mail Address"
+                      label="Email Address *"
                       variant="standard"
                       fullWidth
                       margin="dense"
+                      value={values.email}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.email && Boolean(errors.email)}
                       helperText={touched.email && errors.email}
                     />
@@ -472,13 +524,16 @@ const Users = () => {
                     <TextField
                       id="mobile"
                       name="mobile"
-                      label="Mobile"
+                      label="Mobile *"
                       variant="standard"
                       fullWidth
                       margin="dense"
+                      value={values.mobile}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.mobile && Boolean(errors.mobile)}
                       helperText={touched.mobile && errors.mobile}
+                      inputProps={{ maxLength: 10 }}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
@@ -486,15 +541,19 @@ const Users = () => {
                       id="user_type_id"
                       name="user_type_id"
                       select
-                      label="User Type"
+                      label="User Type *"
                       variant="standard"
                       fullWidth
                       margin="dense"
                       value={values.user_type_id}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.user_type_id && Boolean(errors.user_type_id)}
                       helperText={touched.user_type_id && errors.user_type_id}
                     >
+                      <MenuItem value="">
+                        <em>Select User Type</em>
+                      </MenuItem>
                       {userTypes.map((option) => (
                         <MenuItem key={option.id} value={option.id}>
                           {option.name}
@@ -506,17 +565,19 @@ const Users = () => {
                     <TextField
                       id="password"
                       name="password"
-                      label="Password"
+                      label="Password *"
                       variant="standard"
                       fullWidth
                       type="password"
                       margin="dense"
+                      value={values.password}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.password && Boolean(errors.password)}
                       helperText={touched.password && errors.password}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 6}}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     {/* Upload Image */}
                     <Grid container spacing={2} alignItems="center" mt={1}>
                       <Grid size={8}>
@@ -532,17 +593,16 @@ const Users = () => {
                           <input
                             hidden
                             type="file"
-                            inputProps={{
-                              accept: "image/*", 
-                            }}
+                            accept="image/*"
                             onChange={(event) => handleImageChange(event, setFieldValue)}
                           />
                         </Button>
                         {touched.image && errors.image && (
-                          <div style={{ color: "red", fontSize: "0.8rem" }}>{errors.image}</div>
+                          <Typography variant="caption" color="error">
+                            {errors.image}
+                          </Typography>
                         )}
                       </Grid>
-
                       <Grid size={4}>
                         {values.image && (
                           <img
@@ -565,44 +625,70 @@ const Users = () => {
                       select
                       id="state_id"
                       name="state_id"
-                      label="State"
+                      label="State *"
                       variant="standard"
                       fullWidth
                       margin="dense"
+                      value={values.state_id}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.state_id && Boolean(errors.state_id)}
                       helperText={touched.state_id && errors.state_id}
                     >
+                      <MenuItem value="">
+                        <em>Select State</em>
+                      </MenuItem>
                       {states.map((option) => (
-                          <MenuItem key={option.id} value={option.id}>
-                            {option.name}
-                          </MenuItem>
-                        ))}
+                        <MenuItem key={option.id} value={option.id}>
+                          {option.name}
+                        </MenuItem>
+                      ))}
                     </TextField>
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       id="city"
                       name="city"
-                      label="City"
+                      label="City *"
                       variant="standard"
                       fullWidth
                       margin="dense"
+                      value={values.city}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.city && Boolean(errors.city)}
                       helperText={touched.city && errors.city}
                     />
                   </Grid>
-                  
-                  <Grid size={{ xs: 12, md: 12 }}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
-                      id="address"
-                      name="address"
-                      label="Address"
+                      id="zip_code"
+                      name="zip_code"
+                      label="PIN Code *"
                       variant="standard"
                       fullWidth
                       margin="dense"
+                      value={values.zip_code}
                       onChange={handleChange}
+                      onBlur={handleBlur}
+                      error={touched.zip_code && Boolean(errors.zip_code)}
+                      helperText={touched.zip_code && errors.zip_code}
+                      inputProps={{ maxLength: 6 }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      id="address"
+                      name="address"
+                      label="Address *"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      multiline
+                      rows={2}
+                      value={values.address}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.address && Boolean(errors.address)}
                       helperText={touched.address && errors.address}
                     />
@@ -611,10 +697,10 @@ const Users = () => {
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
                 <Button variant="outlined" color="error" onClick={() => setOpen(false)}>
-                  Close
+                  Cancel
                 </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Submit
+                <Button type="submit" variant="contained" color="primary" disabled={isSubmitting}>
+                  {isSubmitting ? "Submitting..." : "Submit"}
                 </Button>
               </DialogActions>
             </Form>
@@ -623,42 +709,42 @@ const Users = () => {
       </BootstrapDialog>
 
       {/* Edit Modal */}
-      <BootstrapDialog onClose={() => setEditOpen(false)} open={editOpen} fullWidth maxWidth="sm">
-        <BootstrapDialogTitle onClose={() => setEditOpen(false)}>
+      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="sm">
+        <BootstrapDialogTitle onClose={handleEditClose}>
           Edit User
         </BootstrapDialogTitle>
         <Formik
-            initialValues={{
-              name: editData?.name || "",
-              email: editData?.email || "",
-              mobile: editData?.mobile || "",
-              state_id: editData?.state_id || "",
-              city: editData?.city || "",
-              address: editData?.address || "",
-              user_type_id: editData?.user_type_id || "",
-              password:  "",
-              image: null,
-            }}
-            validationSchema={editValidationSchema}
-            enableReinitialize 
-            onSubmit={(values, { resetForm }) => {
-              handleEditSubmit(values, resetForm);
-            }}
-          >
-          {({ handleChange, handleSubmit, setFieldValue, touched, errors, values }) => (
-            <Form onSubmit={handleSubmit}>
+          initialValues={{
+            name: editData?.name || "",
+            email: editData?.email || "",
+            mobile: editData?.mobile || "",
+            state_id: editData?.state_id || "",
+            city: editData?.city || "",
+            address: editData?.address || "",
+            user_type_id: editData?.user_type_id || "",
+            zip_code: editData?.zip_code || "",
+            password: "",
+            image: null,
+          }}
+          validationSchema={editValidationSchema}
+          enableReinitialize
+          onSubmit={handleEditSubmit}
+        >
+          {({ handleChange, handleBlur, setFieldValue, touched, errors, values, isSubmitting }) => (
+            <Form>
               <DialogContent dividers>
-                <Grid container  rowSpacing={1} columnSpacing={3}>
+                <Grid container rowSpacing={1} columnSpacing={3}>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       id="name"
                       name="name"
-                      label="Name"
+                      label="Name *"
                       variant="standard"
                       fullWidth
                       margin="dense"
                       value={values.name}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.name && Boolean(errors.name)}
                       helperText={touched.name && errors.name}
                     />
@@ -667,12 +753,13 @@ const Users = () => {
                     <TextField
                       id="email"
                       name="email"
-                      label="E-mail Address"
+                      label="Email Address *"
                       variant="standard"
                       fullWidth
                       margin="dense"
                       value={values.email}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.email && Boolean(errors.email)}
                       helperText={touched.email && errors.email}
                     />
@@ -681,14 +768,16 @@ const Users = () => {
                     <TextField
                       id="mobile"
                       name="mobile"
-                      label="Mobile"
+                      label="Mobile *"
                       variant="standard"
                       fullWidth
                       margin="dense"
                       value={values.mobile}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.mobile && Boolean(errors.mobile)}
                       helperText={touched.mobile && errors.mobile}
+                      inputProps={{ maxLength: 10 }}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
@@ -696,15 +785,19 @@ const Users = () => {
                       id="user_type_id"
                       name="user_type_id"
                       select
-                      label="User Type"
+                      label="User Type *"
                       variant="standard"
                       fullWidth
                       margin="dense"
                       value={values.user_type_id}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.user_type_id && Boolean(errors.user_type_id)}
                       helperText={touched.user_type_id && errors.user_type_id}
                     >
+                      <MenuItem value="">
+                        <em>Select User Type</em>
+                      </MenuItem>
                       {userTypes.map((option) => (
                         <MenuItem key={option.id} value={option.id}>
                           {option.name}
@@ -716,17 +809,19 @@ const Users = () => {
                     <TextField
                       id="password"
                       name="password"
-                      label="Password"
+                      label="Password (leave blank to keep current)"
                       variant="standard"
                       fullWidth
                       type="password"
                       margin="dense"
+                      value={values.password}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.password && Boolean(errors.password)}
                       helperText={touched.password && errors.password}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, md: 6}}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     {/* Upload Image */}
                     <Grid container spacing={2} alignItems="center" mt={1}>
                       <Grid size={8}>
@@ -742,23 +837,24 @@ const Users = () => {
                           <input
                             hidden
                             type="file"
-                            inputProps={{
-                              accept: "image/*", 
-                            }}
+                            accept="image/*"
                             onChange={(event) => handleImageChange(event, setFieldValue)}
                           />
                         </Button>
                         {touched.image && errors.image && (
-                          <div style={{ color: "red", fontSize: "0.8rem" }}>{errors.image}</div>
+                          <Typography variant="caption" color="error">
+                            {errors.image}
+                          </Typography>
                         )}
                       </Grid>
-
                       <Grid size={4}>
                         <img
-                          src={ 
+                          src={
                             values.image
                               ? URL.createObjectURL(values.image)
-                              : `${mediaUrl}${editData?.image || ""}`
+                              : editData?.image
+                                ? `${mediaUrl}${editData.image}`
+                                : Profile
                           }
                           alt="Preview"
                           style={{
@@ -780,47 +876,69 @@ const Users = () => {
                       select
                       id="state_id"
                       name="state_id"
-                      label="State"
+                      label="State *"
                       variant="standard"
                       fullWidth
                       margin="dense"
                       value={values.state_id}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.state_id && Boolean(errors.state_id)}
                       helperText={touched.state_id && errors.state_id}
                     >
+                      <MenuItem value="">
+                        <em>Select State</em>
+                      </MenuItem>
                       {states.map((option) => (
-                          <MenuItem key={option.id} value={option.id}>
-                            {option.name}
-                          </MenuItem>
-                        ))}
+                        <MenuItem key={option.id} value={option.id}>
+                          {option.name}
+                        </MenuItem>
+                      ))}
                     </TextField>
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                       id="city"
-                      name="city"
-                      label="City"
+                      name="city" label="City *"
                       variant="standard"
                       fullWidth
                       margin="dense"
                       value={values.city}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.city && Boolean(errors.city)}
                       helperText={touched.city && errors.city}
                     />
                   </Grid>
-                  
-                  <Grid size={{ xs: 12, md: 12 }}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
-                      id="address"
-                      name="address"
-                      label="Address"
+                      id="zip_code"
+                      name="zip_code"
+                      label="PIN Code *"
                       variant="standard"
                       fullWidth
                       margin="dense"
+                      value={values.zip_code}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      error={touched.zip_code && Boolean(errors.zip_code)}
+                      helperText={touched.zip_code && errors.zip_code}
+                      inputProps={{ maxLength: 6 }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      id="address"
+                      name="address"
+                      label="Address *"
+                      variant="standard"
+                      fullWidth
+                      margin="dense"
+                      multiline
+                      rows={2}
                       value={values.address}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       error={touched.address && Boolean(errors.address)}
                       helperText={touched.address && errors.address}
                     />
@@ -828,11 +946,11 @@ const Users = () => {
                 </Grid>
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={() => setEditOpen(false)}>
-                  Close
+                <Button variant="outlined" color="error" onClick={handleEditClose}>
+                  Cancel
                 </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Save changes
+                <Button type="submit" variant="contained" color="primary" disabled={isSubmitting}>
+                  {isSubmitting ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogActions>
             </Form>
@@ -844,14 +962,17 @@ const Users = () => {
       <Dialog
         open={deleteDialog.open}
         onClose={() =>
-          setDeleteDialog({ open: false, id: null, name: "", loading: false })
+          !deleteDialog.loading && setDeleteDialog({ open: false, id: null, name: "", loading: false })
         }
+        maxWidth="xs"
+        fullWidth
       >
         <DialogTitle>Delete User?</DialogTitle>
-        <DialogContent style={{ width: "320px" }}>
+        <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete User{" "}
-            <strong>{deleteDialog.name}</strong>? <br />
+            Are you sure you want to delete user{" "}
+            <strong>{deleteDialog.name}</strong>?
+            <br />
             This action cannot be undone.
           </DialogContentText>
         </DialogContent>
@@ -862,7 +983,7 @@ const Users = () => {
             }
             disabled={deleteDialog.loading}
           >
-            Close
+            Cancel
           </Button>
           <Button
             variant="contained"

@@ -175,7 +175,7 @@ const Department = () => {
           <TextField
             type="number"
             size="small"
-            disabled={(row.original.sequence == 1 || row.original.sequence ==2)}
+            disabled={(row.original.sequence == 1 || row.original.sequence ==2 || row.original.sequence ==3 || row.original.sequence ==4)}
             value={sequenceValues[row.original.id] ?? row.original.sequence ?? ""}
             onChange={(e) => handleSequenceChange(row.original.id, e.target.value)}
             inputProps={{ min: 0 }}
@@ -216,7 +216,7 @@ const Department = () => {
                 <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
-            {!(row.original.sequence == 1 || row.original.sequence ==2) &&(
+            {!(row.original.sequence == 1 || row.original.sequence ==2 || row.original.sequence ==3 || row.original.sequence ==4) &&(
               <Tooltip title="Delete">
               <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
                 <RiDeleteBinLine size={16} />

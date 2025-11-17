@@ -407,6 +407,7 @@ const Product = () => {
             rrp: "",
             product_type: "",
             group_id: "",
+            narations: "",
             image: null,
           }}
           validationSchema={validationSchema}
@@ -585,6 +586,19 @@ const Product = () => {
                       </Grid>
                     </Grid>
                   </Grid>
+                  <Grid size={{ xs: 12, md: 12 }}>
+                    <TextField
+                      fullWidth
+                      id="narations"
+                      name="narations"
+                      label="Narations"
+                      variant="standard"
+                      value={values.narations}
+                      onChange={handleChange}
+                      error={touched.rrp && Boolean(errors.narations)}
+                      helperText={touched.narations && errors.narations}
+                    />
+                  </Grid>
                 </Grid>
               </DialogContent>
 
@@ -634,6 +648,7 @@ const Product = () => {
               rrp: editData.rrp || "",
               product_type: editData.product_type || "",
               group_id: editData.group_id || "",
+              narations: editData.narations || "",
               image: null,
             }}
             validationSchema={editValidationSchema}
@@ -819,6 +834,19 @@ const Product = () => {
                         </Grid>
                       </Grid>
                     </Grid>
+                    <Grid size={{ xs: 12, md: 12 }}>
+                    <TextField
+                      fullWidth
+                      id="narations"
+                      name="narations"
+                      label="Narations"
+                      variant="standard"
+                      value={values.narations}
+                      onChange={handleChange}
+                      error={touched.rrp && Boolean(errors.narations)}
+                      helperText={touched.narations && errors.narations}
+                    />
+                  </Grid>
                   </Grid>
                 </DialogContent>
 

@@ -68,7 +68,7 @@ const EditPurchaseOrder = () => {
   const { selected: poData = {}, loading: poLoading } = useSelector((state) => state.purchaseOrder);
   const { data: vendors = [], loading: vendorLoading } = useSelector((state) => state.vendor);
   const { data: materials = [] } = useSelector((state) => state.material);
-  const { data: gst = [] } = useSelector((state) => state.taxSlab);
+  const { activeData: gst = [] } = useSelector((state) => state.taxSlab);
 
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState(null);

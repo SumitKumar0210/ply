@@ -21,7 +21,9 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import ReceiptIcon from "@mui/icons-material/Receipt";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import InsertEmoticonIcon from "@mui/icons-material/InsertEmoticon";
+import CropLandscapeIcon from "@mui/icons-material/CropLandscape";
 import { fetchSettings, updateSetting } from "../slices/generalSettingSlice";
+import { useAuth } from "../../../context/AuthContext";
 
 const GeneralSetting = () => {
   const dispatch = useDispatch();
@@ -33,10 +35,14 @@ const GeneralSetting = () => {
     gst_no: "",
     address: "",
     logo: "",
+    horizontal_logo: "",
     favicon: "",
   });
 
+  const { refreshAppDetails } = useAuth();
+
   const [successMessage, setSuccessMessage] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
 
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
@@ -53,36 +59,131 @@ const GeneralSetting = () => {
         gst_no: data[0].gst_no || "",
         address: data[0].address || "",
         logo: data[0].logo || "",
+        horizontal_logo: data[0].horizontal_logo || "",
         favicon: data[0].favicon || "",
       });
     }
   }, [data]);
 
+  // Enhanced validation schema
   const validationSchema = Yup.object({
-    app_name: Yup.string().required("App name is required"),
-    email: Yup.string().email("Invalid email").required("Email is required"),
-    contact: Yup.string().required("Contact is required"),
-    gst_no: Yup.string().required("GST number is required"),
-    address: Yup.string().required("Address is required"),
+    app_name: Yup.string()
+      .required("App name is required")
+      .min(2, "App name must be at least 2 characters")
+      .max(100, "App name must not exceed 100 characters")
+      .matches(/^[a-zA-Z0-9\s\-_&]+$/, "App name contains invalid characters"),
+
+    email: Yup.string()
+      .required("Email is required")
+      .email("Invalid email format")
+      .matches(
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+        "Please enter a valid email address"
+      ),
+
+    contact: Yup.string()
+      .required("Contact is required")
+      .matches(
+        /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/,
+        "Please enter a valid phone number"
+      )
+      .min(10, "Contact number must be at least 10 digits")
+      .max(15, "Contact number must not exceed 15 digits"),
+
+    gst_no: Yup.string()
+      .required("GST number is required")
+      .matches(
+        /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/,
+        "Please enter a valid GST number (e.g., 22AAAAA0000A1Z5)"
+      )
+      .length(15, "GST number must be exactly 15 characters"),
+
+    address: Yup.string()
+      .required("Address is required")
+      .min(10, "Address must be at least 10 characters")
+      .max(500, "Address must not exceed 500 characters"),
   });
+
+  // File validation helper
+  const validateFile = (file, type) => {
+    const errors = [];
+
+    if (!file) return errors;
+
+    // Check file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      errors.push("File size must be less than 5MB");
+    }
+
+    // Check file type
+    const validTypes = {
+      logo: ["image/png", "image/jpeg", "image/jpg", "image/webp"],
+      favicon: ["image/x-icon", "image/png", "image/ico", "image/vnd.microsoft.icon"],
+    };
+
+    const allowedTypes = validTypes[type] || validTypes.logo;
+    if (!allowedTypes.includes(file.type)) {
+      errors.push(`Invalid file type. Allowed types: ${allowedTypes.map(t => t.split('/')[1]).join(', ')}`);
+    }
+
+    return errors;
+  };
 
   const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
+      // Clear previous validation errors
+      setValidationErrors({});
+
+      // Validate files
+      const fileErrors = {};
+
+      if (values.logo && typeof values.logo === "object") {
+        const logoErrors = validateFile(values.logo, "logo");
+        if (logoErrors.length > 0) {
+          fileErrors.logo = logoErrors.join(", ");
+        }
+      }
+
+      if (values.horizontal_logo && typeof values.horizontal_logo === "object") {
+        const logoHorizontalErrors = validateFile(values.horizontal_logo, "logo");
+        if (logoHorizontalErrors.length > 0) {
+          fileErrors.horizontal_logo = logoHorizontalErrors.join(", ");
+        }
+      }
+
+      if (values.favicon && typeof values.favicon === "object") {
+        const faviconErrors = validateFile(values.favicon, "favicon");
+        if (faviconErrors.length > 0) {
+          fileErrors.favicon = faviconErrors.join(", ");
+        }
+      }
+
+      if (Object.keys(fileErrors).length > 0) {
+        setValidationErrors(fileErrors);
+        setSubmitting(false);
+        return;
+      }
+
       const formData = new FormData();
       Object.entries(values).forEach(([key, value]) => {
         formData.append(key, value);
       });
 
       formData.append("id", data[0].id);
-      await dispatch(updateSetting(formData));
+      const res = await dispatch(updateSetting(formData));
 
-      setSuccessMessage("Settings updated successfully!");
-      setTimeout(() => setSuccessMessage(""), 3000);
-
-      // Update initial data to reflect changes
-      setInitialData(values);
+      if (!res.error) {
+        refreshAppDetails();
+        setSuccessMessage("Settings updated successfully!");
+        setTimeout(() => setSuccessMessage(""), 3000);
+        setInitialData(values);
+      } else {
+        // setValidationErrors({ submit: "Failed to update settings. Please try again." });
+      }
     } catch (error) {
       console.error("Failed to update settings:", error);
+      // setValidationErrors({ submit: "An unexpected error occurred. Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -129,6 +230,12 @@ const GeneralSetting = () => {
         </Alert>
       )}
 
+      {validationErrors.submit && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {validationErrors.submit}
+        </Alert>
+      )}
+
       <Formik
         enableReinitialize
         initialValues={initialData}
@@ -153,10 +260,10 @@ const GeneralSetting = () => {
                   </Typography>
 
                   <Grid container spacing={4}>
-                    {/* Logo Upload */}
-                    <Grid item xs={12} md={6}>
+                    {/* Square Logo Upload */}
+                    <Grid item xs={12} md={4}>
                       <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
-                        Application Logo
+                        Square Logo
                       </Typography>
                       <Button
                         variant="outlined"
@@ -178,18 +285,24 @@ const GeneralSetting = () => {
                         Upload Logo
                         <input
                           hidden
-                          accept="image/*"
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
                           type="file"
                           name="logo"
                           onChange={(event) => {
                             const file = event.currentTarget.files[0];
                             setFieldValue("logo", file);
+                            setValidationErrors(prev => ({ ...prev, logo: undefined }));
                           }}
                         />
                       </Button>
                       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                        Recommended: 200x200px, PNG or JPG
+                        Recommended: 200x200px, PNG or JPG (Max 5MB)
                       </Typography>
+                      {validationErrors.logo && (
+                        <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                          {validationErrors.logo}
+                        </Typography>
+                      )}
 
                       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                         <Card
@@ -200,7 +313,7 @@ const GeneralSetting = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             border: '2px dashed',
-                            borderColor: 'grey.300',
+                            borderColor: validationErrors.logo ? 'error.main' : 'grey.300',
                             backgroundColor: 'grey.50'
                           }}
                         >
@@ -239,8 +352,100 @@ const GeneralSetting = () => {
                       </Box>
                     </Grid>
 
+                    {/* Horizontal Logo Upload */}
+                    <Grid item xs={12} md={4}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                        Horizontal Logo
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        startIcon={<CropLandscapeIcon />}
+                        fullWidth
+                        sx={{
+                          py: 1.5,
+                          borderStyle: 'dashed',
+                          borderWidth: 2,
+                          borderColor: 'info.main',
+                          color: 'info.main',
+                          '&:hover': {
+                            borderColor: 'info.dark',
+                            backgroundColor: 'info.light',
+                          }
+                        }}
+                      >
+                        Upload Horizontal Logo
+                        <input
+                          hidden
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
+                          type="file"
+                          name="horizontal_logo"
+                          onChange={(event) => {
+                            const file = event.currentTarget.files[0];
+                            setFieldValue("horizontal_logo", file);
+                            setValidationErrors(prev => ({ ...prev, horizontal_logo: undefined }));
+                          }}
+                        />
+                      </Button>
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                        Recommended: 400x100px, PNG or JPG (Max 5MB)
+                      </Typography>
+                      {validationErrors.horizontal_logo && (
+                        <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                          {validationErrors.horizontal_logo}
+                        </Typography>
+                      )}
+
+                      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                        <Card
+                          sx={{
+                            width: 200,
+                            height: 120,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '2px dashed',
+                            borderColor: validationErrors.horizontal_logo ? 'error.main' : 'grey.300',
+                            backgroundColor: 'grey.50'
+                          }}
+                        >
+                          {values.horizontal_logo ? (
+                            typeof values.horizontal_logo === "object" ? (
+                              <CardMedia
+                                component="img"
+                                image={URL.createObjectURL(values.horizontal_logo)}
+                                alt="Horizontal logo preview"
+                                sx={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain',
+                                  p: 1
+                                }}
+                              />
+                            ) : (
+                              <CardMedia
+                                component="img"
+                                image={mediaUrl + values.horizontal_logo}
+                                alt="Horizontal logo"
+                                sx={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'contain',
+                                  p: 1
+                                }}
+                              />
+                            )
+                          ) : (
+                            <Typography variant="caption" color="text.secondary" align="center">
+                              No horizontal logo
+                            </Typography>
+                          )}
+                        </Card>
+                      </Box>
+                    </Grid>
+
                     {/* Favicon Upload */}
-                    <Grid item xs={12} md={6}>
+                    <Grid item xs={12} md={4}>
                       <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                         Favicon
                       </Typography>
@@ -270,12 +475,18 @@ const GeneralSetting = () => {
                           onChange={(event) => {
                             const file = event.currentTarget.files[0];
                             setFieldValue("favicon", file);
+                            setValidationErrors(prev => ({ ...prev, favicon: undefined }));
                           }}
                         />
                       </Button>
                       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                        Recommended: 32x32px or 16x16px, ICO or PNG
+                        Recommended: 32x32px, ICO or PNG (Max 5MB)
                       </Typography>
+                      {validationErrors.favicon && (
+                        <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                          {validationErrors.favicon}
+                        </Typography>
+                      )}
 
                       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                         <Card
@@ -286,7 +497,7 @@ const GeneralSetting = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             border: '2px dashed',
-                            borderColor: 'grey.300',
+                            borderColor: validationErrors.favicon ? 'error.main' : 'grey.300',
                             backgroundColor: 'grey.50'
                           }}
                         >
@@ -341,7 +552,7 @@ const GeneralSetting = () => {
 
                   <Grid container spacing={3}>
                     {/* App Name */}
-                    <Grid size={3} md={6}>
+                    <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
                         label="Application Name"
@@ -362,7 +573,7 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Email */}
-                    <Grid size={3} md={6}>
+                    <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
                         label="Email Address"
@@ -384,16 +595,25 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Contact */}
-                    <Grid size={3} md={6}>
+                    <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
                         label="Contact Number"
                         name="contact"
                         variant="outlined"
+                        type="text"
                         value={values.contact}
-                        onChange={handleChange}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, ""); // allow only digits
+                          if (value.length <= 10) {
+                            handleChange({
+                              target: { name: "contact", value }
+                            });
+                          }
+                        }}
                         error={touched.contact && Boolean(errors.contact)}
                         helperText={touched.contact && errors.contact}
+                        inputProps={{ maxLength: 10 }}
                         InputProps={{
                           startAdornment: (
                             <InputAdornment position="start">
@@ -405,14 +625,17 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* GST Number */}
-                    <Grid size={3} md={6}>
+                    <Grid item xs={12} md={6}>
                       <TextField
                         fullWidth
                         label="GST Number"
                         name="gst_no"
                         variant="outlined"
                         value={values.gst_no}
-                        onChange={handleChange}
+                        onChange={(e) => {
+                          const upperValue = e.target.value.toUpperCase();
+                          setFieldValue("gst_no", upperValue);
+                        }}
                         error={touched.gst_no && Boolean(errors.gst_no)}
                         helperText={touched.gst_no && errors.gst_no}
                         InputProps={{
@@ -422,11 +645,15 @@ const GeneralSetting = () => {
                             </InputAdornment>
                           ),
                         }}
+                        inputProps={{
+                          maxLength: 15,
+                          style: { textTransform: 'uppercase' }
+                        }}
                       />
                     </Grid>
 
                     {/* Address */}
-                    <Grid size={12}>
+                    <Grid item xs={12}>
                       <TextField
                         fullWidth
                         label="Company Address"
@@ -444,6 +671,9 @@ const GeneralSetting = () => {
                               <LocationOnIcon color="action" />
                             </InputAdornment>
                           ),
+                        }}
+                        inputProps={{
+                          maxLength: 500
                         }}
                       />
                     </Grid>
