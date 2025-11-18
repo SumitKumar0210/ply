@@ -21,6 +21,8 @@ import {
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { RiDeleteBinLine } from "react-icons/ri";
+import { BiSolidUserPlus } from "react-icons/bi";
+import { MdAddBox } from "react-icons/md";
 import { Autocomplete } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -35,6 +37,8 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { addDays, format, parseISO } from "date-fns";
 import { successMessage, errorMessage } from "../../../toast";
+import VendorFormModal from "../../../components/vendor/VendorFormModal";
+import MaterialFormModal from "../../../components/Material/MaterialFormModal";
 
 // Validation Schema
 const validationSchema = Yup.object().shape({
@@ -76,6 +80,8 @@ const EditPurchaseOrder = () => {
   const [selectedItemCode, setSelectedItemCode] = useState(null);
   const [selectedQty, setSelectedQty] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openVendorModal, setOpenVendorModal] = useState(false);
+  const [openMaterialModal, setOpenMaterialModal] = useState(false);
 
   const [initialValues, setInitialValues] = useState({
     vendor: null,
@@ -128,6 +134,34 @@ const EditPurchaseOrder = () => {
       });
     }
   }, [poData, vendors]);
+
+  // Refresh vendors list
+  const refreshVendors = useCallback(() => {
+    dispatch(fetchActiveVendors());
+  }, [dispatch]);
+
+  // Refresh materials list
+  const refreshMaterials = useCallback(() => {
+    dispatch(fetchActiveMaterials());
+  }, [dispatch]);
+
+  const handleOpenVendorModal = () => {
+    setOpenVendorModal(true);
+  };
+
+  const handleCloseVendorModal = () => {
+    setOpenVendorModal(false);
+    refreshVendors();
+  };
+
+  const handleOpenMaterialModal = () => {
+    setOpenMaterialModal(true);
+  };
+
+  const handleCloseMaterialModal = () => {
+    setOpenMaterialModal(false);
+    refreshMaterials();
+  };
 
   const validateItemInput = useCallback(() => {
     if (!selectedItemCode?.id) {
@@ -297,14 +331,12 @@ const EditPurchaseOrder = () => {
     setIsSubmitting(true);
     try {
       const poData = preparePOData(values, isDraft);
-      console.log(poData)
       const res = await dispatch(updatePO(poData));
 
       if (res.meta.requestStatus === "fulfilled") {
-        // successMessage(isDraft ? "Draft updated successfully" : "Purchase Order updated");
         setTimeout(() => navigate("/vendor/purchase-order"), 1500);
       } else {
-        // errorMessage(res.error?.message || "Failed to update Purchase Order");
+        errorMessage(res.error?.message || "Failed to update Purchase Order");
       }
     } catch (err) {
       errorMessage(err?.message || "An unexpected error occurred");
@@ -355,28 +387,36 @@ const EditPurchaseOrder = () => {
                     <CardContent>
                       <Grid size={12} sx={{ pt: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-                          <Autocomplete
-                            options={vendors}
-                            value={values.vendor}
-                            onChange={(e, value) => setFieldValue("vendor", value)}
-                            size="small"
-                            getOptionLabel={(option) => option?.name || ""}
-                            renderInput={(params) => (
-                              <TextField
-                                {...params}
-                                label="Select Vendor"
-                                variant="outlined"
-                                error={touched.vendor && !!errors.vendor}
-                                helperText={touched.vendor && errors.vendor}
-                                sx={{ width: 300, height: 40 }}
-                                required
-                              />
-                            )}
-                            sx={{ width: 300 }}
-                            loading={vendorLoading}
-                            disabled={vendorLoading}
-                            noOptionsText="No vendors available"
-                          />
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Autocomplete
+                              options={vendors}
+                              value={values.vendor}
+                              onChange={(e, value) => setFieldValue("vendor", value)}
+                              size="small"
+                              getOptionLabel={(option) => option?.name || ""}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  label="Select Vendor"
+                                  variant="outlined"
+                                  error={touched.vendor && !!errors.vendor}
+                                  helperText={touched.vendor && errors.vendor}
+                                  sx={{ width: 300 }}
+                                  required
+                                />
+                              )}
+                              sx={{ width: 300 }}
+                              loading={vendorLoading}
+                              disabled={vendorLoading}
+                              noOptionsText="No vendors available"
+                            />
+
+                            <Tooltip title="Add New Vendor">
+                              <IconButton color="primary" onClick={handleOpenVendorModal}>
+                                <BiSolidUserPlus size={22} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
 
                           <LocalizationProvider dateAdapter={AdapterDateFns}>
                             <Box sx={{ display: 'flex', gap: 2 }}>
@@ -399,7 +439,7 @@ const EditPurchaseOrder = () => {
                                 slotProps={{
                                   textField: {
                                     size: 'small',
-                                    sx: { width: 300, height: 40 },
+                                    sx: { width: 300 },
                                     error: touched.edd_date && !!errors.edd_date,
                                     helperText: touched.edd_date && errors.edd_date,
                                   },
@@ -425,11 +465,23 @@ const EditPurchaseOrder = () => {
                       <Grid size={12} sx={{ pt: 2 }}>
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
                           <Autocomplete
-                            options={materials}
+                            options={[{ id: "add_new", name: "➕ Add New Material" }, ...materials]}
                             value={selectedItemCode}
-                            onChange={(e, value) => setSelectedItemCode(value)}
+                            onChange={(e, value) => {
+                              if (value?.id === "add_new") {
+                                setOpenMaterialModal(true);
+                                setSelectedItemCode(null); 
+                                return;
+                              }
+                              setSelectedItemCode(value);
+                            }}
                             size="small"
                             getOptionLabel={(option) => option?.name || ""}
+                            renderOption={(props, option) => (
+                              <li {...props} style={{ fontWeight: option.id === "add_new" ? "bold" : "normal" }}>
+                                {option.name}
+                              </li>
+                            )}
                             renderInput={(params) => (
                               <TextField {...params} label="Select Material" variant="outlined" />
                             )}
@@ -456,6 +508,7 @@ const EditPurchaseOrder = () => {
                           >
                             Add Item
                           </Button>
+
                         </Box>
                       </Grid>
 
@@ -609,7 +662,7 @@ const EditPurchaseOrder = () => {
                             disabled={isSubmitting || items.length === 0}
                             endIcon={isSubmitting && <CircularProgress size={20} />}
                           >
-                            {isSubmitting ? "Saving..." : "Save"}
+                            {isSubmitting ? "Updating..." : "Update"}
                           </Button>
                         </Stack>
                       </Grid>
@@ -622,6 +675,7 @@ const EditPurchaseOrder = () => {
         </Grid>
       </Grid>
 
+      {/* Delete Item Dialog */}
       <Dialog maxWidth="xs" fullWidth open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>Delete Item?</DialogTitle>
         <DialogContent>
@@ -634,6 +688,20 @@ const EditPurchaseOrder = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Vendor Form Modal */}
+      <VendorFormModal
+        open={openVendorModal}
+        onClose={handleCloseVendorModal}
+        editData={null}
+      />
+
+      {/* Material Form Modal */}
+      <MaterialFormModal
+        open={openMaterialModal}
+        onClose={handleCloseMaterialModal}
+        editData={null}
+      />
     </>
   );
 };

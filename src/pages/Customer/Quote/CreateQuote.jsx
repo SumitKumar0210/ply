@@ -30,6 +30,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { BiSolidUserPlus } from "react-icons/bi";
+import AddIcon from "@mui/icons-material/Add";
 import { useDispatch, useSelector } from "react-redux";
 import {
   addCustomer,
@@ -38,11 +39,13 @@ import {
 import { fetchStates } from "../../settings/slices/stateSlice";
 import { fetchActiveProducts } from "../../settings/slices/productSlice";
 import { fetchActiveTaxSlabs } from "../../settings/slices/taxSlabSlice";
+import { fetchActiveGroup } from "../../settings/slices/groupSlice";
 import { addQuotation } from "../slice/quotationSlice";
 import { successMessage, errorMessage } from "../../../toast";
 import { useNavigate } from "react-router-dom";
 import { compressImage } from "../../../components/imageCompressor/imageCompressor";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
+import ProductFormDialog from "../../../components/Product/ProductFormDialog"; 
 
 // Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -86,7 +89,6 @@ const itemValidationSchema = Yup.object({
     .positive("Quantity must be positive")
     .integer("Quantity must be a whole number"),
   narration: Yup.string(),
-  // document: Yup.mixed(),
 });
 
 const customerValidationSchema = Yup.object({
@@ -132,6 +134,7 @@ const CreateQuote = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [openAddCustomer, setOpenAddCustomer] = useState(false);
+  const [openAddProduct, setOpenAddProduct] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     itemId: null,
@@ -141,7 +144,6 @@ const CreateQuote = () => {
   const [items, setItems] = useState([]);
   const [savingDraft, setSavingDraft] = useState(false);
   const [savingFinal, setSavingFinal] = useState(false);
-  const [compressingDocument, setCompressingDocument] = useState(false);
 
   const { data: customerData = [], loading: customersLoading } = useSelector(
     (state) => state.customer
@@ -153,7 +155,7 @@ const CreateQuote = () => {
   const { activeData: gsts = [], loading: gstsLoading } = useSelector(
     (state) => state.taxSlab
   );
-
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
 
   // Load initial data
@@ -174,6 +176,12 @@ const CreateQuote = () => {
     setOpenAddCustomer(true);
   };
 
+  // Open product modal and load groups
+  const openProductModal = async () => {
+    await dispatch(fetchActiveGroup());
+    setOpenAddProduct(true);
+  };
+
   // Handle add customer
   const handleAddCustomer = async (values, { resetForm }) => {
     try {
@@ -187,23 +195,38 @@ const CreateQuote = () => {
     }
   };
 
+  // Handle product success (after adding new product)
+  const handleProductSuccess = async () => {
+    setOpenAddProduct(false);
+    setSelectedProduct(null);
+    // Fetch latest products
+    await dispatch(fetchActiveProducts());
+  };
+
   const isDuplicateItem = useCallback(
     (product_id, group) => {
-      const normalizedGroup = group?.trim().toLowerCase(); // normalize input group
-      return items.some(
-        (item) =>
-          item.product_id === product_id &&
-          item.group?.trim().toLowerCase() === normalizedGroup
-      );
+      const normalizedGroup = (group || "").trim().toLowerCase();
+      const normalizedProduct = String(product_id).trim();
+
+      return items.some((item) => {
+        const existingGroup = (item.group || "").trim().toLowerCase();
+        const existingProduct = String(item.product_id).trim();
+
+        return (
+          existingProduct === normalizedProduct &&
+          existingGroup === normalizedGroup
+        );
+      });
     },
     [items]
   );
+
 
   const generateCode = (model) => {
     return model + "@" + Math.floor(1000 + Math.random() * 9000);
   };
 
-  const handleAddItem = async (values, { resetForm }) => {
+  const handleAddItem = async (values, { resetForm, setFieldValue }) => {
     const { product_id, quantity, group, narration, document } = values;
 
     if (!product_id) {
@@ -229,47 +252,9 @@ const CreateQuote = () => {
       return;
     }
 
-    // Handle document compression if it's an image
-    let finalDocument = document;
-    let documentName = document ? document.name : "";
-    let documentPreview = null;
-
-    if (document && document.type.startsWith("image/")) {
-      try {
-        setCompressingDocument(true);
-
-        // Compress the image
-        const compressed = await compressImage(document, {
-          maxSizeMB: 0.5, // Compress to max 500KB
-          maxWidthOrHeight: 1024,
-        });
-
-        finalDocument = compressed;
-        documentName = document.name;
-        documentPreview = documentPreview = URL.createObjectURL(compressed);
-
-        // Log compression results
-        const originalSize = (document.size / 1024).toFixed(2);
-        const compressedSize = (compressed.size / 1024).toFixed(2);
-        const reduction = (
-          ((document.size - compressed.size) / document.size) *
-          100
-        ).toFixed(2);
-
-        console.log(
-          `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
-        );
-        successMessage(
-          `Image compressed successfully! Original: ${originalSize}KB, Compressed: ${compressedSize}KB`
-        );
-      } catch (error) {
-        console.error("Image compression failed:", error);
-        errorMessage("Failed to compress image. Using original file.");
-        // Continue with original file if compression fails
-      } finally {
-        setCompressingDocument(false);
-      }
-    }
+    // Use product image from API
+    
+    const productImageUrl = product.image ? `${mediaUrl}${product.image}` : "";
 
     const newItem = {
       id: Date.now(),
@@ -283,11 +268,16 @@ const CreateQuote = () => {
       cost: parseFloat(product.rrp) * parseInt(quantity, 10),
       unitPrice: parseFloat(product.rrp),
       narration,
-      documentFile: finalDocument || "-",
-      document: documentPreview || "",
-      documentName: documentName || "",
+      documentFile: product.image || "-",
+      document: productImageUrl || "",
+      documentName: product.image ? `${product.name} Image` : "",
     };
-    setGroupList((prev) => [...prev, group]);
+    setGroupList((prev) => {
+      const newGroup = group?.trim();
+      if (!newGroup) return prev;
+
+      return prev.includes(newGroup) ? prev : [...prev, newGroup];
+    });
     setItems((prev) => [...prev, newItem]);
     setSelectedProduct(null);
     resetForm();
@@ -332,7 +322,6 @@ const CreateQuote = () => {
       return;
     }
 
-    // Set the appropriate loading state
     if (isDraft) {
       setSavingDraft(true);
     } else {
@@ -371,7 +360,8 @@ const CreateQuote = () => {
         formData.append(`items[${index}][unitPrice]`, item.unitPrice);
         formData.append(`items[${index}][narration]`, item.narration || "");
 
-        if (item.documentFile) {
+        // Send product image path to server
+        if (item.documentFile && item.documentFile !== "-") {
           formData.append(`items[${index}][document]`, item.documentFile);
         }
       });
@@ -393,7 +383,6 @@ const CreateQuote = () => {
 
   const isLoading = customersLoading || productsLoading || gstsLoading;
 
-  // Show centered loader when initial data is loading
   if (isLoading) {
     return (
       <Box
@@ -408,6 +397,12 @@ const CreateQuote = () => {
       </Box>
     );
   }
+
+  // Create enhanced products list with "Add New" option
+  const enhancedProducts = [
+    { id: "add_new", model: "➕ Add New Product", isAddNew: true },
+    ...products,
+  ];
 
   return (
     <>
@@ -548,11 +543,9 @@ const CreateQuote = () => {
                         options={groupList}
                         value={values.group}
                         onChange={(e, value) => {
-                          // Allow selecting or typing new value
                           setFieldValue("group", value || "");
                         }}
                         onInputChange={(e, value) => {
-                          // Also update when typing
                           setFieldValue("group", value || "");
                         }}
                         renderInput={(params) => (
@@ -569,13 +562,35 @@ const CreateQuote = () => {
                       />
 
                       <Autocomplete
-                        options={products}
+                        options={enhancedProducts}
                         size="small"
                         getOptionLabel={(option) => option.model || ""}
                         value={selectedProduct}
                         onChange={(e, value) => {
-                          setSelectedProduct(value);
-                          setFieldValue("product_id", value?.id || "");
+                          if (value?.isAddNew) {
+                            // Open add product dialog
+                            openProductModal();
+                            setSelectedProduct(null);
+                            setFieldValue("product_id", "");
+                          } else {
+                            setSelectedProduct(value);
+                            setFieldValue("product_id", value?.id || "");
+                          }
+                        }}
+                        renderOption={(props, option) => {
+                          const { key, ...otherProps } = props;
+                          return (
+                            <li
+                              key={key}
+                              {...otherProps}
+                              style={{
+                                fontWeight: option.isAddNew ? "bold" : "normal",
+                                color: option.isAddNew ? "#1976d2" : "inherit",
+                              }}
+                            >
+                              {option.model}
+                            </li>
+                          );
                         }}
                         renderInput={(params) => (
                           <TextField
@@ -641,24 +656,34 @@ const CreateQuote = () => {
                         }}
                       />
 
-                      <TextField
-                        type="file"
-                        name="document"
-                        size="small"
-                        variant="outlined"
-                        inputProps={{
-                          accept: "image/*", 
-                        }}
-                        onChange={(event) => {
-                          const file = event.currentTarget.files?.[0];
-                          if (file) {
-                            setFieldValue("document", file);
-                          }
-                        }}
-                        error={touched.document && Boolean(errors.document)}
-                        helperText={touched.document && errors.document}
-                        sx={{ width: 250 }}
-                      />
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        {/* <Button
+                          variant="outlined"
+                          component="label"
+                          size="small"
+                        >
+                          Upload Image
+                          <input
+                            hidden
+                            type="file"
+                            accept="image/*"
+                            onChange={(event) => {
+                              const file = event.currentTarget.files?.[0];
+                              if (file) {
+                                setFieldValue("document", file);
+                                setDocumentPreview(URL.createObjectURL(file));
+                              }
+                            }}
+                          />
+                        </Button> */}
+                        
+                        {selectedProduct?.image && (
+                          <ImagePreviewDialog
+                            imageUrl={ mediaUrl + selectedProduct?.image}
+                            alt="Document Preview"
+                          />
+                        )}
+                      </Box>
 
                       <Button
                         type="submit"
@@ -733,7 +758,6 @@ const CreateQuote = () => {
                                     "-"
                                   )}
                                 </Td>
-                                {/* <Td>{item.document || "-"}</Td> */}
                                 <Td>{item.narration || "-"}</Td>
                                 <Td>
                                   <Tooltip title="Delete">
@@ -763,8 +787,8 @@ const CreateQuote = () => {
               <Formik
                 initialValues={{
                   orderTerms: "",
-                  discount: 0,
-                  additionalCharges: 0,
+                  discount: "",
+                  additionalCharges: "",
                   gstRate: 18,
                 }}
                 validationSchema={quoteValidationSchema}
@@ -1169,6 +1193,13 @@ const CreateQuote = () => {
           )}
         </Formik>
       </BootstrapDialog>
+
+      {/* Add Product Dialog */}
+      <ProductFormDialog
+        open={openAddProduct}
+        onClose={() => setOpenAddProduct(false)}
+        onSuccess={handleProductSuccess}
+      />
 
       {/* Delete Item Confirmation Dialog */}
       <Dialog

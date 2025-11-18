@@ -41,9 +41,11 @@ import {
 import { fetchStates } from "../../settings/slices/stateSlice";
 import { fetchActiveProducts } from "../../settings/slices/productSlice";
 import { fetchActiveTaxSlabs } from "../../settings/slices/taxSlabSlice";
+import { fetchActiveGroup } from "../../settings/slices/groupSlice";
 import { successMessage, errorMessage } from "../../../toast";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
-import { compressImage } from "../../../components/imageCompressor/imageCompressor";
+import ProductFormDialog from "../../../components/Product/ProductFormDialog";
+
 // Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -154,6 +156,7 @@ const EditQuote = () => {
 
   // Modal State
   const [openAddCustomer, setOpenAddCustomer] = useState(false);
+  const [openAddProduct, setOpenAddProduct] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     itemId: null,
@@ -170,8 +173,6 @@ const EditQuote = () => {
     additionalCharges: 0,
     gstRate: 18,
   });
-
-  const [compressingDocument, setCompressingDocument] = useState(false);
 
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
 
@@ -236,13 +237,15 @@ const EditQuote = () => {
 
       const uniqueGroups = new Set();
       const formattedItems = parsedItems.map((item) => {
-        if (item.group) {
-          uniqueGroups.add(item.group);
+      const itemGroup = item.group || item.group_name || "";
+
+        if (itemGroup) {
+          uniqueGroups.add(itemGroup);
         }
 
         return {
           id: item.id || `${Date.now()}_${Math.random()}`,
-          group: item.group || "",
+          group: itemGroup,
           product_id: item.product_id || "",
           name: item.name || "",
           model: item.model || "",
@@ -254,11 +257,12 @@ const EditQuote = () => {
           narration: item.narration || "",
           document:
             typeof item.document === "string" ? imageUrl + item.document : "",
-          documentFile: null,
+          documentFile: typeof item.document === "string" ? item.document : null,
           documentName:
             typeof item.document === "string"
               ? item.document.split("/").pop()
               : "",
+          existing_document: typeof item.document === "string" ? item.document : null,
         };
       });
 
@@ -304,6 +308,20 @@ const EditQuote = () => {
     }
   }, [dispatch]);
 
+  // Open product modal and load groups
+  const openProductModal = async () => {
+    await dispatch(fetchActiveGroup());
+    setOpenAddProduct(true);
+  };
+
+  // Handle product success (after adding new product)
+  const handleProductSuccess = async () => {
+    setOpenAddProduct(false);
+    setSelectedProduct(null);
+    // Fetch latest products
+    await dispatch(fetchActiveProducts());
+  };
+
   const handleAddCustomer = useCallback(
     async (values, { resetForm }) => {
       try {
@@ -323,20 +341,26 @@ const EditQuote = () => {
 
   // Item Management Handlers
   const isDuplicateItem = useCallback(
-    (product_id, group) => {
-      const normalizedGroup = group?.trim().toLowerCase();
-      return items.some(
-        (item) =>
-          item.product_id === product_id &&
-          item.group?.trim().toLowerCase() === normalizedGroup
+  (product_id, group) => {
+    const normalizedGroup = (group || "").trim().toLowerCase();
+    const normalizedProduct = String(product_id).trim();
+
+    return items.some((item) => {
+      const existingGroup = (item.group || "").trim().toLowerCase();
+      const existingProduct = String(item.product_id).trim();
+
+      return (
+        existingProduct === normalizedProduct &&
+        existingGroup === normalizedGroup
       );
-    },
-    [items]
-  );
+    });
+  },
+  [items]
+);
 
   const handleAddItem = useCallback(
     async (values, { resetForm }) => {
-      const { product_id, quantity, group, narration, document } = values;
+      const { product_id, quantity, group, narration } = values;
 
       if (!product_id) {
         errorMessage("Please select a product before adding.");
@@ -362,47 +386,8 @@ const EditQuote = () => {
         return;
       }
 
-      // Handle document compression if it's an image
-      let finalDocument = document;
-      let documentName = document ? document.name : "";
-      let documentPreview = null;
-
-      if (document && document.type.startsWith("image/")) {
-        try {
-          setCompressingDocument(true);
-
-          // Compress the image
-          const compressed = await compressImage(document, {
-            maxSizeMB: 0.5, // Compress to max 500KB
-            maxWidthOrHeight: 1024,
-          });
-
-          finalDocument = compressed;
-          documentName = document.name;
-          documentPreview = documentPreview = URL.createObjectURL(compressed);
-
-          // Log compression results
-          const originalSize = (document.size / 1024).toFixed(2);
-          const compressedSize = (compressed.size / 1024).toFixed(2);
-          const reduction = (
-            ((document.size - compressed.size) / document.size) *
-            100
-          ).toFixed(2);
-
-          console.log(
-            `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
-          );
-          successMessage(
-            `Image compressed successfully! Original: ${originalSize}KB, Compressed: ${compressedSize}KB`
-          );
-        } catch (error) {
-          console.error("Image compression failed:", error);
-          errorMessage("Failed to compress image. Using original file.");
-          // Continue with original file if compression fails
-        } finally {
-          setCompressingDocument(false);
-        }
-      }
+      // Use product image from API
+      const productImageUrl = product.image ? `${imageUrl}${product.image}` : "";
 
       const unitPrice = parseNumericValue(product.rrp);
       const newItem = {
@@ -417,9 +402,9 @@ const EditQuote = () => {
         cost: unitPrice * qty,
         unitPrice,
         narration: narration?.trim() || "",
-        documentFile: finalDocument || "-",
-        document: documentPreview || "",
-        documentName: documentName || "",
+        documentFile: product.image || "-",
+        document: productImageUrl || "",
+        documentName: product.image ? `${product.name} Image` : "",
       };
 
       setItems((prev) => [...prev, newItem]);
@@ -431,7 +416,7 @@ const EditQuote = () => {
       setSelectedProduct(null);
       resetForm();
     },
-    [productsMap, isDuplicateItem, groupList]
+    [productsMap, isDuplicateItem, groupList, imageUrl]
   );
 
   const confirmDeleteItem = useCallback(() => {
@@ -584,8 +569,9 @@ const EditQuote = () => {
             String(item.narration || "")
           );
 
-          if (item.documentFile && (item.documentFile instanceof File || item.documentFile instanceof Blob)) {
-            formData.append(`items[${index}][document]`, item.documentFile, item.documentName || "document.png");
+          // Send product image path to server
+          if (item.documentFile && item.documentFile !== "-") {
+            formData.append(`items[${index}][document]`, item.documentFile);
           } else if (item.existing_document) {
             formData.append(`items[${index}][existing_document]`, item.existing_document);
           }
@@ -637,6 +623,12 @@ const EditQuote = () => {
       </Box>
     );
   }
+
+  // Create enhanced products list with "Add New" option
+  const enhancedProducts = [
+    { id: "add_new", model: "➕ Add New Product", isAddNew: true },
+    ...products,
+  ];
 
   return (
     <>
@@ -749,7 +741,6 @@ const EditQuote = () => {
                   product_id: "",
                   quantity: "",
                   narration: "",
-                  document: null,
                 }}
                 validationSchema={itemValidationSchema}
                 onSubmit={handleAddItem}
@@ -796,13 +787,35 @@ const EditQuote = () => {
                       />
 
                       <Autocomplete
-                        options={products}
+                        options={enhancedProducts}
                         size="small"
                         getOptionLabel={(option) => option.model || ""}
                         value={selectedProduct}
                         onChange={(e, value) => {
-                          setSelectedProduct(value);
-                          setFieldValue("product_id", value?.id || "");
+                          if (value?.isAddNew) {
+                            // Open add product dialog
+                            openProductModal();
+                            setSelectedProduct(null);
+                            setFieldValue("product_id", "");
+                          } else {
+                            setSelectedProduct(value);
+                            setFieldValue("product_id", value?.id || "");
+                          }
+                        }}
+                        renderOption={(props, option) => {
+                          const { key, ...otherProps } = props;
+                          return (
+                            <li
+                              key={key}
+                              {...otherProps}
+                              style={{
+                                fontWeight: option.isAddNew ? "bold" : "normal",
+                                color: option.isAddNew ? "#1976d2" : "inherit",
+                              }}
+                            >
+                              {option.model}
+                            </li>
+                          );
                         }}
                         renderInput={(params) => (
                           <TextField
@@ -868,24 +881,14 @@ const EditQuote = () => {
                         }}
                       />
 
-                      <TextField
-                        type="file"
-                        name="document"
-                        size="small"
-                        variant="outlined"
-                        inputProps={{
-                          accept: "image/*", 
-                        }}
-                        onChange={(event) => {
-                          const file = event.currentTarget.files?.[0];
-                          if (file) {
-                            setFieldValue("document", file);
-                          }
-                        }}
-                        error={touched.document && Boolean(errors.document)}
-                        helperText={touched.document && errors.document}
-                        sx={{ width: 250 }}
-                      />
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        {selectedProduct && selectedProduct.image && (
+                          <ImagePreviewDialog
+                            imageUrl={`${imageUrl}${selectedProduct.image}`}
+                            alt={selectedProduct.name || "Product Image"}
+                          />
+                        )}
+                      </Box>
 
                       <Button
                         type="submit"
@@ -1478,6 +1481,13 @@ const EditQuote = () => {
           )}
         </Formik>
       </BootstrapDialog>
+
+      {/* Add Product Dialog */}
+      <ProductFormDialog
+        open={openAddProduct}
+        onClose={() => setOpenAddProduct(false)}
+        onSuccess={handleProductSuccess}
+      />
 
       {/* Delete Item Confirmation Dialog */}
       <Dialog

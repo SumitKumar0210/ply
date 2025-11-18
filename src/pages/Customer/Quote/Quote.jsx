@@ -172,7 +172,7 @@ const Quote = () => {
       {
         accessorKey: "quoteNumber",
         header: "Quote No.",
-        Cell: ({ row }) => row.original?.quote_number ?? "",
+        Cell: ({ row }) => row.original?.batch_no ?? "",
       },
       {
         accessorKey: "customerName",

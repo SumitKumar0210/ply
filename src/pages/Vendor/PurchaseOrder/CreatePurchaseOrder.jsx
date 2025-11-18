@@ -21,6 +21,8 @@ import {
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { RiDeleteBinLine } from "react-icons/ri";
+import { BiSolidUserPlus } from "react-icons/bi";
+import { MdAddBox } from "react-icons/md";
 import { Autocomplete } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -35,6 +37,8 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { addDays, format } from "date-fns";
 import { successMessage, errorMessage } from "../../../toast";
+import VendorFormModal from "../../../components/vendor/VendorFormModal";
+import MaterialFormModal from "../../../components/Material/MaterialFormModal";
 
 // Validation Schema
 const validationSchema = Yup.object().shape({
@@ -70,6 +74,8 @@ const CreatePurchaseOrder = () => {
   const [selectedItemCode, setSelectedItemCode] = useState(null);
   const [selectedQty, setSelectedQty] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openVendorModal, setOpenVendorModal] = useState(false);
+  const [openMaterialModal, setOpenMaterialModal] = useState(false);
 
   const { data: vendors = [], loading: vendorLoading } = useSelector((state) => state.vendor);
   const { data: materials = [] } = useSelector((state) => state.material);
@@ -81,7 +87,34 @@ const CreatePurchaseOrder = () => {
     dispatch(fetchActiveTaxSlabs());
   }, [dispatch]);
 
-  
+  // Refresh vendors list
+  const refreshVendors = useCallback(() => {
+    dispatch(fetchActiveVendors());
+  }, [dispatch]);
+
+  // Refresh materials list
+  const refreshMaterials = useCallback(() => {
+    dispatch(fetchActiveMaterials());
+  }, [dispatch]);
+
+  const handleOpenVendorModal = () => {
+    setOpenVendorModal(true);
+  };
+
+  const handleCloseVendorModal = () => {
+    setOpenVendorModal(false);
+    refreshVendors();
+  };
+
+  const handleOpenMaterialModal = () => {
+    setOpenMaterialModal(true);
+  };
+
+  const handleCloseMaterialModal = () => {
+    setOpenMaterialModal(false);
+    refreshMaterials();
+  };
+
   const validateItemInput = useCallback(() => {
     if (!selectedItemCode?.id) {
       errorMessage("Please select a material");
@@ -196,7 +229,7 @@ const CreatePurchaseOrder = () => {
       }
 
       if (!values.eddDate) {
-        errorMessage("Please choose edd data");
+        errorMessage("Please choose edd date");
         return false;
       }
 
@@ -250,7 +283,6 @@ const CreatePurchaseOrder = () => {
     [calculateTotals, formattedItems, subTotal]
   );
 
-  
   const handleSavePO = async (values, isDraft = false) => {
     if (!validatePOData(values)) return;
     setIsSubmitting(true);
@@ -259,7 +291,6 @@ const CreatePurchaseOrder = () => {
       const res = await dispatch(addPO(poData));
 
       if (res.meta.requestStatus === "fulfilled") {
-        // successMessage(isDraft ? "Draft saved successfully" : "Purchase Order saved");
         setTimeout(() => navigate("/vendor/purchase-order"), 1500);
       } else {
         errorMessage(res.error?.message || "Failed to save Purchase Order");
@@ -272,12 +303,12 @@ const CreatePurchaseOrder = () => {
   };
 
   if (vendorLoading) {
-      return (
-        <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
-          <CircularProgress />
-        </Box>
-      );
-    }
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <>
@@ -294,8 +325,8 @@ const CreatePurchaseOrder = () => {
               vendor: null,
               creditDays: "",
               eddDate: null,
-              discount: 0,
-              additionalCharges: 0,
+              discount: "",
+              additionalCharges: "",
               gstRate: 18,
               orderTerms: "",
             }}
@@ -303,7 +334,6 @@ const CreatePurchaseOrder = () => {
             onSubmit={(values) => handleSavePO(values, false)}
           >
             {({ values, errors, touched, handleChange, setFieldValue }) => {
-              
               useEffect(() => {
                 if (values.creditDays && !isNaN(values.creditDays) && values.creditDays > 0) {
                   const newDate = addDays(new Date(), parseInt(values.creditDays));
@@ -314,35 +344,42 @@ const CreatePurchaseOrder = () => {
               const { discountAmount, additionalChargesAmount, gstAmount, grandTotal } =
                 calculateTotals(values);
 
-              
               return (
                 <Form>
                   <Card>
                     <CardContent>
                       <Grid size={12} sx={{ pt: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-                          <Autocomplete
-                            options={vendors}
-                            value={values.vendor}
-                            onChange={(e, value) => setFieldValue("vendor", value)}
-                            size="small"
-                            getOptionLabel={(option) => option?.name || ""}
-                            renderInput={(params) => (
-                              <TextField
-                                {...params}
-                                label="Select Vendor"
-                                variant="outlined"
-                                error={touched.vendor && !!errors.vendor}
-                                helperText={touched.vendor && errors.vendor}
-                                sx={{ width: 300, height: 40 }}
-                                required
-                              />
-                            )}
-                            sx={{ width: 300 }}
-                            loading={vendorLoading}
-                            disabled={vendorLoading}
-                            noOptionsText="No vendors available"
-                          />
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Autocomplete
+                              options={vendors}
+                              value={values.vendor}
+                              onChange={(e, value) => setFieldValue("vendor", value)}
+                              size="small"
+                              getOptionLabel={(option) => option?.name || ""}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  label="Select Vendor"
+                                  variant="outlined"
+                                  error={touched.vendor && !!errors.vendor}
+                                  helperText={touched.vendor && errors.vendor}
+                                  sx={{ width: 300 }}
+                                  required
+                                />
+                              )}
+                              sx={{ width: 300 }}
+                              loading={vendorLoading}
+                              disabled={vendorLoading}
+                              noOptionsText="No vendors available"
+                            />
+
+                            <Tooltip title="Add New Vendor">
+                              <IconButton color="primary" onClick={handleOpenVendorModal}>
+                                <BiSolidUserPlus size={22} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
 
                           <LocalizationProvider dateAdapter={AdapterDateFns}>
                             <Box sx={{ display: 'flex', gap: 2 }}>
@@ -365,7 +402,7 @@ const CreatePurchaseOrder = () => {
                                 slotProps={{
                                   textField: {
                                     size: 'small',
-                                    sx: { width: 300, height: 40 },
+                                    sx: { width: 300 },
                                     error: touched.eddDate && !!errors.eddDate,
                                     helperText: touched.eddDate && errors.eddDate,
                                   },
@@ -391,11 +428,23 @@ const CreatePurchaseOrder = () => {
                       <Grid size={12} sx={{ pt: 2 }}>
                         <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
                           <Autocomplete
-                            options={materials}
+                            options={[{ id: "add_new", name: "➕ Add New Material" }, ...materials]}
                             value={selectedItemCode}
-                            onChange={(e, value) => setSelectedItemCode(value)}
+                            onChange={(e, value) => {
+                              if (value?.id === "add_new") {
+                                setOpenMaterialModal(true);
+                                setSelectedItemCode(null); // Reset field
+                                return;
+                              }
+                              setSelectedItemCode(value);
+                            }}
                             size="small"
                             getOptionLabel={(option) => option?.name || ""}
+                            renderOption={(props, option) => (
+                              <li {...props} style={{ fontWeight: option.id === "add_new" ? "bold" : "normal" }}>
+                                {option.name}
+                              </li>
+                            )}
                             renderInput={(params) => (
                               <TextField {...params} label="Select Material" variant="outlined" />
                             )}
@@ -422,6 +471,7 @@ const CreatePurchaseOrder = () => {
                           >
                             Add Item
                           </Button>
+
                         </Box>
                       </Grid>
 
@@ -588,6 +638,7 @@ const CreatePurchaseOrder = () => {
         </Grid>
       </Grid>
 
+      {/* Delete Item Dialog */}
       <Dialog maxWidth="xs" fullWidth open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>Delete Item?</DialogTitle>
         <DialogContent>
@@ -600,6 +651,20 @@ const CreatePurchaseOrder = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Vendor Form Modal */}
+      <VendorFormModal
+        open={openVendorModal}
+        onClose={handleCloseVendorModal}
+        editData={null}
+      />
+
+      {/* Material Form Modal */}
+      <MaterialFormModal
+        open={openMaterialModal}
+        onClose={handleCloseMaterialModal}
+        editData={null}
+      />
     </>
   );
 };

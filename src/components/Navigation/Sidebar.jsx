@@ -28,11 +28,12 @@ import { LuTable } from "react-icons/lu";
 import { RiFileList3Line } from "react-icons/ri";
 import { IoConstructOutline } from "react-icons/io5";
 import { TbUsersPlus } from "react-icons/tb";
-
+import { useAuth } from "../../context/AuthContext";
 
 
 
 import Logo from "../../assets/images/logo.svg";
+
 const storedHLogo = localStorage.getItem("horizontalLogo");
 const storedAppName = localStorage.getItem("application_name");
 
@@ -94,6 +95,8 @@ const menuSections = [
 ];
 
 const Sidebar = ({ mobileOpen, onClose }) => {
+  const { appDetails } = useAuth();
+console.log("App Details in Sidebar:", appDetails);
   const [openSubmenu, setOpenSubmenu] = useState(null);
   const location = useLocation();
 
@@ -115,10 +118,10 @@ const Sidebar = ({ mobileOpen, onClose }) => {
       {/* Logo */}
       <Box display="flex" alignItems="center" justifyContent="center" sx={{ p: 2 }}>
         <img
-          src={storedHLogo ?? Logo}
+          src={appDetails.horizontal_logo?? storedHLogo ?? Logo}
           alt="logo"
-          style={{ width: "-webkit-fill-available", marginRight: "10px" }}
-          // style={{ width: "40px", marginRight: "10px" }}
+          // style={{ width: "-webkit-fill-available", marginRight: "10px" }}
+          style={{ width: "120px", marginRight: "10px" }}
         />
         {/* <Typography variant="h6" sx={{ fontWeight: 600 }}>
           {storedAppName ?? 'Aarish Ply'}

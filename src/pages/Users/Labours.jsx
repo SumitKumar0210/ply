@@ -34,14 +34,63 @@ import { BsCloudDownload } from "react-icons/bs";
 import Profile from "../../assets/images/profile.jpg";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 
-import { successMessage, errorMessage, processMessage } from "../../toast";
+import { successMessage, errorMessage } from "../../toast";
 import { useDispatch, useSelector } from "react-redux";
-import { addLabour, deleteLabour, fetchLabours, updateLabour, statusUpdate } from "./slices/labourSlice";
+import {
+  addLabour,
+  deleteLabour,
+  fetchLabours,
+  updateLabour,
+  statusUpdate,
+} from "./slices/labourSlice";
 import { fetchActiveDepartments } from "../settings/slices/departmentSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { compressImage } from "../../components/imageCompressor/imageCompressor";
 
-//  Styled Dialog
+// Constants
+const DOCUMENT_TYPES = [
+  { value: "aadhaar", label: "Aadhaar Card" },
+  { value: "voter_id", label: "Voter ID Card" },
+  { value: "pan", label: "PAN Card" },
+  { value: "driving_license", label: "Driving License" },
+  { value: "passport", label: "Passport" },
+  { value: "ration_card", label: "Ration Card" },
+  { value: "other", label: "Other" },
+];
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const SUPPORTED_IMAGE_FORMATS = ["image/jpg", "image/jpeg", "image/png", "image/webp"];
+const SUPPORTED_DOCUMENT_FORMATS = [...SUPPORTED_IMAGE_FORMATS, "application/pdf"];
+
+// Document validation patterns
+const DOCUMENT_PATTERNS = {
+  aadhaar: {
+    pattern: /^\d{12}$/,
+    message: "Aadhaar number must be exactly 12 digits",
+  },
+  pan: {
+    pattern: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
+    message: "PAN format: 5 letters, 4 digits, 1 letter (e.g., ABCDE1234F)",
+  },
+  voter_id: {
+    pattern: /^[A-Z]{3}[0-9]{7}$/,
+    message: "Voter ID format: 3 letters followed by 7 digits",
+  },
+  passport: {
+    pattern: /^[A-Z]{1}[0-9]{7}$/,
+    message: "Passport format: 1 letter followed by 7 digits",
+  },
+  driving_license: {
+    pattern: /^[A-Z]{2}[0-9]{13}$/,
+    message: "DL format: 2 letters followed by 13 digits",
+  },
+  ration_card: {
+    pattern: /^[A-Z0-9]{10,20}$/,
+    message: "Ration card must be 10-20 alphanumeric characters",
+  },
+};
+
+// Styled Components
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
     padding: theme.spacing(2),
@@ -52,8 +101,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   },
 }));
 
-function BootstrapDialogTitle(props) {
-  const { children, onClose, ...other } = props;
+function BootstrapDialogTitle({ children, onClose, ...other }) {
   return (
     <DialogTitle sx={{ m: 0, p: 2 }} {...other}>
       {children}
@@ -80,36 +128,96 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-//  Validation schema
-const validationSchema = Yup.object({
-  name: Yup.string()
-    .min(2, "Name must be at least 2 characters")
-    .required("Name is required"),
-  per_hour_cost: Yup.number()
-    .typeError("Per hour cost must be a number")
-    .positive("Per hour cost must be positive")
-    .required("Per hour cost is required"),
-  overtime_hourly_rate: Yup.number()
-    .typeError("Over time hourly rate must be a number")
-    .positive("Over time hourly rate must be positive")
-    .required("Over time hourly rate is required"),
-  department_id: Yup.string().required("Please select a department"),
-  image: Yup.mixed().required("Image is required"),
-});
+// Validation Schemas
+const createValidationSchema = (isEdit = false) => {
+  const baseSchema = {
+    name: Yup.string()
+      .min(2, "Name must be at least 2 characters")
+      .max(100, "Name must not exceed 100 characters")
+      .matches(/^[a-zA-Z\s]+$/, "Name can only contain letters and spaces")
+      .required("Name is required"),
+    per_hour_cost: Yup.number()
+      .typeError("Per hour cost must be a number")
+      .positive("Per hour cost must be positive")
+      .max(10000, "Per hour cost seems too high")
+      .required("Per hour cost is required"),
+    overtime_hourly_rate: Yup.number()
+      .typeError("Overtime hourly rate must be a number")
+      .positive("Overtime hourly rate must be positive")
+      .max(10000, "Overtime rate seems too high")
+      .required("Overtime hourly rate is required"),
+    department_id: Yup.string().required("Please select a department"),
+    document_type: Yup.string().required("Document type is required"),
+    other_document_name: Yup.string().when("document_type", {
+      is: "other",
+      then: (schema) => schema
+        .min(2, "Document name must be at least 2 characters")
+        .required("Please enter the document name"),
+      otherwise: (schema) => schema.nullable(),
+    }),
+    document_number: Yup.string()
+      .required("Document number is required")
+      .test("valid-format", function (value) {
+        const { document_type } = this.parent;
 
-//  Edit Validation schema
-const editValidationSchema = Yup.object({
-  name: Yup.string().required("Name is required"),
-  per_hour_cost: Yup.number()
-    .typeError("Per hour cost must be a number")
-    .positive("Per hour cost must be positive")
-    .required("Per hour cost is required"),
-  overtime_hourly_rate: Yup.number()
-    .typeError("Over time hourly rate must be a number")
-    .positive("Over time hourly rate must be positive")
-    .required("Over time hourly rate is required"),
-  department_id: Yup.string().required("Please select a department"),
-});
+        if (!value) return true;
+
+        // Skip validation for 'other' document type
+        if (document_type === "other") {
+          return value.length >= 5 && value.length <= 30;
+        }
+
+        const validation = DOCUMENT_PATTERNS[document_type];
+        if (validation) {
+          const isValid = validation.pattern.test(value);
+          if (!isValid) {
+            return this.createError({ message: validation.message });
+          }
+        }
+
+        return true;
+      }),
+    dob: Yup.date()
+      .nullable()
+      .required("Date of birth is required")
+      .max(new Date(), "Date of birth cannot be in the future")
+      .test("age", "Labour must be at least 18 years old", function (value) {
+        if (!value) return true;
+        const today = new Date();
+        const birthDate = new Date(value);
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          return age - 1 >= 18;
+        }
+        return age >= 18;
+      }),
+  };
+
+  // Add image validation only for add mode
+  if (!isEdit) {
+    baseSchema.image = Yup.mixed()
+      .required("Profile image is required")
+      .test("fileSize", "File size must be less than 5MB", (value) => {
+        return value && value.size <= MAX_FILE_SIZE;
+      })
+      .test("fileFormat", "Unsupported file format", (value) => {
+        return value && SUPPORTED_IMAGE_FORMATS.includes(value.type);
+      });
+
+    baseSchema.document_file = Yup.mixed()
+      .required("Please upload document image or PDF")
+      .test("fileSize", "File size must be less than 5MB", (value) => {
+        return value && value.size <= MAX_FILE_SIZE;
+      })
+      .test("fileFormat", "Only images and PDF files are allowed", (value) => {
+        return value && SUPPORTED_DOCUMENT_FORMATS.includes(value.type);
+      });
+  }
+
+  return Yup.object(baseSchema);
+};
 
 const Labours = () => {
   const [open, setOpen] = useState(false);
@@ -122,12 +230,14 @@ const Labours = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [compressingImage, setCompressingImage] = useState(false);
+  const [compressingDocument, setCompressingDocument] = useState(false);
   const tableContainerRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [documentPreviewUrl, setDocumentPreviewUrl] = useState(null);
 
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
-  const { data: tableData = [], loading, error } = useSelector((state) => state.labour);
+  const { data: tableData = [], loading } = useSelector((state) => state.labour);
   const { data: departments = [] } = useSelector((state) => state.department);
 
   const dispatch = useDispatch();
@@ -137,17 +247,33 @@ const Labours = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchActiveDepartments());
-  }, [open, editOpen]);
+    if (open || editOpen) {
+      dispatch(fetchActiveDepartments());
+    }
+  }, [open, editOpen, dispatch]);
 
-  const handleAdd = async (values, resetForm) => {
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      if (documentPreviewUrl && documentPreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(documentPreviewUrl);
+      }
+    };
+  }, [previewUrl, documentPreviewUrl]);
+
+  const handleAdd = async (values, { resetForm }) => {
     try {
       const res = await dispatch(addLabour(values));
       if (res.error) return;
       resetForm();
       setOpen(false);
+      successMessage("Labour added successfully!");
     } catch (error) {
       console.error("Add labour failed:", error);
+      errorMessage("Failed to add labour. Please try again.");
     }
   };
 
@@ -160,6 +286,11 @@ const Labours = () => {
     });
   };
 
+  const shortFileName = (name = "", limit = 20) => {
+    if (!name) return "";
+    return name.length > limit ? name.substring(0, limit) + "..." : name;
+  };
+
   const confirmDelete = async () => {
     if (!deleteDialog.id) return;
 
@@ -167,8 +298,10 @@ const Labours = () => {
 
     try {
       await dispatch(deleteLabour(deleteDialog.id)).unwrap();
+      successMessage("Labour deleted successfully!");
     } catch (error) {
       console.error("Delete failed:", error);
+      errorMessage("Failed to delete labour. Please try again.");
     } finally {
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
     }
@@ -176,10 +309,7 @@ const Labours = () => {
 
   const handleUpdate = (row) => {
     setEditData(row);
-    if (row.image instanceof File) {
-      const objectUrl = URL.createObjectURL(row.image);
-      setPreviewUrl(objectUrl);
-    } else if (row.image) {
+    if (row.image) {
       setPreviewUrl(mediaUrl + row.image);
     }
     setEditOpen(true);
@@ -188,74 +318,162 @@ const Labours = () => {
   const handleEditClose = () => {
     setEditOpen(false);
     setEditData(null);
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    if (documentPreviewUrl && documentPreviewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(documentPreviewUrl);
+    }
+    setPreviewUrl(null);
+    setDocumentPreviewUrl(null);
   };
 
-  const handleEditSubmit = async (values, resetForm) => {
-    const res = await dispatch(updateLabour({ updated: { id: editData.id, ...values } }));
-    if (res.error) return;
-    resetForm();
-    handleEditClose();
+  const handleEditSubmit = async (values, { resetForm }) => {
+    try {
+      const res = await dispatch(
+        updateLabour({ updated: { id: editData.id, ...values } })
+      );
+      if (res.error) return;
+      resetForm();
+      handleEditClose();
+      successMessage("Labour updated successfully!");
+    } catch (error) {
+      console.error("Update failed:", error);
+      errorMessage("Failed to update labour. Please try again.");
+    }
   };
 
   // Handle image compression
   const handleImageChange = async (event, setFieldValue, isEdit = false) => {
-    const file = event.currentTarget.files[0];
+    const file = event.currentTarget.files?.[0];
     if (!file) return;
 
-    // Handle image compression
-    if (file.type.startsWith("image/")) {
-      try {
-        setCompressingImage(true);
+    // Validate file type
+    if (!SUPPORTED_IMAGE_FORMATS.includes(file.type)) {
+      errorMessage("Please upload a valid image file (JPG, PNG, or WebP)");
+      return;
+    }
 
-        // Compress the image
-        const compressed = await compressImage(file, {
-          maxSizeMB: 0.5, // Compress to max 500KB
-          maxWidthOrHeight: 1024,
-        });
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      errorMessage("File size must be less than 5MB");
+      return;
+    }
 
-        // Log compression results
-        const originalSize = (file.size / 1024).toFixed(2);
-        const compressedSize = (compressed.size / 1024).toFixed(2);
-        const reduction = (
-          ((file.size - compressed.size) / file.size) * 100
-        ).toFixed(2);
+    try {
+      setCompressingImage(true);
 
-        console.log(
-          `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
-        );
+      const compressed = await compressImage(file, {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 1024,
+      });
 
-        successMessage(
-          `Image compressed successfully! Original: ${originalSize}KB, Compressed: ${compressedSize}KB`
-        );
+      const originalSize = (file.size / 1024).toFixed(2);
+      const compressedSize = (compressed.size / 1024).toFixed(2);
+      const reduction = (((file.size - compressed.size) / file.size) * 100).toFixed(2);
 
-        setFieldValue("image", compressed);
-        
-        // Update preview for edit mode
-        if (isEdit) {
-          setPreviewUrl(URL.createObjectURL(compressed));
-        }
-      } catch (error) {
-        console.error("Image compression failed:", error);
-        errorMessage("Failed to compress image. Using original file.");
-        // Continue with original file if compression fails
-        setFieldValue("image", file);
-        
-        if (isEdit) {
-          setPreviewUrl(URL.createObjectURL(file));
-        }
-      } finally {
-        setCompressingImage(false);
-      }
-    } else {
-      setFieldValue("image", file);
-      
+      console.log(
+        `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
+      );
+
+      successMessage(
+        `Image compressed: ${originalSize}KB → ${compressedSize}KB (${reduction}% saved)`
+      );
+
+      setFieldValue("image", compressed);
+
       if (isEdit) {
+        if (previewUrl && previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(previewUrl);
+        }
+        setPreviewUrl(URL.createObjectURL(compressed));
+      }
+    } catch (error) {
+      console.error("Image compression failed:", error);
+      errorMessage("Failed to compress image. Using original file.");
+      setFieldValue("image", file);
+
+      if (isEdit) {
+        if (previewUrl && previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(previewUrl);
+        }
         setPreviewUrl(URL.createObjectURL(file));
       }
+    } finally {
+      setCompressingImage(false);
     }
   };
 
-  //  Table columns
+  // Handle document upload with compression for images
+  const handleDocumentChange = async (event, setFieldValue) => {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!SUPPORTED_DOCUMENT_FORMATS.includes(file.type)) {
+      errorMessage("Please upload a valid document (Image or PDF)");
+      event.target.value = null;
+      return;
+    }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      errorMessage("Document size must be less than 5MB");
+      event.target.value = null;
+      return;
+    }
+
+    // If it's an image, compress it
+    if (file.type.startsWith("image/")) {
+      try {
+        setCompressingDocument(true);
+
+        const compressed = await compressImage(file, {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 1920,
+        });
+
+        const originalSize = (file.size / 1024).toFixed(2);
+        const compressedSize = (compressed.size / 1024).toFixed(2);
+        const reduction = (((file.size - compressed.size) / file.size) * 100).toFixed(2);
+
+        console.log(
+          `Document compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
+        );
+
+        successMessage(
+          `Document compressed: ${originalSize}KB → ${compressedSize}KB (${reduction}% saved)`
+        );
+
+        setFieldValue("document_file", compressed);
+
+        // Create preview URL for compressed image
+        if (documentPreviewUrl && documentPreviewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(documentPreviewUrl);
+        }
+        setDocumentPreviewUrl(URL.createObjectURL(compressed));
+      } catch (error) {
+        console.error("Document compression failed:", error);
+        errorMessage("Failed to compress document. Using original file.");
+        setFieldValue("document_file", file);
+
+        // Create preview URL for original image
+        if (documentPreviewUrl && documentPreviewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(documentPreviewUrl);
+        }
+        setDocumentPreviewUrl(URL.createObjectURL(file));
+      } finally {
+        setCompressingDocument(false);
+      }
+    } else {
+      // For PDF files, just set the file
+      setFieldValue("document_file", file);
+      setDocumentPreviewUrl(null);
+      successMessage("Document uploaded successfully!");
+    }
+  };
+
+  // Table columns
   const columns = useMemo(
     () => [
       {
@@ -268,18 +486,31 @@ const Labours = () => {
           />
         ),
         size: 80,
+        enableSorting: false,
       },
-      { accessorKey: "name", header: "Name" },
       {
-        accessorKey: "department_id", 
-        header: "Department", 
-        Cell: ({ row }) => {
-          const dept = row.original.department;
-          return dept ? dept.name : "N/A";
-        }
+        accessorKey: "name",
+        header: "Name",
+        size: 150,
       },
-      { accessorKey: "per_hour_cost", header: "Per Hour Cost" },
-      { accessorKey: "overtime_hourly_rate", header: "Over Time Hour" },
+      {
+        accessorKey: "department_id",
+        header: "Department",
+        Cell: ({ row }) => row.original.department?.name || "N/A",
+        size: 150,
+      },
+      {
+        accessorKey: "per_hour_cost",
+        header: "Per Hour Cost",
+        Cell: ({ cell }) => `₹${cell.getValue()}`,
+        size: 130,
+      },
+      {
+        accessorKey: "overtime_hourly_rate",
+        header: "Overtime Rate",
+        Cell: ({ cell }) => `₹${cell.getValue()}`,
+        size: 130,
+      },
       {
         accessorKey: "status",
         header: "Status",
@@ -294,11 +525,12 @@ const Labours = () => {
             }}
           />
         ),
+        size: 100,
       },
       {
         id: "actions",
         header: "Actions",
-        size: 80,
+        size: 120,
         enableSorting: false,
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
@@ -306,52 +538,46 @@ const Labours = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleUpdate(row.original)}
-              >
-                <BiSolidEditAlt size={16} />
+              <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                <BiSolidEditAlt size={18} />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete">
-              <IconButton
-                aria-label="delete"
-                color="error"
-                onClick={() => handleDeleteClick(row.original)}
-              >
-                <RiDeleteBinLine size={16} />
+              <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
+                <RiDeleteBinLine size={18} />
               </IconButton>
             </Tooltip>
           </Box>
         ),
       },
     ],
-    []
+    [dispatch, mediaUrl]
   );
 
-  //  CSV export using tableData
+  // CSV export
   const downloadCSV = () => {
-    const headers = columns
-      .filter((col) => col.accessorKey && col.accessorKey !== "action")
-      .map((col) => col.header);
-    const rows = tableData.map((row) =>
-      columns
-        .filter((col) => col.accessorKey && col.accessorKey !== "action")
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
-        .join(",")
-    );
-    const csvContent = [headers.join(","), ...rows].join("\n");
+    const headers = ["Name", "Department", "Per Hour Cost", "Overtime Rate", "Status"];
+    const rows = tableData.map((row) => [
+      `"${row.name}"`,
+      `"${row.department?.name || "N/A"}"`,
+      `"${row.per_hour_cost}"`,
+      `"${row.overtime_hourly_rate}"`,
+      `"${row.status ? "Active" : "Inactive"}"`,
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "Labours.csv");
+    link.setAttribute("download", `Labours_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
-  //  Print handler
+  // Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
@@ -362,9 +588,270 @@ const Labours = () => {
     window.location.reload();
   };
 
+  // Initial values generator
+  const getInitialValues = (isEdit = false, data = null) => {
+    if (isEdit && data) {
+      return {
+        name: data.name || "",
+        per_hour_cost: data.per_hour_cost || "",
+        overtime_hourly_rate: data.overtime_hourly_rate || "",
+        department_id: data.department_id || "",
+        image: null,
+        document_type: data.document_type || "",
+        other_document_name: data.other_document_name || "",
+        document_number: data.document_number || "",
+        document_file: null,
+        dob: data.dob || "",
+      };
+    }
+
+    return {
+      name: "",
+      per_hour_cost: "",
+      overtime_hourly_rate: "",
+      department_id: "",
+      image: null,
+      document_type: "",
+      other_document_name: "",
+      document_number: "",
+      document_file: null,
+      dob: "",
+    };
+  };
+
+  // Form fields component
+  const FormFields = ({ values, errors, touched, handleChange, setFieldValue, isEdit }) => (
+    <Grid container rowSpacing={1} columnSpacing={3}>
+      <Grid size={{ xs: 12, md: 6 }}>
+        <TextField
+          name="name"
+          label="Name"
+          size="small"
+          fullWidth
+          margin="dense"
+          value={values.name}
+          onChange={handleChange}
+          error={touched.name && Boolean(errors.name)}
+          helperText={touched.name && errors.name}
+        />
+      </Grid>
+
+      <Grid size={{ xs: 12, md: 6 }}>
+        <TextField
+          name="per_hour_cost"
+          label="Per Hour Cost (₹)"
+          size="small"
+          fullWidth
+          type="number"
+          margin="dense"
+          value={values.per_hour_cost}
+          onChange={handleChange}
+          error={touched.per_hour_cost && Boolean(errors.per_hour_cost)}
+          helperText={touched.per_hour_cost && errors.per_hour_cost}
+        />
+      </Grid>
+
+      <Grid size={{ xs: 12, md: 6 }}>
+        <TextField
+          name="overtime_hourly_rate"
+          label="Overtime Hourly Rate (₹)"
+          size="small"
+          fullWidth
+          type="number"
+          margin="dense"
+          value={values.overtime_hourly_rate}
+          onChange={handleChange}
+          error={touched.overtime_hourly_rate && Boolean(errors.overtime_hourly_rate)}
+          helperText={touched.overtime_hourly_rate && errors.overtime_hourly_rate}
+        />
+      </Grid>
+
+      <Grid size={{ xs: 12, md: 6 }}>
+        <TextField
+          name="department_id"
+          select
+          label="Department"
+          size="small"
+          fullWidth
+          margin="dense"
+          value={values.department_id}
+          onChange={handleChange}
+          error={touched.department_id && Boolean(errors.department_id)}
+          helperText={touched.department_id && errors.department_id}
+        >
+          {departments.map((option) => (
+            <MenuItem key={option.id} value={option.id}>
+              {option.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Grid>
+
+      <Grid size={{ xs: 12, md: 6 }}>
+        <TextField
+          name="dob"
+          label="Date of Birth"
+          size="small"
+          fullWidth
+          margin="dense"
+          type="date"
+          InputLabelProps={{ shrink: true }}
+          value={values.dob}
+          onChange={handleChange}
+          error={touched.dob && Boolean(errors.dob)}
+          helperText={touched.dob && errors.dob}
+          inputProps={{
+            max: new Date().toISOString().split("T")[0],
+          }}
+        />
+      </Grid>
+
+      <Grid size={{ xs: 12, md: 6 }}>
+        <Grid container spacing={2} alignItems="center" mt={1}>
+          <Grid size={6}>
+            <Button
+              variant="contained"
+              color="primary"
+              component="label"
+              startIcon={<FileUploadOutlinedIcon />}
+              fullWidth
+              disabled={compressingImage}
+            >
+              {compressingImage ? "Compressing..." : "Profile Pic"}
+              <input
+                hidden
+                type="file"
+                accept="image/*"
+                onChange={(event) => handleImageChange(event, setFieldValue, isEdit)}
+              />
+            </Button>
+            {touched.image && errors.image && (
+              <Typography color="error" variant="caption" display="block" mt={0.5}>
+                {errors.image}
+              </Typography>
+            )}
+          </Grid>
+          <Grid size={6}>
+            {(values.image || (isEdit && previewUrl)) && (
+
+              <ImagePreviewDialog
+                imageUrl={values.image
+                  ? URL.createObjectURL(values.image)
+                  : previewUrl || Profile}
+                alt="Preview"
+              />
+            )}
+          </Grid>
+        </Grid>
+      </Grid>
+
+      <Grid size={{ xs: 12, md: 6 }}>
+        <TextField
+          name="document_type"
+          select
+          label="Document Type"
+          size="small"
+          fullWidth
+          margin="dense"
+          value={values.document_type}
+          onChange={handleChange}
+          error={touched.document_type && Boolean(errors.document_type)}
+          helperText={touched.document_type && errors.document_type}
+        >
+          {DOCUMENT_TYPES.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Grid>
+
+      {values.document_type === "other" && (
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            name="other_document_name"
+            label="Other Document Name"
+            size="small"
+            fullWidth
+            margin="dense"
+            value={values.other_document_name}
+            onChange={handleChange}
+            error={touched.other_document_name && Boolean(errors.other_document_name)}
+            helperText={touched.other_document_name && errors.other_document_name}
+          />
+        </Grid>
+      )}
+
+      <Grid size={{ xs: 12, md: 6 }}>
+        <TextField
+          name="document_number"
+          label="Document Number"
+          size="small"
+          fullWidth
+          margin="dense"
+          value={values.document_number}
+          onChange={handleChange}
+          error={touched.document_number && Boolean(errors.document_number)}
+          helperText={touched.document_number && errors.document_number}
+          placeholder={
+            values.document_type && DOCUMENT_PATTERNS[values.document_type]
+              ? DOCUMENT_PATTERNS[values.document_type].message
+              : "Enter document number"
+          }
+        />
+      </Grid>
+
+
+      <Grid size={{ xs: 12, md: 6 }}>
+        <Grid container spacing={2} alignItems="center" mt={1}>
+          <Grid size={documentPreviewUrl ? 6 : 8}>
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<FileUploadOutlinedIcon />}
+              fullWidth
+              disabled={compressingDocument}
+            >
+              {compressingDocument ? "Compressing..." : "Upload Document"}
+              <input
+                hidden
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(event) => handleDocumentChange(event, setFieldValue)}
+              />
+            </Button>
+            {touched.document_file && errors.document_file && (
+              <Typography color="error" variant="caption" display="block" mt={0.5}>
+                {errors.document_file}
+              </Typography>
+            )}
+          </Grid>
+          <Grid size={documentPreviewUrl ? 6 : 4}>
+            {values.document_file && (
+              <Box>
+                {documentPreviewUrl ? (
+
+                  <ImagePreviewDialog
+                    imageUrl={documentPreviewUrl}
+                    alt="Document Preview"
+                  />
+                ) : (
+                  <Typography variant="caption" noWrap title={values.document_file?.name}>
+                    {shortFileName(values.document_file?.name)}
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </Grid>
+        </Grid>
+      </Grid>
+
+    </Grid>
+  );
+
   return (
     <>
-      {/* Header Row */}
+      {/* Header */}
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
           <Typography variant="h6">Labours</Typography>
@@ -376,7 +863,7 @@ const Labours = () => {
         </Grid>
       </Grid>
 
-      {/* Labours Table */}
+      {/* Table */}
       <Grid size={12}>
         <Paper
           elevation={0}
@@ -394,16 +881,15 @@ const Labours = () => {
             enableGlobalFilter
             enableDensityToggle={false}
             enableColumnActions={false}
-            enableColumnVisibilityToggle={false}
+            enableFullScreenToggle={false}
             initialState={{ density: "compact" }}
+            state={{ isLoading: loading }}
             muiTableContainerProps={{
-              sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto", minWidth: "1200px" },
+              sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto" },
             }}
-            muiTableBodyCellProps={{ sx: { whiteSpace: "wrap", width: "100px" } }}
+            muiTableBodyCellProps={{ sx: { whiteSpace: "nowrap" } }}
             muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-            muiTableBodyRowProps={() => ({
-              hover: false,
-            })}
+            muiTableBodyRowProps={{ hover: false }}
             renderTopToolbar={({ table }) => (
               <Box
                 sx={{
@@ -415,7 +901,7 @@ const Labours = () => {
                 }}
               >
                 <Typography variant="h6" fontWeight={400}>
-                  Labours
+                  Labours List
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <MRT_GlobalFilterTextField table={table} />
@@ -438,136 +924,30 @@ const Labours = () => {
       </Grid>
 
       {/* Add Modal */}
-      <BootstrapDialog onClose={() => setOpen(false)} open={open} fullWidth maxWidth="sm">
+      <BootstrapDialog onClose={() => setOpen(false)} open={open} fullWidth maxWidth="md">
         <BootstrapDialogTitle onClose={() => setOpen(false)}>
           Add Labour
         </BootstrapDialogTitle>
         <Formik
-          initialValues={{
-            name: "",
-            per_hour_cost: "",
-            overtime_hourly_rate: "",
-            department_id: "",
-            image: null,
-          }}
-          validationSchema={validationSchema}
-          onSubmit={(values, { resetForm }) => {
-            handleAdd(values, resetForm)
-          }}
+          initialValues={getInitialValues(false)}
+          validationSchema={createValidationSchema(false)}
+          onSubmit={handleAdd}
         >
           {({ handleChange, handleSubmit, setFieldValue, touched, errors, values }) => (
             <Form onSubmit={handleSubmit}>
               <DialogContent dividers>
-                <Grid container rowSpacing={1} columnSpacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      id="name"
-                      name="name"
-                      label="Name"
-                      variant="standard"
-                      fullWidth
-                      margin="dense"
-                      onChange={handleChange}
-                      error={touched.name && Boolean(errors.name)}
-                      helperText={touched.name && errors.name}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      id="per_hour_cost"
-                      name="per_hour_cost"
-                      label="Per Hour Cost "
-                      variant="standard"
-                      fullWidth
-                      type="number"
-                      margin="dense"
-                      onChange={handleChange}
-                      error={touched.per_hour_cost && Boolean(errors.per_hour_cost)}
-                      helperText={touched.per_hour_cost && errors.per_hour_cost}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      id="overtime_hourly_rate"
-                      name="overtime_hourly_rate"
-                      label="Over Time Hourly Rate"
-                      variant="standard"
-                      fullWidth
-                      type="number"
-                      margin="dense"
-                      onChange={handleChange}
-                      error={touched.overtime_hourly_rate && Boolean(errors.overtime_hourly_rate)}
-                      helperText={touched.overtime_hourly_rate && errors.overtime_hourly_rate}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      id="department_id"
-                      name="department_id"
-                      select
-                      label="Department"
-                      variant="standard"
-                      fullWidth
-                      margin="dense"
-                      value={values.department_id}
-                      onChange={handleChange}
-                      error={touched.department_id && Boolean(errors.department_id)}
-                      helperText={touched.department_id && errors.department_id}
-                    >
-                      {departments.map((option) => (
-                        <MenuItem key={option.id} value={option.id}>
-                          {option.name}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Grid container spacing={2} alignItems="center" mt={1}>
-                      <Grid size={6}>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          component="label"
-                          startIcon={<FileUploadOutlinedIcon />}
-                          fullWidth
-                          disabled={compressingImage}
-                        >
-                          {compressingImage ? "Compressing..." : "Profile Pic"}
-                          <input
-                            hidden
-                            type="file"
-                            inputProps={{
-                              accept: "image/*", 
-                            }}
-                            onChange={(event) => handleImageChange(event, setFieldValue, false)}
-                          />
-                        </Button>
-                        {touched.image && errors.image && (
-                          <div style={{ color: "red", fontSize: "0.8rem" }}>{errors.image}</div>
-                        )}
-                      </Grid>
-                      <Grid size={4}>
-                        {values.image && (
-                          <img
-                            src={URL.createObjectURL(values.image)}
-                            alt="Preview"
-                            style={{
-                              width: "45px",
-                              height: "45px",
-                              objectFit: "cover",
-                              borderRadius: "4px",
-                              border: "1px solid #ddd",
-                            }}
-                          />
-                        )}
-                      </Grid>
-                    </Grid>
-                  </Grid>
-                </Grid>
+                <FormFields
+                  values={values}
+                  errors={errors}
+                  touched={touched}
+                  handleChange={handleChange}
+                  setFieldValue={setFieldValue}
+                  isEdit={false}
+                />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
                 <Button variant="outlined" color="error" onClick={() => setOpen(false)}>
-                  Close
+                  Cancel
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
                   Submit
@@ -579,154 +959,34 @@ const Labours = () => {
       </BootstrapDialog>
 
       {/* Edit Modal */}
-      <BootstrapDialog onClose={() => setEditOpen(false)} open={editOpen} fullWidth maxWidth="sm">
-        <BootstrapDialogTitle onClose={() => setEditOpen(false)}>
+      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="md">
+        <BootstrapDialogTitle onClose={handleEditClose}>
           Edit Labour
         </BootstrapDialogTitle>
         <Formik
           enableReinitialize
-          initialValues={{
-            name: editData?.name || "",
-            per_hour_cost: editData?.per_hour_cost || "",
-            overtime_hourly_rate: editData?.overtime_hourly_rate || "",
-            department_id: editData?.department_id || "",
-            image: null,
-          }}
-          validationSchema={editValidationSchema}
-          onSubmit={(values, { resetForm }) => {
-            handleEditSubmit(values, resetForm);
-          }}
+          initialValues={getInitialValues(true, editData)}
+          validationSchema={createValidationSchema(true)}
+          onSubmit={handleEditSubmit}
         >
           {({ handleChange, handleSubmit, setFieldValue, touched, errors, values }) => (
             <Form onSubmit={handleSubmit}>
               <DialogContent dividers>
-                <Grid container rowSpacing={1} columnSpacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      id="name"
-                      name="name"
-                      label="Name"
-                      variant="standard"
-                      fullWidth
-                      margin="dense"
-                      value={values.name}
-                      onChange={handleChange}
-                      error={touched.name && Boolean(errors.name)}
-                      helperText={touched.name && errors.name}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      id="per_hour_cost"
-                      name="per_hour_cost"
-                      label="Per Hour Cost"
-                      variant="standard"
-                      fullWidth
-                      type="number"
-                      margin="dense"
-                      value={values.per_hour_cost}
-                      onChange={handleChange}
-                      error={touched.per_hour_cost && Boolean(errors.per_hour_cost)}
-                      helperText={touched.per_hour_cost && errors.per_hour_cost}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      id="overtime_hourly_rate"
-                      name="overtime_hourly_rate"
-                      label="Over Time Hourly Rate"
-                      variant="standard"
-                      fullWidth
-                      type="number"
-                      margin="dense"
-                      value={values.overtime_hourly_rate}
-                      onChange={handleChange}
-                      error={touched.overtime_hourly_rate && Boolean(errors.overtime_hourly_rate)}
-                      helperText={touched.overtime_hourly_rate && errors.overtime_hourly_rate}
-                    />
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      id="department_id"
-                      name="department_id"
-                      select
-                      label="Department"
-                      variant="standard"
-                      fullWidth
-                      margin="dense"
-                      value={values.department_id}
-                      onChange={handleChange}
-                      error={touched.department_id && Boolean(errors.department_id)}
-                      helperText={touched.department_id && errors.department_id}
-                    >
-                      {departments.map((option) => (
-                        <MenuItem key={option.id} value={option.id}>
-                          {option.name}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Grid container spacing={2} alignItems="center" mt={1}>
-                      <Grid size={6}>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          component="label"
-                          startIcon={<FileUploadOutlinedIcon />}
-                          fullWidth
-                          disabled={compressingImage}
-                        >
-                          {compressingImage ? "Compressing..." : "Profile Pic"}
-                          <input
-                            hidden
-                            type="file"
-                            inputProps={{
-                              accept: "image/*", 
-                            }}
-                            onChange={(event) => handleImageChange(event, setFieldValue, true)}
-                          />
-                        </Button>
-                        {touched.image && errors.image && (
-                          <div style={{ color: "red", fontSize: "0.8rem" }}>{errors.image}</div>
-                        )}
-                      </Grid>
-
-                      <Grid size={4}>
-                        <img
-                          src={
-                            values.image
-                              ? URL.createObjectURL(values.image)
-                              : previewUrl || `${mediaUrl}${editData?.image || ""}`
-                          }
-                          alt="Preview"
-                          style={{
-                            width: "45px",
-                            height: "45px",
-                            objectFit: "cover",
-                            borderRadius: "4px",
-                            border: "1px solid #ddd",
-                          }}
-                          onError={(e) => {
-                            e.target.src = Profile;
-                          }}
-                        />
-                      </Grid>
-                    </Grid>
-                  </Grid>
-                </Grid>
+                <FormFields
+                  values={values}
+                  errors={errors}
+                  touched={touched}
+                  handleChange={handleChange}
+                  setFieldValue={setFieldValue}
+                  isEdit={true}
+                />
               </DialogContent>
-
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={() => setEditOpen(false)}>
-                  Close
+                <Button variant="outlined" color="error" onClick={handleEditClose}>
+                  Cancel
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
-                  Save changes
+                  Save Changes
                 </Button>
               </DialogActions>
             </Form>
@@ -734,29 +994,33 @@ const Labours = () => {
         </Formik>
       </BootstrapDialog>
 
-      {/* Delete Modal */}
+      {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialog.open}
         onClose={() =>
+          !deleteDialog.loading &&
           setDeleteDialog({ open: false, id: null, name: "", loading: false })
         }
+        maxWidth="xs"
+        fullWidth
       >
-        <DialogTitle>Delete Labour?</DialogTitle>
-        <DialogContent style={{ width: "320px" }}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete labour{" "}
-            <strong>{deleteDialog.name}</strong>? <br />
+            Are you sure you want to delete <strong>{deleteDialog.name}</strong>?
+            <br />
             This action cannot be undone.
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
             onClick={() =>
               setDeleteDialog({ open: false, id: null, name: "", loading: false })
             }
             disabled={deleteDialog.loading}
+            variant="outlined"
           >
-            Close
+            Cancel
           </Button>
           <Button
             variant="contained"
