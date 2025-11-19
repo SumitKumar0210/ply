@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Drawer,
   List,
@@ -34,10 +34,6 @@ import { useAuth } from "../../context/AuthContext";
 
 import Logo from "../../assets/images/logo.svg";
 
-const storedHLogo = localStorage.getItem("horizontalLogo");
-const storedAppName = localStorage.getItem("application_name");
-
-
 const drawerWidth = 220;
 
 const menuSections = [
@@ -70,7 +66,8 @@ const menuSections = [
           { text: "Dashboard", to: "/customer/dashboard", icon: <MdOutlineDashboard /> },
           { text: "Quotation", to: "/customer/quote", icon: <RiFileList3Line /> },
           { text: "Order", to: "/customer/order", icon: <RiFileList3Line /> },
-          { text: "Customer Ledger", to: "/customer/ledger", icon: <LuTable /> },
+          { text: "Customer List", to: "/customer/list", icon: <LuTable /> },
+          // { text: "Customer Ledger", to: "/customer/ledger", icon: <LuTable /> },
         ],
       },
       {
@@ -96,12 +93,32 @@ const menuSections = [
 
 const Sidebar = ({ mobileOpen, onClose }) => {
   const { appDetails } = useAuth();
-console.log("App Details in Sidebar:", appDetails);
   const [openSubmenu, setOpenSubmenu] = useState(null);
+  const [displayLogo, setDisplayLogo] = useState(Logo);
+  const [displayAppName, setDisplayAppName] = useState("");
   const location = useLocation();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  useEffect(() => {
+
+    const logo = appDetails.horizontal_logo ||
+      localStorage.getItem("horizontalLogo") ||
+      Logo;
+
+    const appName = appDetails.application_name ||
+      localStorage.getItem("application_name") ||
+      "";
+
+    setDisplayLogo(logo);
+    setDisplayAppName(appName);
+
+
+    if (appName) {
+      document.title = appName;
+    }
+  }, [appDetails]);
 
   const handleToggle = (menu) => {
     setOpenSubmenu(openSubmenu === menu ? null : menu);
@@ -116,15 +133,35 @@ console.log("App Details in Sidebar:", appDetails);
   const drawerContent = (
     <>
       {/* Logo */}
-      <Box display="flex" alignItems="center" justifyContent="center" sx={{ p: 2 }}>
+      {/* <Box display="flex" alignItems="center" justifyContent="center" sx={{ p: 2 }}>
         <img
-          src={appDetails.horizontal_logo?? storedHLogo ?? Logo}
+          src={appDetails.horizontal_logo ?? storedHLogo ?? Logo}
           alt="logo"
-          // style={{ width: "-webkit-fill-available", marginRight: "10px" }}
+          style={{ width: "-webkit-fill-available", marginRight: "10px" }}
           style={{ width: "120px", marginRight: "10px" }}
         />
-        {/* <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>
           {storedAppName ?? 'Aarish Ply'}
+        </Typography>
+      </Box> */}
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        sx={{ p: 2 }}
+      >
+        <img
+          src={displayLogo}
+          alt={displayAppName || "logo"}
+          style={{ width: "120px", marginRight: "10px" }}
+          onError={(e) => {
+            // Fallback to default logo if image fails to load
+            e.target.src = Logo;
+          }}
+        />
+        {/* Uncomment if you want to display app name as text */}
+        {/* <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          {displayAppName || 'Aarish Ply'}
         </Typography> */}
       </Box>
 

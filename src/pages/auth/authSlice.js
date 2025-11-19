@@ -16,7 +16,7 @@ export const authLogin = createAsyncThunk(
         localStorage.setItem("token", res.data.access_token);
       }
       successMessage(res.data.message);
-      return res.data; // return API response (user + token)
+      return res.data; 
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
@@ -55,7 +55,7 @@ export const forgotPassword = createAsyncThunk(
     try {
       const res = await axios.post(`${BASE_URL}forgot-password`, payload);
       successMessage(res.data.message);
-      return res.data; // usually { message: "reset link sent" }
+      return res.data;
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
@@ -68,12 +68,12 @@ export const forgotPassword = createAsyncThunk(
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    isAuthenticated: !!localStorage.getItem("token"), //  auto-login if token exists
+    isAuthenticated: !!localStorage.getItem("token"), 
     user: null,
     token: localStorage.getItem("token") || null,
     loading: false,
     error: null,
-    message: null, // for forgot password success
+    message: null, 
   },
   reducers: {
     logout: (state) => {
@@ -85,7 +85,7 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // 🔹 Login
+      // Login
       .addCase(authLogin.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -96,7 +96,7 @@ const authSlice = createSlice({
         state.token = action.payload.access_token ?? action.payload.token ?? null;
 
         if (state.token) {
-          state.isAuthenticated = true; //  user is logged in
+          state.isAuthenticated = true; 
         }
       })
       .addCase(authLogin.rejected, (state, action) => {
@@ -104,7 +104,7 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
 
-      // 🔹 Forgot Password
+      // Forgot Password
       .addCase(forgotPassword.pending, (state) => {
         state.loading = true;
         state.error = null;

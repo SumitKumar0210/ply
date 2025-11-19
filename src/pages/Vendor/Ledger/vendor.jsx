@@ -81,9 +81,9 @@ const Vendor = () => {
   useEffect(() => {
     dispatch(fetchVendors());
   }, [dispatch]);
-  
+
   const handleLedger = (id) => {
-    navigate('/vendor/ledger/'+ id)
+    navigate('/vendor/ledger/' + id)
   }
 
   //  Table columns
@@ -105,7 +105,7 @@ const Vendor = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="ledger">
-              <IconButton color="primary" onClick={ () => handleLedger(row.original.id)}>
+              <IconButton color="primary" onClick={() => handleLedger(row.original.id)}>
                 <RiListOrdered size={16} />
               </IconButton>
             </Tooltip>
@@ -153,7 +153,16 @@ const Vendor = () => {
         <Grid size={12}>
           <Paper
             elevation={0}
-            sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
+            sx={{
+              width: "100%",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+              borderRadius: "12px",
+              px: 2,
+              py: 2,
+              boxShadow:
+                "0px 1px 3px rgba(0,0,0,0.04), 0px 4px 10px rgba(0,0,0,0.06)",
+            }}
             ref={tableContainerRef}
           >
             <MaterialReactTable
@@ -170,12 +179,25 @@ const Vendor = () => {
               enableColumnActions={false}
               enableColumnVisibilityToggle={false}
               initialState={{ density: "compact" }}
+              muiTableContainerProps={{
+                sx: {
+                  width: "100%",
+                  backgroundColor: "#fff",
+                  overflowX: "auto",
+                },
+              }}
+              muiTableBodyCellProps={{
+                sx: { whiteSpace: "nowrap" },
+              }}
+              muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
+              muiTableBodyRowProps={{ hover: true }}
               renderTopToolbar={({ table }) => (
                 <Box
                   sx={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
+                    width: "100%",
                     p: 1,
                   }}
                 >

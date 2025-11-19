@@ -9,11 +9,19 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from "@mui/material";
-import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { useNavigate, useParams } from "react-router-dom";
 import { AiOutlinePrinter } from "react-icons/ai";
+import { MdEdit, MdDownload } from "react-icons/md";
 import { useReactToPrint } from "react-to-print";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import api from "../../api";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 
@@ -24,30 +32,41 @@ const PublicQuoteDetailsView = () => {
 
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
 
+  // Get app details from localStorage (since this is public route)
+  const appLogo = localStorage.getItem("logo") || "";
+  const appName = localStorage.getItem("application_name") || "Company Name";
+
   // State management
   const [quotationDetails, setQuotationDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [approving, setApproving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editReason, setEditReason] = useState("");
+  const [submittingEditRequest, setSubmittingEditRequest] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
 
-  // Print handler
+  // Print handler with A4 styling
   const handlePrint = useReactToPrint({
     contentRef,
     documentTitle: `Quote_${quotationDetails?.batch_no || "Invoice"}`,
     pageStyle: `
       @page {
-        size: A4 landscape;
-        margin: 5mm;
+        size: A4;
+        margin: 10mm;
       }
       @media print {
         body {
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+        }
+        .no-print {
+          display: none !important;
         }
       }
     `,
@@ -106,8 +125,6 @@ const PublicQuoteDetailsView = () => {
     };
   }, [items, quotationDetails]);
 
-  // ==================== API CALLS ====================
-
   // Fetch Quotation Details
   const fetchQuotationDetails = async () => {
     if (!link) {
@@ -121,7 +138,7 @@ const PublicQuoteDetailsView = () => {
       setError(null);
 
       const response = await api.post(`get-customer-quotation`, { link });
-      
+
       if (!response.data) {
         throw new Error("No data received from server");
       }
@@ -157,15 +174,16 @@ const PublicQuoteDetailsView = () => {
     try {
       setApproving(true);
 
-      const response = await api.post(`admin/quotation-order/status-update`, {id:quotationDetails.id});
+      const response = await api.post(`admin/quotation-order/status-update`, {
+        id: quotationDetails.id,
+      });
 
-      // setSnackbar({
-      //   open: true,
-      //   message: "Quotation approved successfully!",
-      //   severity: "success",
-      // });
+      setSnackbar({
+        open: true,
+        message: "Quotation approved successfully!",
+        severity: "success",
+      });
 
-      // Update local state
       setQuotationDetails((prev) => ({
         ...prev,
         status: "2",
@@ -189,14 +207,49 @@ const PublicQuoteDetailsView = () => {
     }
   };
 
-  // ==================== END API CALLS ====================
+  const submitEditRequest = async () => {
+    if (!editReason.trim()) {
+      setSnackbar({
+        open: true,
+        message: "Please enter a valid reason",
+        severity: "error",
+      });
+      return;
+    }
 
-  // Load quotation data on mount
+    try {
+      setSubmittingEditRequest(true);
+
+      const response = await api.post("/edit-request", {
+        quotation_id: quotationDetails.id,
+        reason: editReason,
+      });
+
+      setSnackbar({
+        open: true,
+        message: "Edit request sent successfully!",
+        severity: "success",
+      });
+
+      handleCloseEditDialog(); // close modal
+      setEditReason(""); // reset
+    } catch (error) {
+      console.error("Edit request error:", error);
+      setSnackbar({
+        open: true,
+        message:
+          error.response?.data?.message || "Failed to send edit request",
+        severity: "error",
+      });
+    } finally {
+      setSubmittingEditRequest(false);
+    }
+  };
+
   useEffect(() => {
     fetchQuotationDetails();
   }, [link]);
 
-  // Format date helper
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
@@ -211,17 +264,115 @@ const PublicQuoteDetailsView = () => {
     }
   };
 
-  // Handle Approve button click
   const handleApprove = () => {
     approveQuotation();
   };
 
-  // Close snackbar
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  // Show loader while data is loading
+  // ----- Edit Request Handling -----
+
+  const handleEditRequest = () => {
+    setEditDialogOpen(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
+    setEditReason("");
+  };
+
+  const handleSubmitEditRequest = async () => {
+    if (!editReason.trim()) return;
+
+    try {
+      setSubmittingEditRequest(true);
+
+      const response = await api.post("quotation-edit-request", {
+        quotation_id: quotationDetails.id,
+        reason: editReason,
+      });
+
+      setSnackbar({
+        open: true,
+        message: "Edit request submitted successfully!",
+        severity: "success",
+      });
+
+      setEditDialogOpen(false);
+      setEditReason("");
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: "Failed to submit edit request",
+        severity: "error",
+      });
+    } finally {
+      setSubmittingEditRequest(false);
+    }
+  };
+
+  // ----- Download PDF -----
+
+  const waitForImagesToLoad = () => {
+    return new Promise((resolve) => {
+      const images = contentRef.current?.querySelectorAll("img") || [];
+      let loaded = 0;
+
+      if (images.length === 0) {
+        resolve();
+        return;
+      }
+
+      images.forEach((img) => {
+        if (img.complete) {
+          loaded++;
+          if (loaded === images.length) resolve();
+        } else {
+          img.onload = () => {
+            loaded++;
+            if (loaded === images.length) resolve();
+          };
+          img.onerror = () => {
+            loaded++;
+            if (loaded === images.length) resolve();
+          };
+        }
+      });
+    });
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!contentRef.current) return;
+
+    try {
+      setDownloading(true);
+
+      // ⭐ Ensure all images (logo included) are fully loaded
+      await waitForImagesToLoad();
+
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        useCORS: true, // ⭐ important for remote images
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = 210;
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfHeight = (imgProps.height * pageWidth) / imgProps.width;
+
+      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pdfHeight);
+      pdf.save(`Quote_${quotationDetails?.batch_no || "Invoice"}.pdf`);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <Box
@@ -229,7 +380,8 @@ const PublicQuoteDetailsView = () => {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          minHeight: "60vh",
+          minHeight: "100vh",
+          backgroundColor: "#f5f5f5",
         }}
       >
         <CircularProgress size={60} />
@@ -237,7 +389,6 @@ const PublicQuoteDetailsView = () => {
     );
   }
 
-  // Show error state
   if (error && !quotationDetails) {
     return (
       <Box
@@ -246,22 +397,20 @@ const PublicQuoteDetailsView = () => {
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          minHeight: "60vh",
+          minHeight: "100vh",
+          backgroundColor: "#f5f5f5",
           gap: 2,
+          p: 2,
         }}
       >
-        <Typography variant="h6" color="error">
+        <Typography variant="h6" color="error" align="center">
           Error Loading Quotation
         </Typography>
-        <Typography variant="body2">{error}</Typography>
-        <Button variant="contained" onClick={() => navigate(-1)}>
-          Go Back
-        </Button>
+        <Typography variant="body2" align="center">{error}</Typography>
       </Box>
     );
   }
 
-  // Show message if no data
   if (!quotationDetails) {
     return (
       <Box
@@ -270,41 +419,54 @@ const PublicQuoteDetailsView = () => {
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          minHeight: "60vh",
+          minHeight: "100vh",
+          backgroundColor: "#f5f5f5",
           gap: 2,
         }}
       >
         <Typography variant="h6">No Quotation Found</Typography>
-        <Button variant="contained" onClick={() => navigate(-1)}>
-          Go Back
-        </Button>
       </Box>
     );
   }
 
   return (
-    <>
-      <Grid
-        container
-        spacing={2}
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ mb: 2 }}
-      >
-        <Grid>
-          <Typography variant="h6">Quotation Details</Typography>
-        </Grid>
-        <Grid>
+    <Box sx={{ backgroundColor: "#f5f5f5", minHeight: "100vh", py: { xs: 2, md: 3 } }}>
+      <Box sx={{ maxWidth: { xs: "100%", md: "210mm" }, margin: "0 auto", px: { xs: 1, sm: 2 } }}>
+        {/* Action Buttons - No Print */}
+        <Box
+          className="no-print"
+          sx={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 1,
+            mb: 2,
+            flexWrap: "wrap",
+          }}
+        >
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<MdEdit />}
+            onClick={handleEditRequest}
+            disabled={approving || quotationDetails.status == "2" || quotationDetails.status == "3"}
+            size="small"
+            sx={{ minWidth: { xs: "100px", sm: "120px" } }}
+          >
+            Edit Request
+          </Button>
+
+
           <Button
             variant="contained"
             color="success"
             onClick={handleApprove}
-            disabled={approving || quotationDetails.status == "2"}
-            sx={{ mr: 2 }}
+            disabled={approving || quotationDetails.status == "2" || quotationDetails.status == "3"}
+            size="small"
+            sx={{ minWidth: { xs: "100px", sm: "120px" } }}
           >
             {approving ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : quotationDetails.status === "approved" ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : quotationDetails.status === "2" ? (
               "Approved"
             ) : (
               "Approve"
@@ -312,320 +474,407 @@ const PublicQuoteDetailsView = () => {
           </Button>
 
           <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<MdDownload />}
+            onClick={handleDownloadPDF}
+            disabled={downloading}
+            size="small"
+            sx={{ minWidth: { xs: "100px", sm: "120px" } }}
+          >
+            {downloading ? <CircularProgress size={20} /> : "Download"}
+          </Button>
+          <Button
             variant="contained"
             color="warning"
             startIcon={<AiOutlinePrinter />}
             onClick={handlePrint}
+            size="small"
+            sx={{ minWidth: { xs: "100px", sm: "120px" } }}
           >
             Print
           </Button>
-        </Grid>
-      </Grid>
+        </Box>
 
-      <Grid
-        container
-        spacing={1}
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ mb: 2 }}
-      >
-        <Grid size={12}>
-          <div ref={contentRef} style={{ background: "#fff", padding: "20px" }}>
-            <Card>
-              <CardContent>
-                {/* Header Section */}
-                <Grid size={12} sx={{ pt: 2 }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 2,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <Typography variant="body1" sx={{ m: 0 }}>
-                      Quote No. :{" "}
-                      <Box component="span" sx={{ fontWeight: 600 }}>
-                        {quotationDetails.batch_no || "N/A"}
-                      </Box>
-                    </Typography>
-                    <Typography variant="body1" sx={{ m: 0 }}>
-                      Quote Date:{" "}
-                      <Box component="span" sx={{ fontWeight: 600 }}>
-                        {formatDate(quotationDetails.created_at)}
-                      </Box>
-                    </Typography>
-                    <Typography variant="body1" sx={{ m: 0 }}>
-                      Delivery Date:{" "}
-                      <Box component="span" sx={{ fontWeight: 600 }}>
-                        {formatDate(quotationDetails.delivery_date)}
-                      </Box>
-                    </Typography>
-                    <Typography variant="body1" sx={{ m: 0 }}>
-                      Priority:{" "}
-                      <Box component="span" sx={{ fontWeight: 600 }}>
-                        {quotationDetails.priority || "Normal"}
-                      </Box>
-                    </Typography>
-                  </Box>
-                </Grid>
+        {/* A4 Page Container */}
+        <Box
+          ref={contentRef}
+          sx={{
+            backgroundColor: "#fff",
+            boxShadow: { xs: "none", sm: "0 0 10px rgba(0,0,0,0.1)" },
+            width: "100%",
+            maxWidth: "210mm",
+            padding: { xs: "15px", sm: "20px", md: "15mm" },
+            margin: "0 auto",
+            "@media print": {
+              boxShadow: "none",
+              margin: 0,
+              padding: "15mm",
+            },
+          }}
+        >
+          {/* Header with Logo */}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              borderBottom: "2px solid #333",
+              pb: 2,
+              mb: 3,
+              gap: 2,
+            }}
+          >
+            <Box>
+              {appLogo ? (
+                <img
+                  src={appLogo}
+                  alt={appName}
+                  style={{
+                    height: "50px",
+                    maxWidth: "150px",
+                    objectFit: "contain"
+                  }}
+                />
+              ) : (
+                <Typography variant="h6" sx={{ fontWeight: 700, fontSize: { xs: "1rem", sm: "1.25rem" } }}>
+                  {appName}
+                </Typography>
+              )}
+            </Box>
+            <Box sx={{ textAlign: "right" }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: "#333", fontSize: { xs: "1.25rem", sm: "1.75rem" }, lineHeight: 1.2 }}>
+                QUOTATION
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" }, mt: 0.5 }}>
+                #{quotationDetails.batch_no || "N/A"}
+              </Typography>
+            </Box>
+          </Box>
 
-                {/* Company Details */}
-                <Grid size={{ xs: 12, md: 6 }} sx={{ pt: 2 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                    From:
-                  </Typography>
-                  <Typography variant="body2">
-                    TECHIE SQUAD PRIVATE LIMITED
-                    <br />
-                    CIN: U72900BR2019PTC042431
-                    <br />
-                    RK NIWAS, GOLA ROAD MOR, BAILEY ROAD
-                    <br />
-                    DANAPUR, PATNA-801503, BIHAR, INDIA
-                    <br />
-                    GSTIN: 10AAHCT3899A1ZI
-                  </Typography>
-                </Grid>
+          {/* Quote Info Bar */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 2,
+              mb: 3,
+            }}
+          >
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: "0.65rem", sm: "0.7rem" }, display: "block", mb: 0.5 }}>
+                Quote Date
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
+                {formatDate(quotationDetails.created_at)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: "0.65rem", sm: "0.7rem" }, display: "block", mb: 0.5 }}>
+                Delivery Date
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
+                {formatDate(quotationDetails.delivery_date)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: "0.65rem", sm: "0.7rem" }, display: "block", mb: 0.5 }}>
+                Priority
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
+                {quotationDetails.priority || "Normal"}
+              </Typography>
+            </Box>
+          </Box>
 
-                {/* Customer Details */}
-                {quotationDetails.customer && (
-                  <Grid size={{ xs: 12, md: 6 }} sx={{ pt: 2 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                      To:
-                    </Typography>
-                    <Typography variant="body2">
-                      <strong>{quotationDetails.customer.name}</strong>
-                      <br />
-                      {quotationDetails.customer.address}
-                      <br />
-                      {quotationDetails.customer.city},{" "}
-                      {quotationDetails.customer.state?.name}{" "}
-                      {quotationDetails.customer.zip_code}
-                      <br />
-                      Mobile: {quotationDetails.customer.mobile}
-                      <br />
-                      Email: {quotationDetails.customer.email}
-                    </Typography>
-                  </Grid>
-                )}
+          {/* From and To Section */}
+          <Box sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+            gap: { xs: 2, sm: 3 },
+            mb: 3
+          }}>
+            {/* From Section */}
+            <Box>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 700,
+                  mb: 1,
+                  color: "#666",
+                  textTransform: "uppercase",
+                  fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                  letterSpacing: 0.5
+                }}
+              >
+                FROM:
+              </Typography>
+              <Typography variant="body2" sx={{ lineHeight: 1.6, fontSize: { xs: "0.7rem", sm: "0.8rem" } }}>
+                <strong style={{ fontSize: { xs: "0.75rem", sm: "0.85rem" } }}>TECHIE SQUAD PRIVATE LIMITED</strong>
+                <br />
+                CIN: U72900BR2019PTC042431
+                <br />
+                RK NIWAS, GOLA ROAD MOR, BAILEY ROAD
+                <br />
+                DANAPUR, PATNA-801503, BIHAR, INDIA
+                <br />
+                GSTIN: 10AAHCT3899A1ZI
+              </Typography>
+            </Box>
 
-                {/* Items Table by Group */}
-                {uniqueAreas.length > 0 ? (
-                  uniqueAreas.map((area) => (
-                    <React.Fragment key={area}>
-                      <Grid size={12} sx={{ pt: 3 }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 2,
-                            flexWrap: "nowrap",
-                            backgroundColor: "#f5f5f5",
-                            padding: "8px 12px",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          <Typography variant="body1" sx={{ m: 0 }}>
-                            <Box component="span" sx={{ fontWeight: 600 }}>
-                              {area}
-                            </Box>
-                          </Typography>
-                        </Box>
-                      </Grid>
+            {/* To Section */}
+            {quotationDetails.customer && (
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: 700,
+                    mb: 1,
+                    color: "#666",
+                    textTransform: "uppercase",
+                    fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                    letterSpacing: 0.5
+                  }}
+                >
+                  TO:
+                </Typography>
+                <Typography variant="body2" sx={{ lineHeight: 1.6, fontSize: { xs: "0.7rem", sm: "0.8rem" } }}>
+                  <strong style={{ fontSize: { xs: "0.75rem", sm: "0.85rem" } }}>{quotationDetails.customer.name}</strong>
+                  <br />
+                  {quotationDetails.customer.address}
+                  <br />
+                  {quotationDetails.customer.city},{" "}
+                  {quotationDetails.customer.state?.name}{" "}
+                  {quotationDetails.customer.zip_code}
+                  <br />
+                  Mobile: {quotationDetails.customer.mobile}
+                  <br />
+                  Email: {quotationDetails.customer.email}
+                </Typography>
+              </Box>
+            )}
+          </Box>
 
-                      <Grid size={12} sx={{ mt: 0 }}>
-                        <Table>
-                          <Thead>
-                            <Tr>
-                              <Th>Item Name</Th>
-                              <Th>Item Code</Th>
-                              <Th>Qty</Th>
-                              <Th>Size</Th>
-                              <Th>Unit Price</Th>
-                              <Th>Total Cost</Th>
-                              <Th>Documents</Th>
-                              <Th style={{ width: "200px" }}>Narration</Th>
-                            </Tr>
-                          </Thead>
-                          <Tbody>
-                            {items
-                              .filter((item) => item.group === area)
-                              .map((item) => (
-                                <Tr key={item.id}>
-                                  <Td>{item.name}</Td>
-                                  <Td>{item.itemCode}</Td>
-                                  <Td>{item.qty}</Td>
-                                  <Td>{item.size}</Td>
-                                  <Td>
-                                    ₹{item.unitPrice.toLocaleString("en-IN")}
-                                  </Td>
-                                  <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
-                                  <Td>
-                                    {item.documents ? (
-                                      <Box
-                                        sx={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: 1,
-                                        }}
-                                      >
-                                        <ImagePreviewDialog
-                                          imageUrl={item.documents}
-                                          alt={item.documents.split("/").pop()}
-                                        />
-                                        <Typography
-                                          variant="caption"
-                                          sx={{ wordBreak: "break-all" }}
-                                        >
-                                          {item.documents.split("/").pop()}
-                                        </Typography>
-                                      </Box>
-                                    ) : (
-                                      "-"
-                                    )}
-                                  </Td>
-                                  <Td style={{ width: "200px" }}>
-                                    {item.narration || "-"}
-                                  </Td>
-                                </Tr>
-                              ))}
-                          </Tbody>
-                        </Table>
-                      </Grid>
-                    </React.Fragment>
-                  ))
-                ) : (
-                  <Grid size={12} sx={{ pt: 3 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      No items found in this quotation
-                    </Typography>
-                  </Grid>
-                )}
+          {/* Items by Group */}
+          {uniqueAreas.length > 0 ? (
+            uniqueAreas.map((area) => (
+              <Box key={area} sx={{ mb: 3 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: 700,
+                    backgroundColor: "#e9ecef",
+                    padding: { xs: "6px 10px", sm: "8px 12px" },
+                    borderRadius: 1,
+                    mb: 1.5,
+                    fontSize: { xs: "0.8rem", sm: "0.9rem" },
+                  }}
+                >
+                  {area}
+                </Typography>
 
-                {/* Order Terms and Totals Section */}
-                <Grid size={12} sx={{ mt: 3 }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      width: "100%",
-                      gap: 2,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {/* Order Terms */}
-                    <Box sx={{ width: "48%", minWidth: "300px" }}>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: 600, mb: 1 }}
-                      >
-                        Order Terms:
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          padding: "8px",
-                          border: "1px solid #ccc",
-                          borderRadius: "4px",
-                          minHeight: "80px",
-                          whiteSpace: "pre-wrap",
-                        }}
-                      >
-                        {quotationDetails.order_terms ||
-                          "No order terms specified"}
-                      </Typography>
-                    </Box>
+                {/* Responsive Table */}
+                <Box sx={{ overflowX: "auto", mb: 2 }}>
+                  <table style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "0.75rem",
+                    minWidth: "100%"
+                  }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#f8f9fa" }}>
+                        <th style={{
+                          padding: "8px 6px",
+                          border: "1px solid #dee2e6",
+                          textAlign: "left",
+                          fontWeight: 600,
+                          fontSize: "0.7rem",
+                          whiteSpace: "nowrap"
+                        }}>
+                          Item Name
+                        </th>
+                        <th style={{
+                          padding: "8px 6px",
+                          border: "1px solid #dee2e6",
+                          textAlign: "left",
+                          fontWeight: 600,
+                          fontSize: "0.7rem",
+                          whiteSpace: "nowrap"
+                        }}>
+                          Code
+                        </th>
+                        <th style={{
+                          padding: "8px 6px",
+                          border: "1px solid #dee2e6",
+                          textAlign: "center",
+                          fontWeight: 600,
+                          fontSize: "0.7rem",
+                          whiteSpace: "nowrap"
+                        }}>
+                          Qty
+                        </th>
+                        <th style={{
+                          padding: "8px 6px",
+                          border: "1px solid #dee2e6",
+                          textAlign: "left",
+                          fontWeight: 600,
+                          fontSize: "0.7rem",
+                          whiteSpace: "nowrap"
+                        }}>
+                          Size
+                        </th>
+                        <th style={{
+                          padding: "8px 6px",
+                          border: "1px solid #dee2e6",
+                          textAlign: "right",
+                          fontWeight: 600,
+                          fontSize: "0.7rem",
+                          whiteSpace: "nowrap"
+                        }}>
+                          Unit Price
+                        </th>
+                        <th style={{
+                          padding: "8px 6px",
+                          border: "1px solid #dee2e6",
+                          textAlign: "right",
+                          fontWeight: 600,
+                          fontSize: "0.7rem",
+                          whiteSpace: "nowrap"
+                        }}>
+                          Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items
+                        .filter((item) => item.group === area)
+                        .map((item) => (
+                          <tr key={item.id}>
+                            <td style={{
+                              padding: "8px 6px",
+                              border: "1px solid #dee2e6",
+                              fontSize: "0.7rem"
+                            }}>
+                              {item.name}
+                            </td>
+                            <td style={{
+                              padding: "8px 6px",
+                              border: "1px solid #dee2e6",
+                              fontSize: "0.7rem"
+                            }}>
+                              {item.itemCode}
+                            </td>
+                            <td style={{
+                              padding: "8px 6px",
+                              border: "1px solid #dee2e6",
+                              textAlign: "center",
+                              fontSize: "0.7rem"
+                            }}>
+                              {item.qty}
+                            </td>
+                            <td style={{
+                              padding: "8px 6px",
+                              border: "1px solid #dee2e6",
+                              fontSize: "0.7rem"
+                            }}>
+                              {item.size}
+                            </td>
+                            <td style={{
+                              padding: "8px 6px",
+                              border: "1px solid #dee2e6",
+                              textAlign: "right",
+                              fontSize: "0.7rem"
+                            }}>
+                              ₹{item.unitPrice.toLocaleString("en-IN")}
+                            </td>
+                            <td style={{
+                              padding: "8px 6px",
+                              border: "1px solid #dee2e6",
+                              textAlign: "right",
+                              fontWeight: 600,
+                              fontSize: "0.7rem"
+                            }}>
+                              ₹{item.cost.toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </Box>
+              </Box>
+            ))
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: "center", py: 3, fontSize: "0.8rem" }}>
+              No items found in this quotation
+            </Typography>
+          )}
 
-                    {/* Totals */}
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 1,
-                        minWidth: "300px",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          borderBottom: "1px solid #ccc",
-                          pb: 0.5,
-                        }}
-                      >
-                        <span>Sub Total</span>
-                        <span>
-                          ₹{calculations.subTotal.toLocaleString("en-IN")}
-                        </span>
-                      </Box>
+          {/* Bottom Section: Terms and Totals */}
+          <Box sx={{ mt: 3 }}>
+            {/* Order Terms */}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, fontSize: { xs: "0.75rem", sm: "0.85rem" }, textTransform: "uppercase", color: "#666" }}>
+                Order Terms:
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {quotationDetails.order_terms || "No order terms specified"}
+              </Typography>
+            </Box>
 
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <span>Discount</span>
-                        <span>
-                          ₹{calculations.discount.toLocaleString("en-IN")}
-                        </span>
-                      </Box>
+            {/* Totals - Right Aligned */}
+            <Box sx={{
+              display: "flex",
+              justifyContent: "flex-end",
+              mt: 3
+            }}>
+              <Box sx={{ minWidth: { xs: "100%", sm: "300px" }, maxWidth: "400px" }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", py: 0.75, fontSize: { xs: "0.75rem", sm: "0.85rem" }, borderBottom: "1px solid #e0e0e0" }}>
+                  <span>Sub Total:</span>
+                  <span>₹{calculations.subTotal.toLocaleString("en-IN")}</span>
+                </Box>
 
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <span>Additional Charges</span>
-                        <span>
-                          ₹
-                          {calculations.additionalCharges.toLocaleString(
-                            "en-IN"
-                          )}
-                        </span>
-                      </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", py: 0.75, fontSize: { xs: "0.75rem", sm: "0.85rem" }, borderBottom: "1px solid #e0e0e0" }}>
+                  <span>Discount:</span>
+                  <span>₹{calculations.discount.toLocaleString("en-IN")}</span>
+                </Box>
 
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                        }}
-                      >
-                        <span>GST ({calculations.gstRate}%)</span>
-                        <span>
-                          ₹{calculations.gstAmount.toLocaleString("en-IN")}
-                        </span>
-                      </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", py: 0.75, fontSize: { xs: "0.75rem", sm: "0.85rem" }, borderBottom: "1px solid #e0e0e0" }}>
+                  <span>Additional Charges:</span>
+                  <span>₹{calculations.additionalCharges.toLocaleString("en-IN")}</span>
+                </Box>
 
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          borderTop: "2px solid #222",
-                          mt: 1,
-                          pt: 0.5,
-                          fontWeight: "600",
-                        }}
-                      >
-                        <span>Grand Total</span>
-                        <span>
-                          ₹{calculations.grandTotal.toLocaleString("en-IN")}
-                        </span>
-                      </Box>
-                    </Box>
-                  </Box>
-                </Grid>
-              </CardContent>
-            </Card>
-          </div>
-        </Grid>
-      </Grid>
+                <Box sx={{ display: "flex", justifyContent: "space-between", py: 0.75, fontSize: { xs: "0.75rem", sm: "0.85rem" }, borderBottom: "1px solid #e0e0e0" }}>
+                  <span>GST ({calculations.gstRate}%):</span>
+                  <span>₹{calculations.gstAmount.toLocaleString("en-IN")}</span>
+                </Box>
 
-      {/* Snackbar for notifications */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    pt: 1.5,
+                    fontWeight: 700,
+                    fontSize: { xs: "0.95rem", sm: "1.1rem" },
+                    color: "#333"
+                  }}
+                >
+                  <span>Grand Total:</span>
+                  <span>₹{calculations.grandTotal.toLocaleString("en-IN")}</span>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
@@ -640,7 +889,48 @@ const PublicQuoteDetailsView = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </>
+
+      {/* Edit Request Dialog */}
+      <Dialog open={editDialogOpen} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Request</DialogTitle>
+
+        <Divider />
+
+        <DialogContent sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Please provide a reason for requesting changes:
+          </Typography>
+
+          <TextField
+            autoFocus
+            multiline
+            rows={4}
+            fullWidth
+            variant="outlined"
+            label="Reason for Edit Request"
+            value={editReason}
+            onChange={(e) => setEditReason(e.target.value)}
+          />
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseEditDialog}>Cancel</Button>
+          <Button
+            onClick={submitEditRequest}
+            variant="contained"
+            color="primary"
+            disabled={submittingEditRequest || !editReason.trim()}
+          >
+            {submittingEditRequest ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              "Submit Request"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+    </Box>
   );
 };
 

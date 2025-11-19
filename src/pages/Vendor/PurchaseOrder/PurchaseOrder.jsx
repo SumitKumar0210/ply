@@ -27,9 +27,8 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
-import { useDispatch } from "react-redux";
-import api from "../../../api";
-import { deletePO } from "../slice/purchaseOrderSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { deletePO, fetchPurchaseOrders } from "../slice/purchaseOrderSlice";
 
 // Status mapping: 0-draft, 1-save, 2-reject, 3-approve
 const STATUS_CONFIG = {
@@ -60,12 +59,16 @@ const PurchaseOrder = () => {
   const navigate = useNavigate();
   const tableContainerRef = useRef(null);
   const dispatch = useDispatch();
+  const debounceTimerRef = useRef(null);
+
+  // Get data from Redux store
+  const { orders: tableData, totalRows, loading } = useSelector(
+    (state) => state.purchaseOrder
+  );
 
   // State management
-  const [tableData, setTableData] = useState([]);
-  const [totalRows, setTotalRows] = useState(0);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [loading, setLoading] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [alertMessage, setAlertMessage] = useState("");
@@ -78,31 +81,71 @@ const PurchaseOrder = () => {
     setTimeout(() => setAlertMessage(""), 4000);
   }, []);
 
-  // Fetch data from API
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const { pageIndex, pageSize } = pagination;
+  // Fetch data using Redux thunk
+  const fetchData = useCallback(
+    async (searchQuery = "") => {
+      try {
+        await dispatch(
+          fetchPurchaseOrders({
+            page: pagination.pageIndex + 1,
+            perPage: pagination.pageSize,
+            search: searchQuery,
+          })
+        ).unwrap();
+      } catch (error) {
+        console.error("Fetch error:", error);
+        showAlert("Failed to fetch purchase orders", "error");
+      }
+    },
+    [dispatch, pagination.pageIndex, pagination.pageSize, showAlert]
+  );
 
-    try {
-      const res = await api.get(
-        `admin/purchase-order/get-data?page=${pageIndex + 1}&per_page=${pageSize}`
-      );
-      setTableData(res.data.data || []);
-      setTotalRows(res.data.total || 0);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      showAlert("Failed to fetch purchase orders", "error");
-      setTableData([]);
-      setTotalRows(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination, showAlert]);
+  // Debounced search function with 2 second delay
+  const debouncedSearch = useCallback(
+    (searchValue) => {
+      // Clear existing timer
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      // Set new timer for 2 seconds
+      debounceTimerRef.current = setTimeout(() => {
+        // Reset to first page when searching
+        setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+        fetchData(searchValue);
+      }, 2000);
+    },
+    [fetchData]
+  );
+
+  // Handle global filter change
+  const handleGlobalFilterChange = useCallback(
+    (value) => {
+      setGlobalFilter(value);
+      debouncedSearch(value);
+    },
+    [debouncedSearch]
+  );
 
   // Fetch when pagination changes
   useEffect(() => {
+    fetchData(globalFilter);
+  }, [pagination.pageIndex, pagination.pageSize]);
+
+  // Initial fetch
+  useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Navigation handlers
   const handleViewClick = useCallback(
@@ -128,13 +171,14 @@ const PurchaseOrder = () => {
       await dispatch(deletePO(deleteId)).unwrap();
       setOpenDelete(false);
       setDeleteId(null);
+      showAlert("Purchase order deleted successfully", "success");
       // Reload the table data after successful deletion
-      fetchData();
+      fetchData(globalFilter);
     } catch (error) {
       console.error("Delete error:", error);
-      
+      showAlert("Failed to delete purchase order", "error");
     }
-  }, [deleteId, dispatch, showAlert, fetchData]);
+  }, [deleteId, dispatch, showAlert, fetchData, globalFilter]);
 
   // Table columns
   const columns = useMemo(
@@ -335,15 +379,18 @@ const PurchaseOrder = () => {
           columns={columns}
           data={tableData}
           manualPagination
+          manualFiltering
           rowCount={totalRows}
           state={{
             pagination,
             isLoading: loading,
+            globalFilter,
           }}
           onPaginationChange={setPagination}
+          onGlobalFilterChange={handleGlobalFilterChange}
           enableTopToolbar
-          enableColumnFilters
-          enableSorting
+          enableColumnFilters={false}
+          enableSorting={false}
           enableBottomToolbar
           enableGlobalFilter
           enableDensityToggle={false}

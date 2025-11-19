@@ -9,25 +9,10 @@ import { store } from './app/store.js';
 import { Provider } from 'react-redux';
 import { ToastContainer, toast, Bounce } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { setFavicon } from './components/setFavicon.js';
-import { setTitle } from './components/setTitle.js';
+import { initializeAppDetails } from './components/appUtils.js';
 
 
-async function loadFavicon() {
-  const favicon = localStorage.getItem("favicon");
-  const applicationName = localStorage.getItem("application_name");
-
-  if (favicon) {
-    setFavicon(favicon);
-    return;
-  }
-  if (applicationName) {
-    setTitle(applicationName);
-    return;
-  }
-}
-
-await loadFavicon();
+initializeAppDetails();
 createRoot(document.getElementById('root')).render(
   <Provider store={store}>
     <ThemeProvider theme={theme}>

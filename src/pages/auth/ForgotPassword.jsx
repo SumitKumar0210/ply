@@ -13,7 +13,7 @@ import { forgotPassword } from "./authSlice";
 import { useDispatch } from "react-redux";
 
 const ForgotPassword = () => {
-  const paperStyle = { padding: "20px 30px", height: "420px", width: 350 };
+  const paperStyle = { padding: "20px 30px", width: 350 };
   const dispatch = useDispatch();
 
   const [email, setEmail] = useState("");
@@ -25,7 +25,14 @@ const ForgotPassword = () => {
     setError("");
     setSuccess("");
 
-    if (!email || email.length < 4 || !email.includes("@")) {
+    if (!email || email.trim().length < 4) {
+      setError("Email must be at least 4 characters long.");
+      return;
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(email.trim())) {
       setError("Please enter a valid email address.");
       return;
     }

@@ -7,14 +7,6 @@ const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
 const AuthContext = createContext();
 
-// Define public routes that don't require authentication
-const PUBLIC_ROUTES = [
-  "/login",
-  "/forget",
-  "/reset-password",
-  "/quotation", // This makes all /quotation/* routes public
-];
-
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,35 +24,29 @@ export const AuthProvider = ({ children }) => {
     logo: "",
     application_name: "",
     horizontal_logo: "",
-    company_address: "",
-    gst_no: "",
   });
-
-  // Check if current route is public
-  const isPublicRoute = (pathname) => {
-    return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
-  };
 
   // Fetch app details
   useEffect(() => {
     const fetchAppDetails = async () => {
+      // Check if app details exist in localStorage
       const storedFavicon = localStorage.getItem("favicon");
       const storedLogo = localStorage.getItem("logo");
       const horizontalLogo = localStorage.getItem("horizontalLogo");
       const storedAppName = localStorage.getItem("application_name");
 
       if (storedFavicon && storedLogo && storedAppName) {
+        // Use stored data if available
         setAppDetails({
           favicon: storedFavicon,
           logo: storedLogo,
           application_name: storedAppName,
           horizontal_logo: horizontalLogo,
-          company_address: "",
-          gst_no: "",
         });
         return;
       }
 
+      // Fetch from API if not in localStorage
       try {
         const res = await axios.get(`${BASE_URL}app-details`);
        
@@ -71,20 +57,21 @@ export const AuthProvider = ({ children }) => {
           const horizontalLogo = appData.horizontal_logo ? mediaUrl + appData.horizontal_logo : "";
           const applicationName = appData.app_name || "";
 
+          // Store in localStorage
           localStorage.setItem("favicon", favicon);
           localStorage.setItem("logo", logo);
           localStorage.setItem("horizontalLogo", horizontalLogo);
           localStorage.setItem("application_name", applicationName);
 
+          // Update state
           setAppDetails({
             favicon,
             logo,
             application_name: applicationName,
-            horizontal_logo: horizontalLogo,
-            company_address: appData.address ?? "",
-            gst_no: appData.gst_no ?? "",
+            horizontal_logo: horizontalLogo
           });
 
+          // Update favicon dynamically
           if (favicon) {
             const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
             link.type = 'image/x-icon';
@@ -93,6 +80,7 @@ export const AuthProvider = ({ children }) => {
             document.getElementsByTagName('head')[0].appendChild(link);
           }
 
+          // Update document title
           if (applicationName) {
             document.title = applicationName;
           }
@@ -105,25 +93,13 @@ export const AuthProvider = ({ children }) => {
     fetchAppDetails();
   }, []);
 
-  // Check authentication - ONLY for protected routes
   useEffect(() => {
     const checkToken = async () => {
-      // Skip auth check for public routes
-      if (isPublicRoute(location.pathname)) {
-        setLoading(false);
-        return;
-      }
-
       const token = localStorage.getItem("token");
       if (!token) {
         setLoading(false);
-        // Only redirect to login if NOT on a public route
-        if (!isPublicRoute(location.pathname)) {
-          navigate("/login", { replace: true });
-        }
         return;
       }
-
       setLoading(true);
       try {
         const res = await axios.post(
@@ -143,20 +119,14 @@ export const AuthProvider = ({ children }) => {
             profileImage: res.data.image ? mediaUrl + res.data.image : "",
             type: res.data.user_type?.name ?? "",
           });
-          
-          // If user is authenticated and on login/forget page, redirect to dashboard
           if (location.pathname === "/login" || location.pathname === "/forget") {
             navigate("/dashboard", { replace: true });
           }
         } else {
           localStorage.removeItem("token");
           setIsAuthenticated(false);
-          if (!isPublicRoute(location.pathname)) {
-            navigate("/login", { replace: true });
-          }
         }
       } catch (error) {
-        console.error("Auth check failed:", error);
         handleLogoutAndRedirect();
       }
 
@@ -164,15 +134,12 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkToken();
-  }, [location.pathname]); // Re-run when route changes
+  }, []);
 
   const handleLogoutAndRedirect = () => {
     localStorage.removeItem("token");
     setIsAuthenticated(false);
-    // Only redirect if not already on public route
-    if (!isPublicRoute(location.pathname)) {
-      navigate("/login", { replace: true });
-    }
+    navigate("/login", { replace: true });
   };
 
   const login = (token) => {
@@ -184,29 +151,28 @@ export const AuthProvider = ({ children }) => {
     handleLogoutAndRedirect();
   };
 
+  // Function to refresh app details (useful if data changes)
   const refreshAppDetails = async () => {
     try {
       const res = await axios.get(`${BASE_URL}app-details`);
       
-      const appData = res.data.data[0];
-      if (appData) {
-        const favicon = appData.favicon ? mediaUrl + appData.favicon : "";
-        const logo = appData.logo ? mediaUrl + appData.logo : "";
-        const horizontalLogo = appData.horizontal_logo ? mediaUrl + appData.horizontal_logo : "";
-        const applicationName = appData.app_name || "";
+        const appData = res.data.data[0];
+        if (appData) {
+          const favicon = appData.favicon ? mediaUrl + appData.favicon : "";
+          const logo = appData.logo ? mediaUrl + appData.logo : "";
+          const horizontalLogo = appData.horizontal_logo ? mediaUrl + appData.horizontal_logo : "";
+          const applicationName = appData.app_name || "";
 
-        localStorage.setItem("favicon", favicon);
-        localStorage.setItem("logo", logo);
-        localStorage.setItem("horizontalLogo", horizontalLogo);
-        localStorage.setItem("application_name", applicationName);
+          // Store in localStorage
+          localStorage.setItem("favicon", favicon);
+          localStorage.setItem("logo", logo);
+          localStorage.setItem("horizontalLogo", horizontalLogo);
+          localStorage.setItem("application_name", applicationName);
 
         setAppDetails({
           favicon,
           logo,
-          application_name: applicationName,
-          horizontal_logo: horizontalLogo,
-          company_address: appData.address ?? "",
-          gst_no: appData.gst_no ?? "",
+          application_name: applicationName
         });
 
         if (favicon) {

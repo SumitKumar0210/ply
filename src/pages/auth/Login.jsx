@@ -19,15 +19,21 @@ import { useEffect } from "react";
 const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
 const Login = () => {
-  const paperStyle = { padding: "20px 30px", height: "380px", width: 350 };
+  const paperStyle = { padding: "20px 30px", width: 350 };
   const navigate = useNavigate();
   const { setUser } = useAuth();
   const dispatch = useDispatch();
 
   const validationSchema = Yup.object({
     email: Yup.string()
-      .email("Invalid email format")
-      .min(4, "Email must be at least 4 characters")
+      .trim()
+      .email("Please enter a valid email address") // basic RFC email check
+      .matches(
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+        "Please enter a valid email address"
+      ) // custom regex check
+      .min(4, "Email must be at least 4 characters long")
+      .max(100, "Email cannot exceed 100 characters")
       .required("Email is required"),
     password: Yup.string()
       .min(4, "Password must be at least 4 characters")
@@ -72,7 +78,7 @@ const Login = () => {
   return (
     <Paper elevation={10} style={paperStyle}>
       <Grid align="center">
-        <img src={storedLogo??Logo} alt="logo" style={{ width: "80px" }} />
+        <img src={storedLogo ?? Logo} alt="logo" style={{ width: "80px" }} />
         <Typography variant="h5" component="h2" sx={{ mb: 1 }}>
           Sign In
         </Typography>

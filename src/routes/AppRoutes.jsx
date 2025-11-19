@@ -46,6 +46,7 @@ import PublicQuoteDetailsView from "../pages/Public/Quotation";
 import Order from "../pages/Customer/Order/Order";
 import OwnProductionOrder from "../pages/Production/order";
 import AddOrder from "../pages/Production/addOrder";
+import Customer from "../pages/Customer/Ledger/Customer";
 
 import Error404 from "../pages/error/404";
 
@@ -54,6 +55,9 @@ const AppRoutes = () => {
     <Routes>
       {/* Default → Login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
+
+      {/* public link */}
+      <Route path="/quotation/:link" element={<PublicQuoteDetailsView />} />
 
       {/* Auth pages */}
       <Route path="/login" element={<AuthLayout><Login /></AuthLayout>} />
@@ -84,24 +88,25 @@ const AppRoutes = () => {
       <Route path="/vendor/create-vendor" element={<ProtectedRoute><MainLayout><CreateVendor /></MainLayout></ProtectedRoute>} />
 
       {/* Customer */}
-      <Route path="/customer/dashboard" element={<ProtectedRoute><MainLayout><CustomerDashboard/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/quote" element={<ProtectedRoute><MainLayout><Quote/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/quote/view/:id" element={<ProtectedRoute><MainLayout><QuoteDetailsView/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/quote/create" element={<ProtectedRoute><MainLayout><CreateQuote/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/quote/edit/:id" element={<ProtectedRoute><MainLayout><EditQuote/></MainLayout></ProtectedRoute>}/>
-      <Route path="/quotation/:link" element={<AuthLayout><PublicQuoteDetailsView/></AuthLayout>}/>
-      <Route path="/customer/order" element={<ProtectedRoute><MainLayout><Order/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/order/view/:id" element={<ProtectedRoute><MainLayout><OrderDetailsView/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/order/create" element={<ProtectedRoute><MainLayout><CreateOrder/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/order/edit/:id" element={<ProtectedRoute><MainLayout><EditOrder/></MainLayout></ProtectedRoute>}/>
-      <Route path="/customer/ledger" element={<ProtectedRoute><MainLayout><CustomerLedger/></MainLayout></ProtectedRoute>}/>
+      <Route path="/customer/dashboard" element={<ProtectedRoute><MainLayout><CustomerDashboard /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/quote" element={<ProtectedRoute><MainLayout><Quote /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/quote/view/:id" element={<ProtectedRoute><MainLayout><QuoteDetailsView /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/quote/create" element={<ProtectedRoute><MainLayout><CreateQuote /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/quote/edit/:id" element={<ProtectedRoute><MainLayout><EditQuote /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/order" element={<ProtectedRoute><MainLayout><Order /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/order/view/:id" element={<ProtectedRoute><MainLayout><OrderDetailsView /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/order/create" element={<ProtectedRoute><MainLayout><CreateOrder /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/order/edit/:id" element={<ProtectedRoute><MainLayout><EditOrder /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/list" element={<ProtectedRoute><MainLayout><Customer /></MainLayout></ProtectedRoute>} />
+      <Route path="/customer/ledger/:id" element={<ProtectedRoute><MainLayout><CustomerLedger /></MainLayout></ProtectedRoute>} />
+
 
       {/* Production */}
-      <Route path="/production/create-order" element={<ProtectedRoute><MainLayout><AddOrder/></MainLayout></ProtectedRoute>}/>
-      <Route path="/production/orders" element={<ProtectedRoute><MainLayout><OwnProductionOrder/></MainLayout></ProtectedRoute>}/>
+      <Route path="/production/create-order" element={<ProtectedRoute><MainLayout><AddOrder /></MainLayout></ProtectedRoute>} />
+      <Route path="/production/orders" element={<ProtectedRoute><MainLayout><OwnProductionOrder /></MainLayout></ProtectedRoute>} />
 
       {/* Catch-all */}
-       <Route path="*" element={<Error404 />} />
+      <Route path="*" element={<Error404 />} />
     </Routes>
   );
 };
