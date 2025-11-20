@@ -8,6 +8,8 @@ import {
   IconButton,
   TextField,
   Tooltip,
+  Skeleton,
+  DialogContentText,
 } from "@mui/material";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -38,7 +40,7 @@ import {
   sequenceUpdate,
 } from "../slices/departmentSlice";
 import { useDispatch, useSelector } from "react-redux";
-
+import DepartmentFormDialog from "../../../components/Department/DepartmentFormDialog";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -65,19 +67,30 @@ class ErrorBoundary extends React.Component {
 }
 
 
-const BootstrapDialog = styled(Dialog)(({ theme }) => ({
-  "& .MuiDialogContent-root": { padding: theme.spacing(2) },
-  "& .MuiDialogActions-root": { padding: theme.spacing(1) },
-}));
 
+// Skeleton Loading Component for Table
+const TableSkeleton = () => {
+  return (
+    <Box sx={{ p: 2 }}>
+      {[...Array(6)].map((_, index) => (
+        <Box key={index} sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center" }}>
+          <Skeleton variant="text" width="40%" height={40} />
+          <Skeleton variant="text" width="20%" height={40} />
+          <Skeleton variant="text" width="15%" height={40} />
+          <Skeleton variant="text" width="15%" height={40} />
+        </Box>
+      ))}
+    </Box>
+  );
+};
 
 const Department = () => {
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
-
-  
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteData, setDeleteData] = useState(null);
   const [editData, setEditData] = useState(null);
   const [sequenceValues, setSequenceValues] = useState({});
 
@@ -85,19 +98,10 @@ const Department = () => {
     (state) => state.department
   );
 
-  
-  const validationSchema = Yup.object({
-    name: Yup.string()
-      .min(2, "Department must be at least 2 characters")
-      .required("Department is required"),
-  });
-
-  
   useEffect(() => {
     dispatch(fetchDepartments());
   }, [dispatch]);
 
- 
   useEffect(() => {
     if (tableData.length > 0) {
       const init = {};
@@ -106,7 +110,6 @@ const Department = () => {
     }
   }, [tableData]);
 
-  
   const debouncedSequenceUpdate = useMemo(
     () =>
       debounce((id, value) => {
@@ -128,7 +131,6 @@ const Department = () => {
     return () => debouncedSequenceUpdate.cancel();
   }, [debouncedSequenceUpdate]);
 
-  
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
@@ -141,7 +143,6 @@ const Department = () => {
     setEditData(null);
   };
 
-  
   const handleAdd = async (values, resetForm) => {
     const res = await dispatch(addDepartment(values));
     if (!res.error) {
@@ -158,49 +159,88 @@ const Department = () => {
     }
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this department?")) {
-      dispatch(deleteDepartment(id));
-    }
-  };
 
-  
+  const handleDelete = (row) => {
+    setDeleteData(row);
+    setOpenDelete(true)
+  };
+  const handleConfirmDelete = async (id) => {
+    await dispatch(deleteDepartment(id));
+    setDeleteData(null);
+    setOpenDelete(false)
+  }
+
+
   const columns = useMemo(
     () => [
-      { accessorKey: "name", header: "Department" },
+      {
+        accessorKey: "name",
+        header: "Department",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue()
+      },
+      {
+        accessorKey: "color",
+        header: "Color",
+        Cell: ({ cell, row }) => {
+          if (loading) return <Skeleton variant="text" width="60%" />;
+
+          return (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  width: 20,
+                  height: 20,
+                  backgroundColor: cell.getValue() || "#ccc",
+                  borderRadius: 1,
+                  border: "1px solid #ddd"
+                }}
+              />
+              <Typography variant="body2">{cell.getValue()}</Typography>
+            </Box>
+          );
+        },
+      },
       {
         accessorKey: "sequence",
         header: "Sequence",
-        Cell: ({ row }) => (
-          <TextField
-            type="number"
-            size="small"
-            disabled={(row.original.sequence == 1 || row.original.sequence ==2 || row.original.sequence ==3 || row.original.sequence ==4)}
-            value={sequenceValues[row.original.id] ?? row.original.sequence ?? ""}
-            onChange={(e) => handleSequenceChange(row.original.id, e.target.value)}
-            inputProps={{ min: 0 }}
-            sx={{ width: 80 }}
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
+
+          return (
+            <TextField
+              type="number"
+              size="small"
+              // disabled={(row.original.sequence == 1 || row.original.sequence == 2 || row.original.sequence == 3 || row.original.sequence == 4)}
+              value={sequenceValues[row.original.id] ?? row.original.sequence ?? ""}
+              onChange={(e) => handleSequenceChange(row.original.id, e.target.value)}
+              inputProps={{ min: 0 }}
+              sx={{ width: 80 }}
+            />
+          );
+        },
       },
       {
         accessorKey: "status",
         header: "Status",
         enableSorting: false,
         enableColumnFilter: false,
-        Cell: ({ row }) => (
-          <CustomSwitch
-            checked={!!row.original.status}
-            onChange={(e) =>
-              dispatch(
-                statusUpdate({
-                  ...row.original,
-                  status: e.target.checked ? 1 : 0,
-                })
-              )
-            }
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+
+          return (
+            <CustomSwitch
+              checked={!!row.original.status}
+              onChange={(e) =>
+                dispatch(
+                  statusUpdate({
+                    ...row.original,
+                    status: e.target.checked ? 1 : 0,
+                  })
+                )
+              }
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -209,28 +249,31 @@ const Department = () => {
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton onClick={() => handleEditOpen(row.original)}>
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            {!(row.original.sequence == 1 || row.original.sequence ==2 || row.original.sequence ==3 || row.original.sequence ==4) &&(
-              <Tooltip title="Delete">
-              <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-            )}
-          </Box>
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
+
+          return (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              <Tooltip title="Edit">
+                <IconButton onClick={() => handleEditOpen(row.original)}>
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+              {!(row.original.sequence == 1 || row.original.sequence == 2 || row.original.sequence == 3 || row.original.sequence == 4) && (
+                <Tooltip title="Delete">
+                  <IconButton color="error" onClick={() => handleDelete(row.original)}>
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          );
+        },
       },
     ],
-    [dispatch, handleSequenceChange, sequenceValues]
+    [dispatch, handleSequenceChange, sequenceValues, loading]
   );
 
-  
   const getRowId = (row) => row.id;
 
   const downloadCSV = () => {
@@ -266,7 +309,6 @@ const Department = () => {
     w.print();
   };
 
-  
   return (
     <ErrorBoundary>
       <Grid container spacing={2}>
@@ -329,91 +371,47 @@ const Department = () => {
       </Grid>
 
       {/* Add Modal */}
-      <BootstrapDialog onClose={handleClose} open={open} fullWidth maxWidth="xs">
-        <DialogTitle>Add Department</DialogTitle>
-        <IconButton
-          aria-label="close"
-          onClick={handleClose}
-          sx={{ position: "absolute", right: 8, top: 8 }}
-        >
-          <CloseIcon />
-        </IconButton>
-
-        <Formik
-          initialValues={{ name: "" }}
-          validationSchema={validationSchema}
-          onSubmit={async (values, { resetForm }) => handleAdd(values, resetForm)}
-        >
-          {({ values, errors, touched, handleChange }) => (
-            <Form>
-              <DialogContent dividers>
-                <TextField
-                  fullWidth
-                  name="name"
-                  label="Department"
-                  variant="standard"
-                  value={values.name}
-                  onChange={handleChange}
-                  error={touched.name && Boolean(errors.name)}
-                  helperText={touched.name && errors.name}
-                />
-              </DialogContent>
-              <DialogActions>
-                <Button variant="outlined" color="error" onClick={handleClose}>
-                  Close
-                </Button>
-                <Button type="submit" variant="contained">
-                  Submit
-                </Button>
-              </DialogActions>
-            </Form>
-          )}
-        </Formik>
-      </BootstrapDialog>
+      <DepartmentFormDialog
+        open={open}
+        onClose={handleClose}
+        onSubmit={async (values, { resetForm }) => handleAdd(values, resetForm)}
+        initialValues={{ name: "", color: "" }}
+        title="Add Department"
+        submitButtonText="Submit"
+      />
 
       {/* Edit Modal */}
-      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
-        <DialogTitle>Edit Department</DialogTitle>
-        <IconButton
-          aria-label="close"
-          onClick={handleEditClose}
-          sx={{ position: "absolute", right: 8, top: 8 }}
-        >
-          <CloseIcon />
-        </IconButton>
+      <DepartmentFormDialog
+        open={editOpen}
+        onClose={handleEditClose}
+        onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
+        initialValues={{
+          name: editData?.name || "",
+          color: editData?.color || ""
+        }}
+        title="Edit Department"
+        submitButtonText="Save Changes"
+      />
 
-        <Formik
-          initialValues={{ name: editData?.name || "" }}
-          validationSchema={validationSchema}
-          enableReinitialize
-          onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
-        >
-          {({ values, errors, touched, handleChange }) => (
-            <Form>
-              <DialogContent dividers>
-                <TextField
-                  fullWidth
-                  name="name"
-                  label="Department"
-                  variant="standard"
-                  value={values.name}
-                  onChange={handleChange}
-                  error={touched.name && Boolean(errors.name)}
-                  helperText={touched.name && errors.name}
-                />
-              </DialogContent>
-              <DialogActions>
-                <Button variant="outlined" color="error" onClick={handleEditClose}>
-                  Close
-                </Button>
-                <Button type="submit" variant="contained">
-                  Save Changes
-                </Button>
-              </DialogActions>
-            </Form>
-          )}
-        </Formik>
-      </BootstrapDialog>
+      {/* Delete Modal */}
+      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
+        <DialogTitle>{"Delete this department?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
+
+          <Button
+            onClick={() => handleConfirmDelete(deleteData?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ErrorBoundary>
   );
 };

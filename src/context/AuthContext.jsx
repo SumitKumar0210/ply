@@ -10,9 +10,9 @@ const AuthContext = createContext();
 // Define public routes that don't require authentication
 const PUBLIC_ROUTES = [
   "/login",
-  "/forget",
+  "/forgot-password",
   "/reset-password",
-  "/quotation", // This makes all /quotation/* routes public
+  "/quotation", 
 ];
 
 export const AuthProvider = ({ children }) => {

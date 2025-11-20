@@ -29,6 +29,8 @@ import { RiFileList3Line } from "react-icons/ri";
 import { IoConstructOutline } from "react-icons/io5";
 import { TbUsersPlus } from "react-icons/tb";
 import { useAuth } from "../../context/AuthContext";
+import { RiFlowChart } from "react-icons/ri";
+
 
 
 
@@ -74,6 +76,7 @@ const menuSections = [
         text: "Production",
         icon: <FiUsers />,
         children: [
+          { text: "Production Chain", to: "/production/production-chain", icon: <RiFlowChart /> },
           { text: "Order", to: "/production/orders", icon: <MdOutlineDashboard /> },
         ],
       },
