@@ -15,6 +15,19 @@ export const fetchLabours = createAsyncThunk(
   }
 );
 
+export const fetchActiveLabours = createAsyncThunk(
+  "labour/fetchActiveLabours",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get("admin/labour/get-data?status=1");
+      return res.data.data;  
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || "Fetch failed");
+    }
+  }
+);
+
+
 //  Add labour
 export const addLabour = createAsyncThunk(
   "labour/add",
@@ -84,6 +97,7 @@ const labourSlice = createSlice({
   name: "labour",
   initialState: {
     data: [],
+    activeLabours : [],
     loading: false,
     error: null,
   },
@@ -94,6 +108,11 @@ const labourSlice = createSlice({
       .addCase(fetchLabours.pending, (state) => { state.loading = true; })
       .addCase(fetchLabours.fulfilled, (state, action) => { state.loading = false; state.data = action.payload; })
       .addCase(fetchLabours.rejected, (state, action) => { state.loading = false; state.error = action.payload || action.error.message; })
+     
+      // Fetch
+      .addCase(fetchActiveLabours.pending, (state) => { state.loading = true; })
+      .addCase(fetchActiveLabours.fulfilled, (state, action) => { state.loading = false; state.activeLabours = action.payload; })
+      .addCase(fetchActiveLabours.rejected, (state, action) => { state.loading = false; state.error = action.payload || action.error.message; })
 
       // Add
       .addCase(addLabour.fulfilled, (state, action) => { state.data.unshift(action.payload); })

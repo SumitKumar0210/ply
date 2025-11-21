@@ -16,12 +16,12 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useEffect } from "react";
 
-const mediaUrl = import.meta.env.VITE_MEDIA_URL;
+const mediaUrl = import.meta.env.VITE_MEDIA_URL; 
 
 const Login = () => {
   const paperStyle = { padding: "20px 30px", width: 350 };
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { setUser, appDetails } = useAuth();
   const dispatch = useDispatch();
 
   const validationSchema = Yup.object({
@@ -78,7 +78,7 @@ const Login = () => {
   return (
     <Paper elevation={10} style={paperStyle}>
       <Grid align="center">
-        <img src={storedLogo ?? Logo} alt="logo" style={{ width: "80px" }} />
+        <img src={appDetails.logo ?? storedLogo ?? Logo} alt="logo" style={{ width: "80px" }} />
         <Typography variant="h5" component="h2" sx={{ mb: 1 }}>
           Sign In
         </Typography>

@@ -22,7 +22,7 @@ function NavigationMenu() {
     const dispatch = useDispatch();
 
     // Get both productionData and activeBatch from Redux
-    const { data: productionData = [], loading, error, activeBatch } = useSelector(
+    const { data: productionData = [], productionLoading, error, activeBatch } = useSelector(
         (state) => state.productionChain
     );
 
@@ -39,7 +39,7 @@ function NavigationMenu() {
         dispatch(setActiveBatch(batch));
     };
 
-    if (loading) {
+    if (productionLoading) {
         return (
             <List sx={{ p: 0 }}>
                 {[1, 2, 3].map((i) => (

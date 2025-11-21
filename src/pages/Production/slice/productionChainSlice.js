@@ -21,11 +21,48 @@ export const fetchProductionChainOrder = createAsyncThunk(
   }
 );
 
+export const fetchBatchProduct = createAsyncThunk(
+  "productionChain/fetchBatchProduct",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/get-batch-products`, values);
+      successMessage(res.data.message);
+
+      return {
+        data: res.data.data || [],
+        totalRecords: res.data.totalRecords || 0,
+      };
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+// change product department
+export const changeProductDepartment = createAsyncThunk(
+  "productionChain/changeProductDepartment",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/change-product-department`, values);
+      successMessage(res.data.message);
+      return  res.data.data || [];
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 const productionChainSlice = createSlice({
   name: "productionChain",
   initialState: {
     data: [],
+    batchProduct: [],
     loading: false,
+    productionLoading: false,
     error: null,
     activeBatch: null,
     totalRecords: 0,
@@ -43,15 +80,28 @@ const productionChainSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchProductionChainOrder.pending, (state) => {
-        state.loading = true;
+        state.productionLoading = true;
         state.error = null;
       })
       .addCase(fetchProductionChainOrder.fulfilled, (state, action) => {
-        state.loading = false;
+        state.productionLoading = false;
         state.data = action.payload.data;
         state.totalRecords = action.payload.totalRecords;
       })
       .addCase(fetchProductionChainOrder.rejected, (state, action) => {
+        state.productionLoading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(fetchBatchProduct.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchBatchProduct.fulfilled, (state, action) => {
+        state.loading = false;
+        state.batchProduct = action.payload.data;
+      })
+      .addCase(fetchBatchProduct.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

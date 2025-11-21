@@ -14,6 +14,19 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
+//  Fetch all active supervisor
+export const fetchActiveSupervisor = createAsyncThunk(
+  "users/fetchActiveSupervisor",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.post("admin/user/get-supervisor");
+      return res.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || "Failed to fetch users");
+    }
+  }
+);
+
 //  Add user
 export const addUser = createAsyncThunk(
   "users/add",
@@ -21,8 +34,8 @@ export const addUser = createAsyncThunk(
     try {
       const res = await api.post("admin/user/store", newUser);
       successMessage(res.data.message);
-       return res.data.data;
-    }  catch (error) {
+      return res.data.data;
+    } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
       return rejectWithValue(errMsg);
@@ -38,7 +51,7 @@ export const updateUser = createAsyncThunk(
       const res = await api.post(`admin/user/update/${id}`, updated);
       successMessage(res.data.message);
       return res.data.data;
-    }  catch (error) {
+    } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
       return rejectWithValue(errMsg);
@@ -54,7 +67,7 @@ export const statusUpdate = createAsyncThunk(
       const res = await api.post("admin/user/status-update", { id, status });
       successMessage(res.data.message);
       return { id, status };
-    }  catch (error) {
+    } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
       return rejectWithValue(errMsg);
@@ -70,7 +83,7 @@ export const deleteUser = createAsyncThunk(
       const res = await api.post(`admin/user/delete/${id}`);
       successMessage(res.data.message);
       return id;
-    }  catch (error) {
+    } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
       return rejectWithValue(errMsg);
@@ -83,6 +96,7 @@ const userSlice = createSlice({
   name: "users",
   initialState: {
     data: [],
+    supervisor: [],
     loading: false,
     error: null,
   },
@@ -99,6 +113,20 @@ const userSlice = createSlice({
         state.data = action.payload;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // fetch Active Supervisor
+      .addCase(fetchActiveSupervisor.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchActiveSupervisor.fulfilled, (state, action) => {
+        state.loading = false;
+        state.supervisor = action.payload;
+      })
+      .addCase(fetchActiveSupervisor.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

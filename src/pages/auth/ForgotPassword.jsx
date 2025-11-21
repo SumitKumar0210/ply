@@ -11,8 +11,13 @@ import { Link as RouterLink } from "react-router-dom";
 import Logo from "../../assets/images/aarish-logo.png";
 import { forgotPassword } from "./authSlice";
 import { useDispatch } from "react-redux";
+import { useAuth } from "../../context/AuthContext";
+
 
 const ForgotPassword = () => {
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL; 
+  const { appDetails } = useAuth();
+  
   const paperStyle = { padding: "20px 30px", width: 350 };
   const dispatch = useDispatch();
 
@@ -53,7 +58,7 @@ const ForgotPassword = () => {
     <Paper elevation={10} style={paperStyle}>
       <Grid align="center">
         <img
-          src={Logo}
+          src={appDetails?.logo ??Logo}
           alt="logo"
           style={{ width: "100px", marginBottom: "10px" }}
         />
