@@ -5,17 +5,24 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // Fetch quotations with pagination
 export const fetchQuotation = createAsyncThunk(
   "quotation/fetchQuotation",
-  async ({ pageIndex, pageLimit }, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const res = await api.get(`admin/quotation-order/get-data`, {
-        params: {
-          page: pageIndex + 1, 
-          limit: pageLimit
-        }
+      const page = (params.pageIndex ?? 1);
+      const limit = params.pageLimit ?? 10;
+      const search = params.search ?? "";
+
+      const res = await api.get("admin/quotation-order/get-data", {
+        params: { page, limit, search },
       });
+
+      const response = res.data;
+
       return {
-        data: res.data.data,
-        totalRecords: res.data.total || res.data.data.length
+        data: response.data || [],
+        totalRecords: response.total || 0,
+        currentPage: response.current_page || page,
+        perPage: response.per_page || limit,
+        lastPage: response.last_page || 1,
       };
     } catch (error) {
       const errMsg = getErrorMessage(error);
@@ -24,6 +31,9 @@ export const fetchQuotation = createAsyncThunk(
     }
   }
 );
+
+
+
 
 // Add quotation
 export const addQuotation = createAsyncThunk(

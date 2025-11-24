@@ -4,15 +4,33 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 //  Fetch all users
 export const fetchUsers = createAsyncThunk(
   "users/fetchAll",
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const res = await api.get("admin/user/get-data");
-      return res.data.data;
+      const { pageIndex = 1,pageLimit = 10,search = "",} = params;
+
+      const res = await api.get("admin/user/get-data", {
+        params: {page: pageIndex,limit: pageLimit,search,},
+      });
+
+      const data = res.data?.data || [];
+
+      return {
+        data,
+        totalRecords: res.data?.total ?? 0,
+        currentPage: res.data?.current_page ?? pageIndex,
+        perPage: res.data?.per_page ?? pageLimit,
+        lastPage: res.data?.last_page ?? 1,
+      };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Failed to fetch users");
+      return rejectWithValue(
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to fetch users"
+      );
     }
   }
 );
+
 
 //  Fetch all active supervisor
 export const fetchActiveSupervisor = createAsyncThunk(

@@ -17,10 +17,24 @@ export const fetchCustomers = createAsyncThunk(
 
 export const fetchActiveCustomers = createAsyncThunk(
   "customer/fetchActiveCustomers",
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const res = await api.get("admin/customer/get-data?status=1");
-      return res.data.data;
+      const {
+        page = params.pageIndex ?? 1,
+        limit = params.pageLimit ?? 10,
+        search = params.search ?? ""
+      } = params;
+
+      const res = await api.get("admin/customer/get-data", {
+        params: { status: 1, page, limit, search }
+      });
+
+      return {
+        data: res.data.data || [],
+        total: res.data.total || 0,
+        currentPage: res.data.current_page || page,
+        perPage: res.data.per_page || limit,
+      };
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || "Fetch failed");
     }
@@ -129,6 +143,9 @@ const customerSlice = createSlice({
       .addCase(fetchActiveCustomers.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload || [];
+        state.totalCount = action.payload.total;
+  state.currentPage = action.payload.currentPage;
+  state.pageSize = action.payload.perPage;
       })
       .addCase(fetchActiveCustomers.rejected, (state, action) => {
         state.loading = false;

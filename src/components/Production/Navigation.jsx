@@ -1,144 +1,212 @@
 // NavigationMenu.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
-    List,
-    ListItem,
-    ListItemButton,
-    ListItemIcon,
-    ListItemText,
-    Collapse,
-    Skeleton,
-    Box,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Collapse,
+  Skeleton,
+  Box,
+  TextField,
 } from "@mui/material";
-
+import { HiChevronUp, HiChevronDown } from "react-icons/hi2";
+import { MdOutlinePrecisionManufacturing } from "react-icons/md";
+import { VscGroupByRefType } from "react-icons/vsc";
 import { MdExpandLess, MdExpandMore } from "react-icons/md";
 import { FaBuilding, FaBox } from "react-icons/fa6";
 
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProductionChainOrder, setActiveBatch } from "../../pages/Production/slice/productionChainSlice";
+import {
+  fetchProductionChainOrder,
+  setActiveBatch,
+} from "../../pages/Production/slice/productionChainSlice";
 
 function NavigationMenu() {
-    const [openMenu, setOpenMenu] = useState({});
-    const dispatch = useDispatch();
+  const [openMenu, setOpenMenu] = useState({});
+  const [search, setSearch] = useState("");
 
-    // Get both productionData and activeBatch from Redux
-    const { data: productionData = [], productionLoading, error, activeBatch } = useSelector(
-        (state) => state.productionChain
-    );
+  const dispatch = useDispatch();
+  const {
+    data: productionData = [],
+    productionLoading,
+    error,
+    activeBatch,
+  } = useSelector((state) => state.productionChain);
 
-    useEffect(() => {
-        dispatch(fetchProductionChainOrder());
-    }, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchProductionChainOrder());
+  }, [dispatch]);
 
-    const toggleMenu = (id) => {
-        setOpenMenu((prev) => ({ ...prev, [id]: !prev[id] }));
-    };
+  const toggleMenu = (id) => {
+    setOpenMenu((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
-    // Handle batch selection - dispatches to Redux
-    const handleBatchClick = (batch) => {
-        dispatch(setActiveBatch(batch));
-    };
+  const handleBatchClick = (batch) => {
+    dispatch(setActiveBatch(batch));
+  };
 
-    if (productionLoading) {
-        return (
-            <List sx={{ p: 0 }}>
-                {[1, 2, 3].map((i) => (
-                    <Box key={i} sx={{ mb: 1, px: 1 }}>
-                        <Skeleton variant="rectangular" height={45} sx={{ borderRadius: 1 }} />
-                        <Skeleton variant="rectangular" height={35} width="80%" sx={{ mt: 1, borderRadius: 1 }} />
-                    </Box>
-                ))}
-            </List>
-        );
+  /** 🔍 FILTER LOGIC (NOW SUPPORTS PARENT SEARCH FULLY) */
+  const filteredData = useMemo(() => {
+    const term = search.toLowerCase();
+
+    return productionData.map((item) => {
+      const parentMatch = item.customer?.name?.toLowerCase().includes(term);
+
+      const batchMatches = item.batches.filter((b) =>
+        b.batch_no?.toLowerCase().includes(term)
+      );
+
+      return {
+        ...item,
+        matched: parentMatch || batchMatches.length > 0,
+        batches: parentMatch
+          ? item.batches // If parent matches → show ALL batches
+          : batchMatches, // Otherwise show filtered
+      };
+    });
+  }, [search, productionData]);
+
+  /** 🔥 AUTO EXPAND ONLY MATCHED */
+  useEffect(() => {
+    if (!search.trim()) {
+      setOpenMenu({});
+      return;
     }
 
-    if (error) {
-        return <div style={{ padding: 10, color: "red" }}>Failed to load menu.</div>;
-    }
+    const newOpenState = {};
+    filteredData.forEach((item) => {
+      if (item.matched) {
+        newOpenState[item.quotation_id] = true;
+      }
+    });
 
-    const navItems = productionData.map((item) => ({
-        id: item.quotation_id,
-        label: item.customer?.name ?? "Unknown Customer",
-        icon: <FaBuilding size={16} />,
-        open: openMenu[item.quotation_id] ?? false,
-        toggle: () => toggleMenu(item.quotation_id),
-        children: item.batches.map((batch) => ({
-            id: batch.id,
-            label: `${batch.batch_no}`,
-            icon: <FaBox size={14} />,
-            data: batch, // Store full batch data
-        })),
-    }));
+    setOpenMenu(newOpenState);
+  }, [search, filteredData]);
 
+  if (productionLoading) {
     return (
-        <List sx={{ p: 0 }}>
-            {navItems.map((item, index) => (
-                <React.Fragment key={index}>
-                    <ListItem disablePadding sx={{ mb: 0.5 }}>
-                        <ListItemButton
-                            onClick={item.toggle}
-                            sx={{
-                                py: 1,
-                                px: 1.5,
-                                borderRadius: 1,
-                                "&:hover": { backgroundColor: "action.hover" },
-                            }}
-                        >
-                            <ListItemIcon sx={{ minWidth: 32 }}>
-                                {item.icon}
-                            </ListItemIcon>
-
-                            <ListItemText
-                                primary={item.label}
-                                primaryTypographyProps={{
-                                    fontSize: "14px",
-                                    fontWeight: 500,
-                                }}
-                            />
-
-                            {item.children.length > 0 &&
-                                (item.open ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />)}
-                        </ListItemButton>
-                    </ListItem>
-
-                    <Collapse in={item.open} timeout="auto" unmountOnExit>
-                        <List component="div" disablePadding>
-                            {item.children.map((child, cIndex) => (
-                                <ListItem key={cIndex} disablePadding>
-                                    <ListItemButton
-                                        onClick={() => handleBatchClick(child.data)}
-                                        sx={{
-                                            py: 0.75,
-                                            pl: 5,
-                                            borderRadius: 1,
-                                            backgroundColor:
-                                                activeBatch?.id === child.id
-                                                    ? "action.selected"
-                                                    : "transparent",
-                                            "&:hover": {
-                                                backgroundColor: "action.hover",
-                                            },
-                                        }}
-                                    >
-                                        <ListItemIcon sx={{ minWidth: 28 }}>
-                                            {child.icon}
-                                        </ListItemIcon>
-
-                                        <ListItemText
-                                            primary={child.label}
-                                            primaryTypographyProps={{
-                                                fontSize: "13px",
-                                            }}
-                                        />
-                                    </ListItemButton>
-                                </ListItem>
-                            ))}
-                        </List>
-                    </Collapse>
-                </React.Fragment>
-            ))}
-        </List>
+      <List sx={{ p: 0 }}>
+        {[1, 2, 3].map((i) => (
+          <Box key={i} sx={{ mb: 1, px: 1 }}>
+            <Skeleton
+              variant="rectangular"
+              height={45}
+              sx={{ borderRadius: 1 }}
+            />
+            <Skeleton
+              variant="rectangular"
+              height={35}
+              width="80%"
+              sx={{ mt: 1, borderRadius: 1 }}
+            />
+          </Box>
+        ))}
+      </List>
     );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: 10, color: "red" }}>Failed to load menu.</div>
+    );
+  }
+
+  return (
+    <>
+      {/* 🔍 SEARCH BAR */}
+      <Box sx={{ px: 1, pb: 1 }}>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Search customer or batch..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </Box>
+
+      <List component="nav">
+        {filteredData.map((item) => {
+          if (!item.matched) return null;
+
+          const isOpen = openMenu[item.quotation_id] ?? false;
+
+          return (
+            <React.Fragment key={item.quotation_id}>
+              <ListItem disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  onClick={() => toggleMenu(item.quotation_id)}
+                  sx={{
+                    py: 0.5,
+                    px: 1.5,
+                    borderRadius: 1,
+                    borderTop: "1px solid #e0e0e0",
+                    "&:hover": { backgroundColor: "action.hover" },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 32 }}>
+                    <MdOutlinePrecisionManufacturing size={16} />
+                  </ListItemIcon>
+
+                  <ListItemText
+                    primary={item.customer?.name ?? "Unknown Customer"}
+                    primaryTypographyProps={{
+                      fontSize: "14px",
+                      fontWeight: 500,
+                    }}
+                  />
+
+                  {item.batches.length > 0 &&
+                    (isOpen ? (
+                      <HiChevronUp size={20} />
+                    ) : (
+                      <HiChevronDown size={20} />
+                    ))}
+                </ListItemButton>
+              </ListItem>
+
+              {/* Collapsed Batch List */}
+              <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                  {item.batches.map((batch) => (
+                    <ListItem key={batch.id} disablePadding>
+                      <ListItemButton
+                        onClick={() => handleBatchClick(batch)}
+                        sx={{
+                          py: 0.75,
+                          pl: 5,
+                          borderRadius: 1,
+                          backgroundColor:
+                            activeBatch?.id === batch.id
+                              ? "action.selected"
+                              : "transparent",
+                          "&:hover": {
+                            backgroundColor: "action.hover",
+                          },
+                        }}
+                      >
+                        <ListItemIcon sx={{ minWidth: 28 }}>
+                          <FaBox size={14} />
+                        </ListItemIcon>
+
+                        <ListItemText
+                          primary={batch.batch_no}
+                          primaryTypographyProps={{
+                            fontSize: "13px",
+                          }}
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+              </Collapse>
+            </React.Fragment>
+          );
+        })}
+      </List>
+    </>
+  );
 }
 
 export default NavigationMenu;

@@ -28,7 +28,7 @@ import {
   TableRow,
   CircularProgress,
 } from "@mui/material";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import * as Yup from "yup";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
@@ -36,6 +36,7 @@ import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { GrCurrency } from "react-icons/gr";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import { IoMdRefresh } from "react-icons/io";
 import { Formik, Form } from "formik";
 import {
   MaterialReactTable,
@@ -103,6 +104,7 @@ const VendorInvoice = () => {
   const navigate = useNavigate();
   const tableContainerRef = useRef(null);
   const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Redux State
   const {
@@ -114,39 +116,106 @@ const VendorInvoice = () => {
     (state) => state.vendorInvoice
   );
 
+  // Get initial values from URL
+  const getInitialPage = () => {
+    const page = searchParams.get("page");
+    return page ? parseInt(page) - 1 : 0;
+  };
+
+  const getInitialPageSize = () => {
+    const pageSize = searchParams.get("per_page");
+    return pageSize ? parseInt(pageSize) : 10;
+  };
+
+  const getInitialSearch = () => {
+    return searchParams.get("search") || "";
+  };
+
   // Local State
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [pagination, setPagination] = useState({
+    pageIndex: getInitialPage(),
+    pageSize: getInitialPageSize(),
+  });
+  const [globalFilter, setGlobalFilter] = useState(getInitialSearch());
   const [open, setOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [dueAmount, setDueAmount] = useState(null);
 
   // Calculate display conditions
   const shouldShowForm = useMemo(() => {
-    // Show form when: due_amount is null (no payments yet) OR due_amount > 0
     return dueAmount === null || dueAmount > 0;
   }, [dueAmount]);
 
   const shouldShowHistory = useMemo(() => {
-    // Show history when: due_amount is NOT null (at least one payment made)
     return dueAmount !== null;
   }, [dueAmount]);
 
   const dialogMaxWidth = useMemo(() => {
-    // If showing both form and history, use 'lg', otherwise 'md'
     return shouldShowForm && shouldShowHistory ? "lg" : "md";
   }, [shouldShowForm, shouldShowHistory]);
 
+  // Update URL params
+  const updateURLParams = useCallback(
+    (page, pageSize, search) => {
+      const params = new URLSearchParams();
+      params.set("page", (page + 1).toString());
+      params.set("per_page", pageSize.toString());
+      if (search) {
+        params.set("search", search);
+      }
+      setSearchParams(params);
+    },
+    [setSearchParams]
+  );
+
   // Fetch Data
   const fetchData = useCallback(() => {
-    dispatch(
-      fetchVendorInvoices({
-        page: pagination.pageIndex + 1,
-        per_page: pagination.pageSize,
-      })
-    );
-  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+    const params = {
+      page: pagination.pageIndex + 1,
+      per_page: pagination.pageSize,
+    };
 
+    if (globalFilter) {
+      params.search = globalFilter;
+    }
+
+    dispatch(fetchVendorInvoices(params));
+    updateURLParams(pagination.pageIndex, pagination.pageSize, globalFilter);
+  }, [
+    dispatch,
+    pagination.pageIndex,
+    pagination.pageSize,
+    globalFilter,
+    updateURLParams,
+  ]);
+
+  // Debounced search
   useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 900); // 900ms debounce
+
+    return () => clearTimeout(timer);
+  }, [pagination, globalFilter]);
+
+  // Handle pagination change
+  const handlePaginationChange = useCallback((updater) => {
+    setPagination((prev) => {
+      const newPagination =
+        typeof updater === "function" ? updater(prev) : updater;
+      return newPagination;
+    });
+  }, []);
+
+  // Handle search change
+  const handleGlobalFilterChange = useCallback((value) => {
+    setGlobalFilter(value || "");
+    // Reset to first page when searching
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  // Refresh data
+  const handleRefresh = useCallback(() => {
     fetchData();
   }, [fetchData]);
 
@@ -189,13 +258,9 @@ const VendorInvoice = () => {
           })
         ).unwrap();
 
-        // Update due amount
         setDueAmount(result?.due_amount);
-
-        // Refresh payment records
         await dispatch(fetchPaymentRecord({ id: selectedInvoice?.id }));
 
-        // Update selected invoice
         if (result?.due_amount !== undefined) {
           setSelectedInvoice((prev) => ({
             ...prev,
@@ -204,10 +269,7 @@ const VendorInvoice = () => {
           }));
         }
 
-        // Refresh main table
         fetchData();
-
-        // Reset form
         resetForm();
       } catch (error) {
         console.error("Payment error:", error);
@@ -392,12 +454,18 @@ const VendorInvoice = () => {
           columns={columns}
           data={tableData}
           manualPagination
+          manualFiltering
           rowCount={totalRows}
-          state={{ pagination, isLoading: loading }}
-          onPaginationChange={setPagination}
+          state={{
+            pagination,
+            isLoading: loading,
+            globalFilter,
+          }}
+          onPaginationChange={handlePaginationChange}
+          onGlobalFilterChange={handleGlobalFilterChange}
           enableTopToolbar
-          enableColumnFilters
-          enableSorting
+          enableColumnFilters={false}
+          enableSorting={false}
           enableBottomToolbar
           enableGlobalFilter
           enableDensityToggle={false}
@@ -431,6 +499,11 @@ const VendorInvoice = () => {
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <MRT_GlobalFilterTextField table={table} />
                 <MRT_ToolbarInternalButtons table={table} />
+                <Tooltip title="Refresh">
+                  <IconButton onClick={handleRefresh} size="small">
+                    <IoMdRefresh size={20} />
+                  </IconButton>
+                </Tooltip>
                 <Tooltip title="Print">
                   <IconButton onClick={handlePrint} size="small">
                     <FiPrinter size={20} />

@@ -267,14 +267,17 @@ const PurchaseOrderQC = () => {
         <Grid size={12}>
           <Card>
             <CardContent>
-              <Grid size={12} sx={{ pt: 2 }}>
+              {po?.inward &&(
+                <Grid size={12} sx={{ pt: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
                   <Typography variant="h6" className="fs-15">Purchase Order: {po.purchase_no}</Typography>
                   <Button variant="contained" color="warning" sx={{ mt: 0 }} onClick={handlePrintClick}>
-                    Mark QC Done & Print QC Report
+                     Print QC Report
                   </Button>
                 </Box>
               </Grid>
+              )}
+              
               {po?.vendor && (
                 <Grid size={{ xs: 12, md: 3 }} sx={{ pt: 2 }}>
                   <Typography variant="p">
@@ -388,7 +391,7 @@ const PurchaseOrderQC = () => {
                             <TextField
                               type="number"
                               size="small"
-                              disabled={po?.quality_status !== '1'}
+                              disabled={po?.quality_status !== '1' && po?.inward }
                               value={item.qty}
                               onChange={(e) => handleQtyChange(item.id, e.target.value)}
                               inputProps={{ min: 1 }}

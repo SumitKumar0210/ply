@@ -123,3 +123,48 @@ textarea{
 .MuiFormHelperText-root{
   margin-left: 0 !important;
 }
+.w-300{
+  width: 300px;
+}
+.production-card-wrapper {
+    max-width: 300px;
+    overflow: hidden;
+}
+.production-status-details{
+  td{
+    font-size: 14px;
+    padding: 3px 0;
+    text-align: left !important;
+    align-content: flex-start;
+    &.title{
+      min-width: 80px;
+    }
+    strong{
+       font-weight: 500 !important;
+    }
+  }
+ 
+}
+/* GLOBAL SCROLLBAR WIDTH */
+::-webkit-scrollbar {
+  height: 6px; 
+  width:  6px; 
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
+
+.MuiMenu-paper {
+  pointer-events: auto;
+}

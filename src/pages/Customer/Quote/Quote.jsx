@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -16,7 +16,7 @@ import {
   Chip,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { AiOutlineLink, AiOutlineCheck } from "react-icons/ai";
@@ -26,6 +26,7 @@ import TaskAltIcon from "@mui/icons-material/TaskAlt";
 import { RiDeleteBinLine } from "react-icons/ri";
 import AddIcon from "@mui/icons-material/Add";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { IoMdRefresh } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import { TextField } from "@mui/material";
 import {
@@ -96,14 +97,10 @@ const Quote = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
 
-  const [pagination, setPagination] = useState({
-    pageIndex: 0,
-    pageSize: 10,
-  });
-
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const {
     data: tableData = [],
@@ -112,14 +109,83 @@ const Quote = () => {
     totalRecords = 0,
   } = useSelector((state) => state.quotation);
 
+  // Get initial values from URL
+  const getInitialPage = () => {
+    const page = searchParams.get("page");
+    return page ? parseInt(page) - 1 : 0;
+  };
+
+  const getInitialPageSize = () => {
+    const pageSize = searchParams.get("per_page");
+    return pageSize ? parseInt(pageSize) : 10;
+  };
+
+  const getInitialSearch = () => {
+    return searchParams.get("search") || "";
+  };
+
+  // Local State for pagination and search
+  const [pagination, setPagination] = useState({
+    pageIndex: getInitialPage(),
+    pageSize: getInitialPageSize(),
+  });
+  const [globalFilter, setGlobalFilter] = useState(getInitialSearch());
+
+  // Update URL params
+  const updateURLParams = useCallback((page, pageSize, search) => {
+    const params = new URLSearchParams();
+    params.set("page", (page + 1).toString());
+    params.set("per_page", pageSize.toString());
+    if (search) {
+      params.set("search", search);
+    }
+    setSearchParams(params);
+  }, [setSearchParams]);
+
+  // Fetch Data
+  const fetchData = useCallback(() => {
+    const params = {
+      pageIndex: pagination.pageIndex + 1,
+      pageLimit: pagination.pageSize,
+    };
+    
+    if (globalFilter) {
+      params.search = globalFilter;
+    }
+    console.log('Fetching data with params:', params);
+
+    dispatch(fetchQuotation(params));
+    updateURLParams(pagination.pageIndex, pagination.pageSize, globalFilter);
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter, updateURLParams]);
+
+  // Debounced fetch on pagination or search change
   useEffect(() => {
-    dispatch(
-      fetchQuotation({
-        pageIndex: pagination.pageIndex,
-        pageLimit: pagination.pageSize,
-      })
-    );
-  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [pagination, globalFilter]);
+
+  // Handle pagination change
+  const handlePaginationChange = useCallback((updater) => {
+    setPagination((prev) => {
+      const newPagination = typeof updater === 'function' ? updater(prev) : updater;
+      return newPagination;
+    });
+  }, []);
+
+  // Handle search change
+  const handleGlobalFilterChange = useCallback((value) => {
+    setGlobalFilter(value || "");
+    // Reset to first page when searching
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  // Refresh data
+  const handleRefresh = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleViewClick = (id) => {
     navigate("/customer/quote/view/" + id);
@@ -138,12 +204,7 @@ const Quote = () => {
     await dispatch(deleteQuotation(id));
     setOpenDelete(false);
     // Refresh data after deletion
-    dispatch(
-      fetchQuotation({
-        pageIndex: pagination.pageIndex,
-        pageLimit: pagination.pageSize,
-      })
-    );
+    fetchData();
   };
 
   const handleDateFormate = (date) => {
@@ -212,16 +273,6 @@ const Quote = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            {/* <Tooltip title="Approve">
-              <IconButton
-                color="success"
-                onClick={() => handleApproveClick(row.original.id)}
-              >
-                <TaskAltIcon fontSize="small" />
-              </IconButton>
-            </Tooltip> */}
-
-            {/* Render modal outside the button */}
             <LinkGenerator id={row.original.id} />
             <Tooltip title="View">
               <IconButton
@@ -255,38 +306,63 @@ const Quote = () => {
     []
   );
 
-  //  CSV export using tableData
-  const downloadCSV = () => {
-    const headers = columns
-      .filter((col) => col.accessorKey && col.accessorKey !== "actions")
-      .map((col) => col.header);
-    const rows = tableData.map((row) =>
-      columns
-        .filter((col) => col.accessorKey && col.accessorKey !== "actions")
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
-        .join(",")
-    );
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "Quote.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  //  CSV export
+  const downloadCSV = useCallback(() => {
+    try {
+      const headers = [
+        "Quote No.",
+        "Customer Name",
+        "Date",
+        "Quote Total",
+        "Total Items",
+        "Status",
+      ];
+      const rows = tableData.map((row) => [
+        row.batch_no || "",
+        row.customer?.name || "",
+        handleDateFormate(row.created_at),
+        row.grand_total ? "₹ " + parseInt(row.grand_total) : "",
+        handleItemCount(row.product_ids),
+        row.status === 0 ? "Draft" : row.status === 1 ? "Ordered" : row.status === 2 ? "Production" : "Unknown",
+      ]);
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row) =>
+          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `Quotes_${new Date().toISOString().split("T")[0]}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("CSV download error:", error);
+    }
+  }, [tableData]);
 
   //  Print handler
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
-  };
+    try {
+      const printWindow = window.open("", "", "height=600,width=1200");
+      if (!printWindow) return;
+      printWindow.document.write(tableContainerRef.current.innerHTML);
+      printWindow.document.close();
+      printWindow.print();
+    } catch (error) {
+      console.error("Print error:", error);
+    }
+  }, []);
 
   return (
     <>
@@ -330,15 +406,18 @@ const Quote = () => {
             columns={columns}
             data={tableData}
             manualPagination
+            manualFiltering
             rowCount={totalRecords}
             state={{
               isLoading: loading,
               pagination: pagination,
+              globalFilter,
             }}
-            onPaginationChange={setPagination}
+            onPaginationChange={handlePaginationChange}
+            onGlobalFilterChange={handleGlobalFilterChange}
             enableTopToolbar
-            enableColumnFilters
-            enableSorting
+            enableColumnFilters={false}
+            enableSorting={false}
             enablePagination
             enableBottomToolbar
             enableGlobalFilter
@@ -380,13 +459,18 @@ const Quote = () => {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <MRT_GlobalFilterTextField table={table} />
                   <MRT_ToolbarInternalButtons table={table} />
+                  <Tooltip title="Refresh">
+                    <IconButton onClick={handleRefresh} size="small">
+                      <IoMdRefresh size={20} />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="Print">
-                    <IconButton onClick={handlePrint}>
+                    <IconButton onClick={handlePrint} size="small">
                       <FiPrinter size={20} />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Download CSV">
-                    <IconButton onClick={downloadCSV}>
+                    <IconButton onClick={downloadCSV} size="small">
                       <BsCloudDownload size={20} />
                     </IconButton>
                   </Tooltip>
@@ -399,7 +483,7 @@ const Quote = () => {
 
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>{"Delete this purchase order?"}</DialogTitle>
+        <DialogTitle>{"Delete this quotation?"}</DialogTitle>
         <DialogContent style={{ width: "300px" }}>
           <DialogContentText>This action cannot be undone</DialogContentText>
         </DialogContent>

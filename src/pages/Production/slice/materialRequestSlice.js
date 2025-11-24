@@ -18,14 +18,13 @@ export const storeMaterialRequest = createAsyncThunk(
   }
 );
 
-export const fetchMaterialRequest = createAsyncThunk(
-  "materialRequest/fetchMaterialRequest",
-  async (_, { rejectWithValue }) => {
+export const fetchAllRequestItems = createAsyncThunk(
+  "materialRequest/fetchAllRequestItems",
+  async (id, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/production-order/get-material-request`);
+      const res = await api.post(`admin/production-order/get-material-request`,{pp_id:id});
       successMessage(res.data.message);
-
-      return res.data.data || [];
+       return res.data.data;
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
@@ -50,17 +49,22 @@ const materialRequestSlice = createSlice({
 
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMaterialRequest.pending, (state) => {
-        state.productionLoading = true;
+       .addCase(fetchAllRequestItems.pending, (state) => {
+        state.loading = true;
         state.error = null;
       })
-      .addCase(fetchMaterialRequest.fulfilled, (state, action) => {
-        state.productionLoading = false;
-        state.data = action.payload.data;
+      .addCase(fetchAllRequestItems.fulfilled, (state, action) => {
+        state.loading = false; 
+        state.data = action.payload;
       })
-      .addCase(fetchMaterialRequest.rejected, (state, action) => {
-        state.productionLoading = false;
+      .addCase(fetchAllRequestItems.rejected, (state, action) => {
+        state.loading = false;             
         state.error = action.payload;
+      })
+
+      // STORE REQUEST ITEM
+      .addCase(storeMaterialRequest.fulfilled, (state, action) => {
+        state.data.push(action.payload);
       });
   },
 });

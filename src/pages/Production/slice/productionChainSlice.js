@@ -45,9 +45,40 @@ export const changeProductDepartment = createAsyncThunk(
   "productionChain/changeProductDepartment",
   async (values, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/production-order/change-product-department`, values);
+      const res = await api.post(`admin/production-order/set-change-department`, values);
       successMessage(res.data.message);
       return  res.data.data || [];
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+// set new priority
+export const setNewPriority = createAsyncThunk(
+  "productionChain/setNewPriority",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/set-updated-value`, values);
+      successMessage(res.data.message);
+      return  values;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+// set new supervisor
+export const setNewSupervisor = createAsyncThunk(
+  "productionChain/setNewSupervisor",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/set-updated-value`, values);
+      successMessage(res.data.message);
+      return  values;
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);

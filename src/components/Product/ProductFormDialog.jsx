@@ -136,6 +136,7 @@ const ProductFormDialog = ({
         const compressedSize = (compressed.size / 1024).toFixed(2);
         const reduction = (((file.size - compressed.size) / file.size) * 100).toFixed(2);
 
+        console.log(compressed)
         successMessage(
           `Image compressed: ${originalSize}KB → ${compressedSize}KB (${reduction}% reduction)`
         );

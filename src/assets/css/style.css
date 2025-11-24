@@ -124,8 +124,91 @@ textarea:focus-visible {
 
 .MuiFormHelperText-root {
   margin-left: 0 !important;
+}
+
+.w-300 {
+  width: 300px;
+}
+
+.production-card-wrapper {
+  max-width: 300px;
+  overflow: hidden;
+}
+
+.production-status-details td {
+  font-size: 14px;
+  padding: 3px 0;
+  text-align: left !important;
+  align-content: flex-start;
+}
+.production-status-details td.title {
+  min-width: 80px;
+}
+.production-status-details td strong {
+  font-weight: 500 !important;
+}
+
+/* GLOBAL SCROLLBAR WIDTH */
+::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0;
+}
+
+.MuiMenu-paper {
+  pointer-events: auto;
 }/*# sourceMappingURL=style.css.map */
 
 .tdBefore {
     display: none;
+}
+
+/*sumit  */
+.production-status-details{
+  width: 100% !important;
+}
+/* Production Status Details Table */
+.production-status-details table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.production-status-details td {
+  padding: 8px 12px;
+  vertical-align: top;
+}
+
+.production-status-details td.title {
+  width: 150px;
+  font-weight: 500;
+}
+
+.production-status-details tr {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.production-status-details tr:last-child {
+  border-bottom: none;
+}
+
+/* Production Card Wrapper */
+.production-card-wrapper {
+  min-width: 280px;
+}
+
+.production-status{
+  width: 100%;
 }

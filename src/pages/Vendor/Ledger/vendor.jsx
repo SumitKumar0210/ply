@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Typography,
   Grid,
@@ -29,13 +29,14 @@ import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import { IoMdRefresh } from "react-icons/io";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   fetchVendors,
-} from "../../settings/slices/vendorSlice"; //  new slice
+} from "../../settings/slices/vendorSlice";
 
 import { fetchActiveCategories } from "../../settings/slices/categorySlice";
 
@@ -73,18 +74,97 @@ const Vendor = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [open, setOpen] = useState(false);
 
-  const { data: vendorData = [] } = useSelector((state) => state.vendor);
+  // Redux State
+  const { 
+    data: vendorData = [], 
+    total: totalRows = 0,
+    loading = false 
+  } = useSelector((state) => state.vendor);
+console.log("vendorData", vendorData);
+  // Get initial values from URL
+  const getInitialPage = () => {
+    const page = searchParams.get("page");
+    return page ? parseInt(page) - 1 : 0;
+  };
 
+  const getInitialPageSize = () => {
+    const pageSize = searchParams.get("per_page");
+    return pageSize ? parseInt(pageSize) : 10;
+  };
+
+  const getInitialSearch = () => {
+    return searchParams.get("search") || "";
+  };
+
+  // Local State for pagination and search
+  const [pagination, setPagination] = useState({
+    pageIndex: getInitialPage(),
+    pageSize: getInitialPageSize(),
+  });
+  const [globalFilter, setGlobalFilter] = useState(getInitialSearch());
+
+  // Update URL params
+  const updateURLParams = useCallback((page, pageSize, search) => {
+    const params = new URLSearchParams();
+    params.set("page", (page + 1).toString());
+    params.set("per_page", pageSize.toString());
+    if (search) {
+      params.set("search", search);
+    }
+    setSearchParams(params);
+  }, [setSearchParams]);
+
+  // Fetch Data
+  const fetchData = useCallback(() => {
+    const params = {
+      page: pagination.pageIndex + 1,
+      per_page: pagination.pageSize,
+    };
+    
+    if (globalFilter) {
+      params.search = globalFilter;
+    }
+
+    dispatch(fetchVendors(params));
+    updateURLParams(pagination.pageIndex, pagination.pageSize, globalFilter);
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter, updateURLParams]);
+
+  // Debounced fetch on pagination or search change
   useEffect(() => {
-    dispatch(fetchVendors());
-  }, [dispatch]);
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 900); // 900ms debounce
+
+    return () => clearTimeout(timer);
+  }, [pagination, globalFilter]);
+
+  // Handle pagination change
+  const handlePaginationChange = useCallback((updater) => {
+    setPagination((prev) => {
+      const newPagination = typeof updater === 'function' ? updater(prev) : updater;
+      return newPagination;
+    });
+  }, []);
+
+  // Handle search change
+  const handleGlobalFilterChange = useCallback((value) => {
+    setGlobalFilter(value || "");
+    // Reset to first page when searching
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  // Refresh data
+  const handleRefresh = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleLedger = (id) => {
-    navigate('/vendor/ledger/' + id)
-  }
+    navigate('/vendor/ledger/' + id);
+  };
 
   //  Table columns
   const columns = useMemo(
@@ -92,7 +172,11 @@ const Vendor = () => {
       { accessorKey: "name", header: "Vendor Name" },
       { accessorKey: "mobile", header: "Mobile" },
       { accessorKey: "email", header: "Email" },
-      { accessorKey: "category_id", header: "Cateogry", Cell: ({ row }) => row.original.category?.name || "—", },
+      { 
+        accessorKey: "category_id", 
+        header: "Category", 
+        Cell: ({ row }) => row.original.category?.name || "—" 
+      },
       { accessorKey: "gst", header: "GST" },
       {
         id: "actions",
@@ -104,7 +188,7 @@ const Vendor = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="ledger">
+            <Tooltip title="Ledger">
               <IconButton color="primary" onClick={() => handleLedger(row.original.id)}>
                 <RiListOrdered size={16} />
               </IconButton>
@@ -117,35 +201,54 @@ const Vendor = () => {
   );
 
   //  CSV download
-  const downloadCSV = () => {
-    const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
-    const rows = vendorData.map((row) =>
-      columns
-        .filter((c) => c.accessorKey)
-        .map((c) => `"${row[c.accessorKey] ?? ""}"`)
-        .join(",")
-    );
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "vendor.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const downloadCSV = useCallback(() => {
+    try {
+      const headers = ["Vendor Name", "Mobile", "Email", "Category", "GST"];
+      const rows = (vendorData.data || []).map((row) => [
+        row.name || "",
+        row.mobile || "",
+        row.email || "",
+        row.category?.name || "",
+        row.gst || "",
+      ]);
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row) =>
+          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `Vendors_${new Date().toISOString().split("T")[0]}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("CSV download error:", error);
+    }
+  }, [vendorData]);
 
   //  Print
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
-  };
+    try {
+      const printWindow = window.open("", "", "height=600,width=1200");
+      if (!printWindow) return;
+      printWindow.document.write(tableContainerRef.current.innerHTML);
+      printWindow.document.close();
+      printWindow.print();
+    } catch (error) {
+      console.error("Print error:", error);
+    }
+  }, []);
 
   return (
     <ErrorBoundary>
@@ -167,11 +270,21 @@ const Vendor = () => {
           >
             <MaterialReactTable
               columns={columns}
-              data={vendorData}
+              data={vendorData.data || []}
               getRowId={(row) => row.id}
+              manualPagination
+              manualFiltering
+              rowCount={totalRows}
+              state={{
+                pagination,
+                isLoading: loading,
+                globalFilter,
+              }}
+              onPaginationChange={handlePaginationChange}
+              onGlobalFilterChange={handleGlobalFilterChange}
               enableTopToolbar
-              enableColumnFilters
-              enableSorting
+              enableColumnFilters={false}
+              enableSorting={false}
               enablePagination
               enableBottomToolbar
               enableGlobalFilter
@@ -205,13 +318,18 @@ const Vendor = () => {
                   <Box sx={{ display: "flex", gap: 1 }}>
                     <MRT_GlobalFilterTextField table={table} />
                     <MRT_ToolbarInternalButtons table={table} />
+                    <Tooltip title="Refresh">
+                      <IconButton onClick={handleRefresh} size="small">
+                        <IoMdRefresh size={20} />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title="Print">
-                      <IconButton onClick={handlePrint}>
+                      <IconButton onClick={handlePrint} size="small">
                         <FiPrinter size={20} />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Download CSV">
-                      <IconButton onClick={downloadCSV}>
+                      <IconButton onClick={downloadCSV} size="small">
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
@@ -222,7 +340,6 @@ const Vendor = () => {
           </Paper>
         </Grid>
       </Grid>
-
     </ErrorBoundary>
   );
 };

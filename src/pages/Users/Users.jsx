@@ -175,24 +175,61 @@ const Users = () => {
   const [compressingImage, setCompressingImage] = useState(false);
   const tableContainerRef = useRef(null);
 
-  const { data: tableData = [], loading, error } = useSelector((state) => state.user);
+  // Pagination and search state
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [globalFilter, setGlobalFilter] = useState("");
+
+  const {
+    data: tableDatas = [],
+    loading,
+    error,
+    totalRows = 0 // Make sure your slice returns totalRows
+  } = useSelector((state) => state.user);
+  const tableData = tableDatas.data || [];
+  console.log(tableData)
   const { data: states = [] } = useSelector((state) => state.state);
   const { data: userTypes = [] } = useSelector((state) => state.userType);
 
   const dispatch = useDispatch();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
+  // Fetch users with pagination and search
   useEffect(() => {
-    dispatch(fetchUsers());
+    const params = {
+      page: pagination.pageIndex + 1,
+      per_page: pagination.pageSize,
+      search: globalFilter || "",
+    };
+    dispatch(fetchUsers(params));
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
+
+  // Fetch states and user types on mount
+  useEffect(() => {
     dispatch(fetchStates());
     dispatch(fetchActiveUserTypes());
   }, [dispatch]);
+
+  // Handle global filter change with debounce
+  const handleGlobalFilterChange = (value) => {
+    setGlobalFilter(value);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 })); // Reset to first page on search
+  };
 
   const handleAdd = async (values, { resetForm, setSubmitting }) => {
     try {
       const res = await dispatch(addUser(values)).unwrap();
       resetForm();
       setOpen(false);
+      // Refresh data after add
+      const params = {
+        page: pagination.pageIndex + 1,
+        per_page: pagination.pageSize,
+        search: globalFilter || "",
+      };
+      dispatch(fetchUsers(params));
     } catch (error) {
       console.error("Add user failed:", error);
     } finally {
@@ -217,6 +254,13 @@ const Users = () => {
     try {
       await dispatch(deleteUser(deleteDialog.id)).unwrap();
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
+      // Refresh data after delete
+      const params = {
+        page: pagination.pageIndex + 1,
+        per_page: pagination.pageSize,
+        search: globalFilter || "",
+      };
+      dispatch(fetchUsers(params));
     } catch (error) {
       console.error("Delete failed:", error);
       setDeleteDialog((prev) => ({ ...prev, loading: false }));
@@ -238,6 +282,13 @@ const Users = () => {
       const res = await dispatch(updateUser({ id: editData.id, ...values })).unwrap();
       resetForm();
       handleEditClose();
+      // Refresh data after update
+      const params = {
+        page: pagination.pageIndex + 1,
+        per_page: pagination.pageSize,
+        search: globalFilter || "",
+      };
+      dispatch(fetchUsers(params));
     } catch (error) {
       console.error("Update failed:", error);
     } finally {
@@ -411,10 +462,19 @@ const Users = () => {
           <MaterialReactTable
             columns={columns}
             data={tableData}
+            manualPagination
+            manualFiltering
+            rowCount={totalRows}
+            state={{
+              pagination,
+              isLoading: loading,
+              globalFilter,
+            }}
+            onPaginationChange={setPagination}
+            onGlobalFilterChange={handleGlobalFilterChange}
             enableTopToolbar
-            enableColumnFilters
-            enableSorting
-            enablePagination
+            enableColumnFilters={false}
+            enableSorting={false}
             enableBottomToolbar
             enableGlobalFilter
             enableDensityToggle={false}
@@ -422,9 +482,16 @@ const Users = () => {
             enableColumnVisibilityToggle={false}
             initialState={{ density: "compact" }}
             muiTableContainerProps={{
-              sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto" },
+              sx: {
+                width: "100%",
+                backgroundColor: "#fff",
+                overflowX: "auto",
+                minWidth: "1200px"
+              },
             }}
-            muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
+            muiTablePaperProps={{
+              sx: { backgroundColor: "#fff", boxShadow: "none" }
+            }}
             renderTopToolbar={({ table }) => (
               <Box
                 sx={{
@@ -442,12 +509,12 @@ const Users = () => {
                   <MRT_GlobalFilterTextField table={table} />
                   <MRT_ToolbarInternalButtons table={table} />
                   <Tooltip title="Print">
-                    <IconButton onClick={handlePrint}>
+                    <IconButton onClick={handlePrint} size="small">
                       <FiPrinter size={20} />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Download CSV">
-                    <IconButton onClick={downloadCSV}>
+                    <IconButton onClick={downloadCSV} size="small">
                       <BsCloudDownload size={20} />
                     </IconButton>
                   </Tooltip>
@@ -995,6 +1062,7 @@ const Users = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
     </>
   );
 };

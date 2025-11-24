@@ -5,14 +5,26 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 //  Fetch vendor invoices with pagination
 export const fetchVendorInvoices = createAsyncThunk(
   "vendorInvoice/fetchAll",
-  async ({ page = 1, per_page = 10 } = {}, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const res = await api.get(
-        `admin/purchase-inward/get-data?page=${page}&per_page=${per_page}`
-      );
+      const { page = 1, per_page = 10, search = "" } = params;
+
+      const queryParams = new URLSearchParams();
+
+      if (page) queryParams.append("page", page);
+      if (per_page) queryParams.append("per_page", per_page);
+      if (search) queryParams.append("search", search);
+
+      const queryString = queryParams.toString();
+      const url = queryString
+        ? `admin/purchase-inward/get-data?${queryString}`
+        : `admin/purchase-inward/get-data`;
+
+      const res = await api.get(url);
+
       return {
-        data: res.data.data || [],
-        total: res.data.total || 0,
+        data: res.data?.data || [],
+        total: res.data?.total || 0,
         page,
         per_page,
       };
@@ -23,6 +35,7 @@ export const fetchVendorInvoices = createAsyncThunk(
     }
   }
 );
+
 
 //  Fetch single invoice by ID
 export const fetchVendorInvoiceById = createAsyncThunk(

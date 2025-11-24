@@ -4,10 +4,44 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 //  Thunks
 
 // Fetch all vendors
-export const fetchVendors = createAsyncThunk("vendor/fetchAll", async () => {
-  const res = await api.get("admin/vendor/get-data");
-  return res.data.data;
-});
+export const fetchVendors = createAsyncThunk(
+  "vendor/fetchAll",
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const queryParams = new URLSearchParams();
+
+      // Add pagination
+      if (params.page) queryParams.append("page", params.page);
+      if (params.per_page) queryParams.append("per_page", params.per_page);
+
+      // Add search
+      if (params.search) queryParams.append("search", params.search);
+
+      // Add extra filters (optional)
+      if (params.status) queryParams.append("status", params.status);
+      if (params.category_id) queryParams.append("category_id", params.category_id);
+
+      const queryString = queryParams.toString();
+      const url = queryString
+        ? `admin/vendor/get-data?${queryString}`
+        : `admin/vendor/get-data`;
+
+      const res = await api.get(url);
+
+      return {
+        data: res.data.data || [],
+        total: res.data.total || 0,
+        page: params.page || 1,
+        per_page: params.per_page || 10,
+      };
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 
 
 export const fetchActiveVendors = createAsyncThunk("vendor/fetchAll", async () => {
@@ -27,7 +61,7 @@ export const addVendor = createAsyncThunk(
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
       return rejectWithValue(errMsg);
-  }
+    }
   }
 );
 
@@ -51,11 +85,11 @@ export const updateVendor = createAsyncThunk(
 export const deleteVendor = createAsyncThunk(
   "vendor/delete",
   async (id) => {
-    try{
+    try {
       const res = await api.post(`admin/vendor/delete/${id}`, id);
       successMessage(res.data.message);
       return id;
-    }catch (error) {
+    } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
       return rejectWithValue(errMsg);
@@ -67,7 +101,7 @@ export const deleteVendor = createAsyncThunk(
 export const statusUpdate = createAsyncThunk(
   "vendor/statusUpdate",
   async (updated) => {
-    try{
+    try {
       const res = await api.post("admin/vendor/status-update", {
         id: updated.id,
         status: updated.status,

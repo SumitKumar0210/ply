@@ -24,6 +24,7 @@ export default function MessageTimeline({ messages }) {
             display: "none",  // remove auto pseudo element
           }
         }}
+        className="production"
       
       >
         {messages.map((msg, index) => (
@@ -36,15 +37,15 @@ export default function MessageTimeline({ messages }) {
             <TimelineContent>
               <Paper elevation={3} sx={{ p: 1.5, mb: 1 }}>
                 <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                  {msg.sender}
+                  {msg.user?.name}
                 </Typography>
 
                 <Typography variant="body2">
-                  {msg.text}
+                  {msg.message}
                 </Typography>
 
                 <Typography variant="caption" color="text.secondary">
-                  {msg.time}
+                  {new Date(msg.created_at).toLocaleDateString('en-GB')}
                 </Typography>
               </Paper>
             </TimelineContent>

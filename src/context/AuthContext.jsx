@@ -48,15 +48,17 @@ export const AuthProvider = ({ children }) => {
       const storedLogo = localStorage.getItem("logo");
       const horizontalLogo = localStorage.getItem("horizontalLogo");
       const storedAppName = localStorage.getItem("application_name");
+      const storedCompanyAddress = localStorage.getItem("company_address");
+      const storedCompanyGst = localStorage.getItem("gst_no");
 
-      if (storedFavicon && storedLogo && storedAppName) {
+      if (storedFavicon && storedLogo && storedAppName && storedCompanyAddress && storedCompanyGst) {
         setAppDetails({
           favicon: storedFavicon,
           logo: storedLogo,
           application_name: storedAppName,
           horizontal_logo: horizontalLogo,
-          company_address: "",
-          gst_no: "",
+          company_address:storedCompanyAddress,
+          gst_no: storedCompanyGst,
         });
         return;
       }

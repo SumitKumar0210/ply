@@ -26,6 +26,11 @@ import orderReducer from '../pages/Customer/slice/orderSlice';
 import linkManagementReducer from '../components/Links/slice/linkManagementSlice';
 import productionOrderReducer from '../pages/Production/slice/orderSlice';
 import productionChainReducer from '../pages/Production/slice/productionChainSlice';
+import attachmentReducer from '../pages/Production/slice/attachmentSlice';
+import messageReducer from '../pages/Production/slice/messageSlice';
+import labourLogReducer from '../pages/Production/slice/labourLogSlice';
+import tentativeItemReducer from '../pages/Production/slice/tentativeItemSlice';
+import materialRequestReducer from '../pages/Production/slice/materialRequestSlice';
 export const store = configureStore({
     reducer: {
         userType: userTypeReducer,
@@ -55,5 +60,10 @@ export const store = configureStore({
         link: linkManagementReducer,
         productionOrder: productionOrderReducer,
         productionChain: productionChainReducer,
+        attachment: attachmentReducer,
+        message: messageReducer,
+        labourLog: labourLogReducer,
+        tentativeItem: tentativeItemReducer,
+        materialRequest: materialRequestReducer,
     }
 })
