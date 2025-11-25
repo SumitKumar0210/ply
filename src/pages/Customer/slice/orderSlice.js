@@ -10,7 +10,7 @@ export const fetchOrder = createAsyncThunk(
       const res = await api.get(`admin/production-order/get-data`, {
         params: {
           page: pageIndex + 1,
-          limit: pageLimit + 10
+          limit: pageLimit ?? 10,
         }
       });
       return {

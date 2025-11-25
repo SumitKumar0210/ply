@@ -12,6 +12,10 @@ import {
   Chip,
   TextareaAutosize,
   Skeleton,
+  DialogContentText,
+  DialogActions,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
@@ -21,12 +25,14 @@ import { AiOutlineFilePdf } from "react-icons/ai";
 import { ImAttachment } from "react-icons/im";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
+import { MdWarning } from "react-icons/md";
 
 import Drawing from "../../assets/images/drawing.png";
 import MessageTimeline from "../TimelineHistory/Timeline";
 import { storeMessage } from "../../pages/Production/slice/messageSlice";
 import { storeAttachment } from "../../pages/Production/slice/attachmentSlice";
 import { compressImage } from "../imageCompressor/imageCompressor";
+import { markReadyForDelivey } from "../../pages/Production/slice/productionChainSlice";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -207,7 +213,7 @@ export default function ProductDetailsModal({
   product,
   onRefresh,
   onOpenTentative,
-  loading = false, // Add loading prop
+  loading = false,
 }) {
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
@@ -221,13 +227,21 @@ export default function ProductDetailsModal({
   const [message, setMessage] = useState("");
   const [uploadingFiles, setUploadingFiles] = useState(false);
 
-  // Reset message when product changes
+  // Local state for attachments and messages
+  const [localAttachments, setLocalAttachments] = useState([]);
+  const [localMessages, setLocalMessages] = useState([]);
+
+  const [openReadyDialog, setOpenReadyDialog] = useState(false);
+  const [submittingReady, setSubmittingReady] = useState(false);
+
+  // Initialize local state when product changes
   useEffect(() => {
     if (product) {
       setMessage("");
+      setLocalAttachments(product.attachments || []);
+      setLocalMessages(product.messages || []);
     }
   }, [product]);
-  console.log(mediaUrl+product?.product.image)
 
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
@@ -249,7 +263,6 @@ export default function ProductDetailsModal({
 
         if (isImageFile(file)) {
           const compressed = await compressImage(file);
-          console.log("Compressed file:", compressed);
           formData.append("attachments", compressed, file.name);
         } else if (isPdfFile(file)) {
           formData.append("attachments", file);
@@ -258,6 +271,15 @@ export default function ProductDetailsModal({
 
       const res = await dispatch(storeAttachment(formData));
       if (!res.error) {
+        // Append new attachments to local state
+        if (res.payload && res.payload) {
+          const newAttachments = Array.isArray(res.payload)
+            ? res.payload
+            : [res.payload];
+
+          setLocalAttachments((prev) => [...prev, ...newAttachments]);
+        }
+        // Still call onRefresh to update parent state if needed
         onRefresh();
       }
     } catch (error) {
@@ -269,6 +291,27 @@ export default function ProductDetailsModal({
     }
   };
 
+  const handleReadyProduct = async () => {
+    if (!product?.id) return;
+
+    setSubmittingReady(true);
+    try {
+      const res = await dispatch(markReadyForDelivey(product.id));
+
+      if (!res.error) {
+        setOpenReadyDialog(false);
+        onClose(); // Close parent modal
+        onRefresh(); // Refresh data
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to mark as ready. Please try again.");
+    } finally {
+      setSubmittingReady(false);
+    }
+  };
+
+
   const handleSendMessage = async () => {
     if (!message.trim() || !product) return;
 
@@ -278,7 +321,14 @@ export default function ProductDetailsModal({
 
     const res = await dispatch(storeMessage(formData));
     if (!res.error) {
+      // Append new message to local state
+      if (res.payload && res.payload) {
+        const newMessage = res.payload;
+        setLocalMessages((prev) => [...prev, newMessage]);
+      }
+
       setMessage("");
+      // Still call onRefresh to update parent state if needed
       onRefresh();
     }
   };
@@ -291,200 +341,246 @@ export default function ProductDetailsModal({
     : null;
 
   return (
-    <BootstrapDialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <BootstrapDialogTitle onClose={onClose}>
-        {loading ? <Skeleton variant="text" width={150} /> : "Order Details"}
-      </BootstrapDialogTitle>
-      <DialogContent dividers>
-        {loading || !product ? (
-          <DetailsSkeleton />
-        ) : (
-          <>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
-            >
-              <Box>
-                <Typography
-                  variant="h6"
-                  component="h4"
-                  sx={{ fontWeight: 500, m: 0 }}
-                >
-                  {product.item_name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {product.group?.trim()}
-                </Typography>
-              </Box>
-              <Button
-                variant="outlined"
-                startIcon={<TbTruckDelivery />}
-                color="warning"
-                component={Link}
-                to="#"
+    <>
+      <BootstrapDialog open={open} onClose={onClose} fullWidth maxWidth="md">
+        <BootstrapDialogTitle onClose={onClose}>
+          {loading ? <Skeleton variant="text" width={150} /> : "Order Details"}
+        </BootstrapDialogTitle>
+        <DialogContent dividers>
+          {loading || !product ? (
+            <DetailsSkeleton />
+          ) : (
+            <>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 2,
+                }}
               >
-                Ready For Delivery
-              </Button>
-            </Box>
+                <Box>
+                  <Typography
+                    variant="h6"
+                    component="h4"
+                    sx={{ fontWeight: 500, m: 0 }}
+                  >
+                    {product.item_name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {product.group?.trim()}
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<TbTruckDelivery />}
+                  color="warning"
+                  onClick={() => setOpenReadyDialog(true)}
+                >
+                  Ready For Delivery
+                </Button>
+              </Box>
 
-            <Grid container spacing={2} justifyContent="space-between">
-              <Grid item xs={12} md={6}>
-                <table className="production-status-details">
-                  <tbody>
-                    <tr>
-                      <td className="title">
-                        <strong>Department:</strong>
-                      </td>
-                      <td>{currentDepartment?.name || "-"}</td>
-                    </tr>
-                    <tr>
-                      <td className="title">
-                        <strong>Supervisor:</strong>
-                      </td>
-                      <td>{currentSupervisor?.name || "-"}</td>
-                    </tr>
-                    <tr>
-                      <td className="title">
-                        <strong>Priority:</strong>
-                      </td>
-                      <td>
-                        <Chip
-                          label={product.priority || "Not Set"}
-                          size="small"
-                          color={
-                            product.priority === "High"
-                              ? "error"
-                              : product.priority === "Medium"
-                              ? "warning"
-                              : "success"
-                          }
-                        />
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="title">
-                        <strong>Start Date:</strong>
-                      </td>
-                      <td>{product.start_date || "-"}</td>
-                    </tr>
-                    <tr>
-                      <td className="title">
-                        <strong>Delivery Date:</strong>
-                      </td>
-                      <td>{product.delivery_date || "-"}</td>
-                    </tr>
-                    <tr>
-                      <td className="title">
-                        <strong>Narration:</strong>
-                      </td>
-                      <td>{product.narration || "No narration available"}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <Grid container spacing={2} justifyContent="space-between">
+                <Grid item xs={12} md={6}>
+                  <table className="production-status-details">
+                    <tbody>
+                      <tr>
+                        <td className="title">
+                          <strong>Department:</strong>
+                        </td>
+                        <td>{currentDepartment?.name || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="title">
+                          <strong>Supervisor:</strong>
+                        </td>
+                        <td>{currentSupervisor?.name || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="title">
+                          <strong>Priority:</strong>
+                        </td>
+                        <td>
+                          <Chip
+                            label={product.priority || "Not Set"}
+                            size="small"
+                            color={
+                              product.priority === "High"
+                                ? "error"
+                                : product.priority === "Medium"
+                                  ? "warning"
+                                  : "success"
+                            }
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="title">
+                          <strong>Start Date:</strong>
+                        </td>
+                        <td>{product.start_date || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="title">
+                          <strong>Delivery Date:</strong>
+                        </td>
+                        <td>{product.delivery_date || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td className="title">
+                          <strong>Narration:</strong>
+                        </td>
+                        <td>{product.narration || "No narration available"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </Grid>
+
+                <Grid item xs={12} md={6} style={{ textAlign: "right" }}>
+                  {product?.product ? (
+                    <img
+                      src={mediaUrl + product?.product?.image}
+                      alt="product"
+                      style={{
+                        width: "100%",
+                        maxWidth: 300,
+                        height: "auto",
+                        borderRadius: 3,
+                        cursor: "pointer",
+                      }}
+                      onClick={() =>
+                        openFileInNewTab(mediaUrl + product?.product?.image)
+                      }
+                    />
+                  ) : (
+                    <img
+                      src={Drawing}
+                      alt="placeholder"
+                      style={{
+                        width: "100%",
+                        maxWidth: 300,
+                        height: "auto",
+                        borderRadius: 3,
+                      }}
+                    />
+                  )}
+                </Grid>
               </Grid>
 
-              <Grid item xs={12} md={6} style={{ textAlign: "right" }}>
-                {product?.product ? (
-                  <img
-                    src={mediaUrl + product?.product?.image}
-                    alt="product"
-                    style={{
-                      width: "100%",
-                      maxWidth: 300,
-                      height: "auto",
-                      borderRadius: 3,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => openFileInNewTab(mediaUrl + product?.product?.image)}
-                  />
-                ) : (
-                  <img
-                    src={Drawing}
-                    alt="placeholder"
-                    style={{
-                      width: "100%",
-                      maxWidth: 300,
-                      height: "auto",
-                      borderRadius: 3,
-                    }}
-                  />
-                )}
-              </Grid>
-            </Grid>
-
-            <Grid container spacing={2} sx={{ marginTop: 2 }}>
-              <Grid item xs={12} className="production-status">
-                <table className="production-status-details">
-                  <tbody>
-                    <tr>
-                      <td className="title">
-                        <strong>Tentative:</strong>
-                      </td>
-                      <td style={{ position: "relative" }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            columnGap: 2,
-                            rowGap: 1,
-                            border: "1px solid #ddd",
-                            padding: 1,
-                            borderRadius: "4px",
-                            minHeight: "40px",
-                          }}
-                        >
-                          {product.tentative_items?.length > 0 ? (
-                            product.tentative_items.map((item, idx) => {
-                              const material = materialData.find(
-                                (m) => m.id == item.material_id
-                              );
-                              return (
-                                <Typography key={idx} fontSize={14}>
-                                  {material?.name || "Unknown"} ({item.qty})
-                                </Typography>
-                              );
-                            })
-                          ) : (
-                            <Typography color="text.secondary" fontSize={14}>
-                              No tentative items
-                            </Typography>
-                          )}
-                        </Box>
-                        <IconButton
-                          aria-label="edit"
-                          color="info"
-                          onClick={onOpenTentative}
-                          style={{ position: "absolute", top: 5, right: 5 }}
-                        >
-                          <FiEdit size={16} />
-                        </IconButton>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="title">
-                        <strong>Material Requests:</strong>
-                      </td>
-                      <td>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            columnGap: 2,
-                            rowGap: 1,
-                          }}
-                        >
-                          {product.material_request?.length > 0 ? (
-                            product.material_request.map((req) => {
-                              const material = materialData.find(
-                                (m) => m.id === req.material_id
-                              );
-                              return (
+              <Grid container spacing={2} sx={{ marginTop: 2 }}>
+                <Grid item xs={12} className="production-status">
+                  <table className="production-status-details">
+                    <tbody>
+                      <tr>
+                        <td className="title">
+                          <strong>Tentative:</strong>
+                        </td>
+                        <td style={{ position: "relative" }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              columnGap: 2,
+                              rowGap: 1,
+                              border: "1px solid #ddd",
+                              padding: 1,
+                              borderRadius: "4px",
+                              minHeight: "40px",
+                            }}
+                          >
+                            {product.tentative_items?.length > 0 ? (
+                              product.tentative_items.map((item, idx) => {
+                                const material = materialData.find(
+                                  (m) => m.id == item.material_id
+                                );
+                                return (
+                                  <Typography key={idx} fontSize={14}>
+                                    {material?.name || "Unknown"} ({item.qty})
+                                  </Typography>
+                                );
+                              })
+                            ) : (
+                              <Typography color="text.secondary" fontSize={14}>
+                                No tentative items
+                              </Typography>
+                            )}
+                          </Box>
+                          <IconButton
+                            aria-label="edit"
+                            color="info"
+                            onClick={() => {
+                              onOpenTentative();
+                            }}
+                            style={{ position: "absolute", top: 5, right: 5 }}
+                          >
+                            <FiEdit size={16} />
+                          </IconButton>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="title">
+                          <strong>Material Requests:</strong>
+                        </td>
+                        <td>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              columnGap: 2,
+                              rowGap: 1,
+                            }}
+                          >
+                            {product.material_request?.length > 0 ? (
+                              product.material_request.map((req) => {
+                                const material = materialData.find(
+                                  (m) => m.id === req.material_id
+                                );
+                                return (
+                                  <Typography
+                                    key={req.id}
+                                    sx={{
+                                      border: "1px solid #ccc",
+                                      padding: "2px 8px",
+                                      fontSize: "14px",
+                                      borderRadius: "4px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      height: "36px",
+                                      backgroundColor: req.status
+                                        ? "success.light"
+                                        : "grey.200",
+                                    }}
+                                  >
+                                    {material?.name || "Unknown"} (Qty: {req.qty})
+                                  </Typography>
+                                );
+                              })
+                            ) : (
+                              <Typography color="text.secondary" fontSize={14}>
+                                No material requests
+                              </Typography>
+                            )}
+                          </Box>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="title">
+                          <strong>Files:</strong>
+                        </td>
+                        <td>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              columnGap: 2,
+                              rowGap: 1,
+                            }}
+                          >
+                            {localAttachments.length > 0 &&
+                              localAttachments.map((att) => (
                                 <Typography
-                                  key={req.id}
+                                  key={att.id}
                                   sx={{
                                     border: "1px solid #ccc",
                                     padding: "2px 8px",
@@ -493,153 +589,200 @@ export default function ProductDetailsModal({
                                     display: "flex",
                                     alignItems: "center",
                                     height: "36px",
-                                    backgroundColor: req.status
-                                      ? "success.light"
-                                      : "grey.200",
+                                    cursor: "pointer",
+                                    "&:hover": {
+                                      backgroundColor: "grey.100",
+                                    },
                                   }}
+                                  onClick={() =>
+                                    openFileInNewTab(mediaUrl + att.doc)
+                                  }
                                 >
-                                  {material?.name || "Unknown"} (Qty: {req.qty})
+                                  <AiOutlineFilePdf
+                                    size={16}
+                                    style={{ marginRight: 5 }}
+                                  />
+                                  {att.file_name || "Attachment"}
                                 </Typography>
-                              );
-                            })
-                          ) : (
-                            <Typography color="text.secondary" fontSize={14}>
-                              No material requests
-                            </Typography>
-                          )}
-                        </Box>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="title">
-                        <strong>Files:</strong>
-                      </td>
-                      <td>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            columnGap: 2,
-                            rowGap: 1,
-                          }}
-                        >
-                          {product.attachments?.length > 0 &&
-                            product.attachments.map((att) => (
-                              <Typography
-                                key={att.id}
-                                sx={{
-                                  border: "1px solid #ccc",
-                                  padding: "2px 8px",
-                                  fontSize: "14px",
-                                  borderRadius: "4px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  height: "36px",
-                                  cursor: "pointer",
-                                  "&:hover": {
-                                    backgroundColor: "grey.100",
-                                  },
-                                }}
-                                onClick={() =>
-                                  openFileInNewTab(mediaUrl + att.doc)
-                                }
-                              >
-                                <AiOutlineFilePdf
-                                  size={16}
-                                  style={{ marginRight: 5 }}
-                                />
-                                {att.file_name || "Attachment"}
-                              </Typography>
-                            ))}
-                          <Button
-                            component="label"
-                            variant="outlined"
-                            tabIndex={-1}
-                            startIcon={<ImAttachment />}
-                            disabled={uploadingFiles}
-                            sx={{
-                              mt: 0,
-                              fontWeight: 500,
-                              color: "grey.600",
-                              borderColor: "grey.400",
-                              "&:hover": {
-                                borderColor: "grey.500",
-                                backgroundColor: "grey.50",
-                              },
-                            }}
-                          >
-                            {uploadingFiles ? "Uploading..." : "Upload files"}
-                            <VisuallyHiddenInput
-                              type="file"
-                              onChange={handleFileUpload}
-                              multiple
-                              accept="image/*,.pdf"
-                            />
-                          </Button>
-                        </Box>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="title">
-                        <strong>Message:</strong>
-                      </td>
-                      <td>
-                        <TextareaAutosize
-                          maxRows={4}
-                          minRows={3}
-                          value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          placeholder="Type your message here..."
-                          style={{
-                            width: "100%",
-                            border: "1px solid #ddd",
-                            borderRadius: "4px",
-                            padding: "10px",
-                            outline: "none",
-                            fontFamily: "inherit",
-                          }}
-                        />
-                        <Grid item xs={12}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "end",
-                              marginTop: 0,
-                            }}
-                          >
+                              ))}
                             <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={handleSendMessage}
-                              disabled={!message.trim()}
-                              sx={{ marginTop: 0 }}
+                              component="label"
+                              variant="outlined"
+                              tabIndex={-1}
+                              startIcon={<ImAttachment />}
+                              disabled={uploadingFiles}
+                              sx={{
+                                mt: 0,
+                                fontWeight: 500,
+                                color: "grey.600",
+                                borderColor: "grey.400",
+                                "&:hover": {
+                                  borderColor: "grey.500",
+                                  backgroundColor: "grey.50",
+                                },
+                              }}
                             >
-                              Send
+                              {uploadingFiles ? "Uploading..." : "Upload files"}
+                              <VisuallyHiddenInput
+                                type="file"
+                                onChange={handleFileUpload}
+                                multiple
+                                accept="image/*,.pdf"
+                              />
                             </Button>
                           </Box>
-                        </Grid>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </Grid>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="title">
+                          <strong>Message:</strong>
+                        </td>
+                        <td>
+                          <TextareaAutosize
+                            maxRows={4}
+                            minRows={3}
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            placeholder="Type your message here..."
+                            style={{
+                              width: "100%",
+                              border: "1px solid #ddd",
+                              borderRadius: "4px",
+                              padding: "10px",
+                              outline: "none",
+                              fontFamily: "inherit",
+                            }}
+                          />
+                          <Grid item xs={12}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "end",
+                                marginTop: 0,
+                              }}
+                            >
+                              <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleSendMessage}
+                                disabled={!message.trim()}
+                                sx={{ marginTop: 0 }}
+                              >
+                                Send
+                              </Button>
+                            </Box>
+                          </Grid>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </Grid>
 
-              <Grid item xs={12}>
-                <Typography variant="h6" sx={{ mb: 1, paddingLeft: 1.5 }}>
-                  Messages:
-                </Typography>
-                {product.messages?.length > 0 ? (
-                  <MessageTimeline messages={product.messages} />
-                ) : (
-                  <Typography color="text.secondary" sx={{ paddingLeft: 2 }}>
-                    No messages yet
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ mb: 1, paddingLeft: 1.5 }}>
+                    Messages:
                   </Typography>
-                )}
+                  {localMessages.length > 0 ? (
+                    <MessageTimeline messages={localMessages} />
+                  ) : (
+                    <Typography color="text.secondary" sx={{ paddingLeft: 2 }}>
+                      No messages yet
+                    </Typography>
+                  )}
+                </Grid>
               </Grid>
-            </Grid>
-          </>
-        )}
-      </DialogContent>
-    </BootstrapDialog>
+            </>
+          )}
+        </DialogContent>
+      </BootstrapDialog>
+      <Dialog
+        open={openReadyDialog}
+        onClose={() => !submittingReady && setOpenReadyDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <MdWarning size={28} color="#ed6c02" />
+            <Typography variant="h6">Confirm Ready for Delivery</Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <DialogContentText sx={{ mb: 2 }}>
+            Are you sure you want to mark this product as <strong>Ready for Delivery</strong>?
+          </DialogContentText>
+
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <strong>Important:</strong> This action cannot be undone. Once marked as ready,
+            this product will be moved to the delivery queue.
+          </Alert>
+
+          <Box sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Product Details:
+            </Typography>
+            <Typography variant="body2">
+              <strong>Item:</strong> {product?.item_name}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Group:</strong> {product?.group?.trim()}
+            </Typography>
+            {product?.start_date && (
+              <Typography variant="body2">
+                <strong>Start Date:</strong> {product.start_date}
+              </Typography>
+            )}
+            {product?.delivery_date && (
+              <Typography variant="body2">
+                <strong>Delivery Date:</strong> {product.delivery_date}
+              </Typography>
+            )}
+          </Box>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Please verify that:
+          </Typography>
+          <Box component="ul" sx={{ pl: 2, mt: 1 }}>
+            <Typography component="li" variant="body2" color="text.secondary">
+              All production work is completed
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Quality checks have been performed
+            </Typography>
+            <Typography component="li" variant="body2" color="text.secondary">
+              Product is ready to ship
+            </Typography>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button
+            onClick={() => setOpenReadyDialog(false)}
+            variant="outlined"
+            disabled={submittingReady}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleReadyProduct}
+            variant="contained"
+            color="warning"
+            startIcon={
+              submittingReady ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                <TbTruckDelivery />
+              )
+            }
+            disabled={submittingReady}
+            autoFocus
+          >
+            {submittingReady ? "Processing..." : "Confirm Ready"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+
   );
 }

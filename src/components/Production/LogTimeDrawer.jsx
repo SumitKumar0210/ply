@@ -44,15 +44,62 @@ const formatTime = (time) => {
 
 const formatDate = (date) => {
   if (!date) return "";
+  
+  // If it's already a string, check if it needs formatting
+  if (typeof date === 'string') {
+    // If already in DD-MM-YYYY format, return as-is
+    if (/^\d{2}-\d{2}-\d{4}$/.test(date)) {
+      return date;
+    }
+    // If in YYYY-MM-DD format, convert to DD-MM-YYYY
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-');
+      return `${day}-${month}-${year}`;
+    }
+    // Try to parse other string formats
+    const parsed = dayjs(date);
+    if (parsed.isValid()) {
+      return parsed.format("DD-MM-YYYY");
+    }
+    return date;
+  }
+  
+  // If it's a dayjs object, format it
   return date.format ? date.format("DD-MM-YYYY") : date;
 };
 
 const calculateWorkHours = (signIn, signOut) => {
   if (!signIn || !signOut) return "0h 0m";
 
-  const diff = signOut.diff(signIn, "minute");
-  const hours = Math.floor(diff / 60);
-  const minutes = diff % 60;
+  let startTime, endTime;
+
+  // Handle string times (HH:mm format like "09:00", "18:00")
+  if (typeof signIn === 'string') {
+    // Parse time string - create a dayjs object with today's date and the time
+    startTime = dayjs(`2000-01-01 ${signIn}`, "YYYY-MM-DD HH:mm");
+  } else {
+    startTime = signIn;
+  }
+
+  if (typeof signOut === 'string') {
+    endTime = dayjs(`2000-01-01 ${signOut}`, "YYYY-MM-DD HH:mm");
+  } else {
+    endTime = signOut;
+  }
+
+  // Validate that we have valid dayjs objects
+  if (!startTime || !endTime || !startTime.isValid() || !endTime.isValid()) {
+    console.error('Invalid time:', { signIn, signOut, startTime, endTime });
+    return "0h 0m";
+  }
+
+  const diff = endTime.diff(startTime, "minute");
+  
+  // Handle negative values (crossing midnight)
+  const totalMinutes = diff < 0 ? diff + (24 * 60) : diff;
+  
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
 
   return `${hours}h ${minutes}m`;
 };
@@ -114,7 +161,7 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
     // Check in existing logs from server
     const duplicateInExisting = existingLogs.some(
       (log) =>
-        log.labour_id === labourId && formatDate(dayjs(log.date)) === dateStr
+        log.labour_id === labourId && formatDate(log.date) === dateStr
     );
 
     return duplicateInNew || duplicateInExisting;
@@ -384,29 +431,29 @@ export default function LogTimeDrawer({ open, onClose, product, onSuccess }) {
                 </TableHead>
                 <TableBody>
                   {/* Show existing logs from server (no delete button) */}
-                  {existingLogs.map((log) => (
-                    <TableRow key={`existing-${log.id}`}>
-                      <TableCell>
-                        {log.labour?.code || log.labour_id}
-                        <br />({log.labour?.name})
-                      </TableCell>
-                      <TableCell>{formatDate(log?.date)}</TableCell>
-                      <TableCell>{log.sign_in}</TableCell>
-                      <TableCell>{log.sign_out}</TableCell>
-                      <TableCell>
-                        {log.total_hours ||
-                          calculateWorkHours(
-                            dayjs(log.sign_in, "HH:mm"),
-                            dayjs(log.sign_out, "HH:mm")
-                          )}
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="caption" color="text.secondary">
-                          Saved
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {existingLogs.map((log) => {
+                    // Calculate total hours properly
+                    const totalHours = log.total_hours || 
+                      calculateWorkHours(log.sign_in, log.sign_out);
+                    
+                    return (
+                      <TableRow key={`existing-${log.id}`}>
+                        <TableCell>
+                          {log.labour?.code || log.labour_id}
+                          <br />({log.labour?.name})
+                        </TableCell>
+                        <TableCell>{formatDate(log.date)}</TableCell>
+                        <TableCell>{log.sign_in}</TableCell>
+                        <TableCell>{log.sign_out}</TableCell>
+                        <TableCell>{totalHours}</TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            Saved
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
 
                   {/* Show newly added items (with delete button) */}
                   {logTimeItems.map((item, index) => (

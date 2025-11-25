@@ -22,13 +22,21 @@ import {
   DialogContentText,
   DialogActions,
   Skeleton,
+  CircularProgress,
 } from "@mui/material";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchActiveMaterials } from "../../pages/settings/slices/materialSlice";
 import { storeTentativeItems } from "../../pages/Production/slice/tentativeItemSlice";
+import { successMessage, errorMessage } from "../../toast";
 
-export default function TentativeItemDrawer({ open, onClose, product, onSuccess }) {
+export default function TentativeItemDrawer({
+  open,
+  onClose,
+  product,
+  onSuccess,
+  onCloseParentModal,
+}) {
   const dispatch = useDispatch();
   const { data: materialData = [], loading: materialLoading } = useSelector(
     (state) => state.material
@@ -39,6 +47,8 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
   const [tentativeItems, setTentativeItems] = useState([]);
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -48,8 +58,8 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
 
   useEffect(() => {
     if (open && product) {
-      // Load existing tentative items from product
       setTentativeItems(product.tentative_items || []);
+      setHasChanges(false);
     }
   }, [open, product]);
 
@@ -57,58 +67,91 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
     if (!open) {
       setSelectedTentativeItem(null);
       setTentativeQty("");
+      setIsUpdating(false);
+      setHasChanges(false);
     }
   }, [open]);
+
+  const handleUpdateTentative = async () => {
+    if (!tentativeItems.length) {
+      errorMessage("No tentative items available.");
+      return;
+    }
+
+    setIsUpdating(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("pp_id", product.id);
+
+      tentativeItems.forEach((item) => {
+        formData.append("material_id[]", item.material_id);
+        formData.append("qty[]", item.qty);
+      });
+
+      const res = await dispatch(storeTentativeItems(formData)).unwrap();
+
+      console.log("Response from API:", res);
+
+      successMessage("Tentative items updated successfully");
+
+      // ✅ Close both drawers and parent modal
+      onClose();
+      setHasChanges(false);
+      onSuccess();
+
+      // ✅ Close parent modal if callback provided
+      if (onCloseParentModal) {
+        onCloseParentModal();
+      }
+    } catch (error) {
+      console.error("Update failed:", error);
+      errorMessage(error || "Something went wrong while updating!");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleAddTentativeItem = () => {
     if (!selectedTentativeItem || !tentativeQty || tentativeQty <= 0) return;
 
+    const selectedId = Number(selectedTentativeItem.id);
+    let updatedItems;
+
     const exists = tentativeItems.find(
-      (item) => item.material_id === selectedTentativeItem.id
+      (item) => Number(item.material_id) === selectedId 
     );
+
     if (exists) {
-      setTentativeItems((prev) =>
-        prev.map((item) =>
-          item.material_id === selectedTentativeItem.id
-            ? { ...item, qty: Number(item.qty) + Number(tentativeQty) }
-            : item
-        )
+      updatedItems = tentativeItems.map((item) =>
+        Number(item.material_id) === selectedId
+          ? { ...item, qty: Number(item.qty) + Number(tentativeQty) }
+          : item
       );
     } else {
-      setTentativeItems((prev) => [
-        ...prev,
+      updatedItems = [
+        ...tentativeItems,
         {
-          material_id: selectedTentativeItem.id,
+          material_id: selectedId, // store ID as number to avoid future issues
           material: selectedTentativeItem,
           qty: Number(tentativeQty),
         },
-      ]);
+      ];
     }
+
+    setTentativeItems(updatedItems);
     setSelectedTentativeItem(null);
     setTentativeQty("");
+    setHasChanges(true);
   };
+
 
   const handleDeleteTentativeItem = (index) => {
-    setTentativeItems((prev) => prev.filter((_, i) => i !== index));
+    const updatedItems = tentativeItems.filter((_, i) => i !== index);
+    setTentativeItems(updatedItems);
     setOpenDelete(false);
     setDeleteIndex(null);
-  };
-
-  const handleUpdateTentative = async () => {
-    if (tentativeItems.length === 0 || !product) return;
-
-    const formData = new FormData();
-    formData.append("pp_id", product.id);
-    tentativeItems.forEach((item) => {
-      formData.append("material_id[]", item.material_id);
-      formData.append("qty[]", item.qty);
-    });
-
-    const res = await dispatch(storeTentativeItems(formData));
-    if (!res.error) {
-      onClose();
-      onSuccess();
-    }
+    setHasChanges(true);
   };
 
   return (
@@ -116,7 +159,7 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
       <Drawer
         anchor="right"
         open={open}
-        onClose={onClose}
+        onClose={isUpdating ? undefined : onClose}
         sx={{ zIndex: 9999 }}
       >
         <Box sx={{ width: 450, p: 2 }}>
@@ -165,6 +208,7 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
                     />
                   )}
                   sx={{ width: 250 }}
+                  disabled={isUpdating}
                 />
                 <TextField
                   label="Qty"
@@ -174,13 +218,17 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
                   value={tentativeQty}
                   onChange={(e) => setTentativeQty(e.target.value)}
                   sx={{ width: 80 }}
+                  disabled={isUpdating}
                 />
                 <Button
                   variant="contained"
                   sx={{ mt: 0 }}
                   onClick={handleAddTentativeItem}
                   disabled={
-                    !selectedTentativeItem || !tentativeQty || tentativeQty <= 0
+                    !selectedTentativeItem ||
+                    !tentativeQty ||
+                    tentativeQty <= 0 ||
+                    isUpdating
                   }
                 >
                   Add
@@ -207,7 +255,9 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
                 <TableBody>
                   {tentativeItems.length > 0 ? (
                     tentativeItems.map((item, index) => {
-                      const material = item.material || materialData.find(m => m.id === item.material_id);
+                      const material =
+                        item.material ||
+                        materialData.find((m) => m.id === item.material_id);
                       return (
                         <TableRow key={index}>
                           <TableCell>{material?.name || "Unknown"}</TableCell>
@@ -221,6 +271,7 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
                                   setDeleteIndex(index);
                                   setOpenDelete(true);
                                 }}
+                                disabled={isUpdating}
                               >
                                 <RiDeleteBinLine size={16} />
                               </IconButton>
@@ -243,13 +294,21 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
             )}
           </TableContainer>
 
-          <Box mt={2} sx={{ display: "flex", justifyContent: "end" }}>
+          <Box mt={2} sx={{ display: "flex", justifyContent: "end", gap: 1 }}>
+            <Button variant="outlined" onClick={onClose} disabled={isUpdating}>
+              Close
+            </Button>
             <Button
               variant="contained"
               onClick={handleUpdateTentative}
-              disabled={tentativeItems.length === 0}
+              disabled={!hasChanges || isUpdating}
+              startIcon={
+                isUpdating ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : null
+              }
             >
-              Update
+              {isUpdating ? "Updating..." : "Update"}
             </Button>
           </Box>
         </Box>
@@ -269,12 +328,15 @@ export default function TentativeItemDrawer({ open, onClose, product, onSuccess 
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
+          <Button onClick={() => setOpenDelete(false)} disabled={isUpdating}>
+            Cancel
+          </Button>
           <Button
             onClick={() => handleDeleteTentativeItem(deleteIndex)}
             variant="contained"
             color="error"
             autoFocus
+            disabled={isUpdating}
           >
             Delete
           </Button>

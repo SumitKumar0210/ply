@@ -87,6 +87,22 @@ export const setNewSupervisor = createAsyncThunk(
   }
 );
 
+// set new supervisor
+export const markReadyForDelivey = createAsyncThunk(
+  "productionChain/markReadyForDelivey",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/mark-ready-for-delivey`, {id:id});
+      successMessage(res.data.message);
+      return  id;
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
 const productionChainSlice = createSlice({
   name: "productionChain",
   initialState: {

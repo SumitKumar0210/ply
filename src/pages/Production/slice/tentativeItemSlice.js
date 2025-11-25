@@ -6,9 +6,10 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 export const storeTentativeItems = createAsyncThunk(
     "tentativeItem/storeTentativeItems",
     async (values, { rejectWithValue }) => {
+        console.log('pass: ' + values)
         try {
             const res = await api.post(
-                `admin/production-order/store-tentive-items`,
+                `admin/production-order/store-tentative-items`,
                 values
             );
 

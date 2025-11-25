@@ -45,13 +45,16 @@ const SwitchSubmenu = React.memo(function SwitchSubmenu({
       sx={{ zIndex: 1400, marginLeft: "2px" }}
     >
       {options.map((opt) => (
-        <MenuItem key={opt.id} disableRipple>
+        <MenuItem
+          key={opt.id}
+          disableRipple
+          onClick={() => {
+            onSelect(opt);
+            submenu.close();
+          }}
+        >
           <Radio
             checked={currentDepartment === opt.id}
-            onChange={() => {
-              onSelect(opt);
-              submenu.close();
-            }}
             sx={{ p: 0, pr: 1 }}
           />
           {opt.name}
@@ -83,13 +86,16 @@ const SupervisorSubmenu = React.memo(function SupervisorSubmenu({
         <MenuItem disabled>None</MenuItem>
       ) : (
         supervisors.map((s) => (
-          <MenuItem key={s.id} disableRipple>
+          <MenuItem
+            key={s.id}
+            disableRipple
+            onClick={() => {
+              onSelect(s.id);
+              submenu.close();
+            }}
+          >
             <Radio
               checked={selected === s.id}
-              onChange={() => {
-                onSelect(s.id);
-                submenu.close();
-              }}
               sx={{ padding: 0, paddingRight: 1 }}
             />
             {s.name}
@@ -120,13 +126,16 @@ const PrioritySubmenu = React.memo(function PrioritySubmenu({
       sx={{ zIndex: 1400, marginLeft: "2px" }}
     >
       {levels.map((lvl) => (
-        <MenuItem key={lvl} disableRipple>
+        <MenuItem
+          key={lvl}
+          disableRipple
+          onClick={() => {
+            onChange(lvl);
+            submenu.close();
+          }}
+        >
           <Radio
             checked={value === lvl}
-            onChange={() => {
-              onChange(lvl);
-              submenu.close();
-            }}
             sx={{ padding: 0, paddingRight: 1 }}
           />
           {lvl}
@@ -173,52 +182,79 @@ export default function ActionMenu({
 
   /* ----------------------- UPDATE HANDLERS ----------------------- */
   const handleSwitchDepartment = useCallback(
-    (dept) => {
+    async (dept) => {
       if (!product) return;
-      dispatch(
+
+      // 🟩 FIX 1: missing space "await dispatch"
+      const res = await dispatch(
         changeProductDepartment({
           pp_id: product.id,
           department_id: dept.id,
         })
       );
-      onRefresh && onRefresh();
-      onClose();
-      closeAllSubmenus();
+
+      // 🟩 FIX 2: use the correct thunk matcher
+      if (changeProductDepartment.fulfilled.match(res)) {
+        if (onRefresh) await onRefresh();
+        onClose();
+        closeAllSubmenus();
+      } else {
+        console.error("Failed to update department:", res);
+      }
     },
     [dispatch, product, onRefresh, onClose, closeAllSubmenus]
   );
 
+
   const handleSupervisorChange = useCallback(
-    (id) => {
+    async (id) => {
       setSelectedSupervisor(id);
-      dispatch(
+
+      const res = await dispatch(
         setNewSupervisor({
           pp_id: product.id,
           supervisor_id: id,
         })
       );
-      onRefresh && onRefresh();
-      onClose();
-      closeAllSubmenus();
+
+      if (setNewSupervisor.fulfilled.match(res)) {
+        if (onRefresh) await onRefresh();
+        onClose();
+        closeAllSubmenus();
+      } else {
+        console.error("Failed to update supervisor:", res);
+      }
     },
     [dispatch, product, onRefresh, onClose, closeAllSubmenus]
   );
 
+
   const handlePriorityChange = useCallback(
-    (lvl) => {
+    async (lvl) => {
+      if (!product) return;
+
       setPriority(lvl);
-      dispatch(
+
+      // Wait for Redux async action to complete
+      const res = await dispatch(
         setNewPriority({
           pp_id: product.id,
           priority: lvl,
         })
       );
-      onRefresh && onRefresh();
-      onClose();
-      closeAllSubmenus();
+
+      // If success
+      if (setNewPriority.fulfilled.match(res)) {
+        if (onRefresh) await onRefresh();
+        onClose();
+        closeAllSubmenus();
+      } else {
+        console.error("Failed to update priority:", res);
+      }
     },
     [dispatch, product, onRefresh, onClose, closeAllSubmenus]
   );
+
 
   const handleClose = useCallback(() => {
     onClose();
@@ -228,7 +264,7 @@ export default function ActionMenu({
   const currentDeptName =
     departments.find((d) => d.id === product?.department_id)?.name || "-";
 
-  const currentSupervisorName = 
+  const currentSupervisorName =
     supervisorData.find((s) => s.id === selectedSupervisor)?.name || "None";
 
   return (
@@ -301,8 +337,8 @@ export default function ActionMenu({
                 priority === "High"
                   ? "error"
                   : priority === "Medium"
-                  ? "warning"
-                  : "success"
+                    ? "warning"
+                    : "success"
               }
               sx={{ height: 24, fontSize: 12 }}
             />

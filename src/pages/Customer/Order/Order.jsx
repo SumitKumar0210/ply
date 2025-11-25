@@ -74,14 +74,22 @@ BootstrapDialogTitle.propTypes = {
 };
 
 //  Status colors
-const getStatusChip = (status) => {
+const getStatusChip = (status, count = 0) => {
   switch (status) {
     case 0:
       return <Chip label="Pending" color="warning" size="small" />;
+
     default:
-      return <Chip label="In Production" color="info" size="small" />;
+      return (
+        <Chip
+          label={`In Production (${count})`}
+          color="info"
+          size="small"
+        />
+      );
   }
 };
+
 
 const Order = () => {
   const [openDelete, setOpenDelete] = useState(false);
@@ -90,40 +98,40 @@ const Order = () => {
     pageIndex: 0,
     pageSize: 10,
   });
-  
+
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
+
   const { data: tableData = [], loading, error, totalRecords = 0 } = useSelector((state) => state.order);
 
   useEffect(() => {
-    dispatch(fetchOrder({ 
-      pageIndex: pagination.pageIndex, 
-      pageLimit: pagination.pageSize 
+    dispatch(fetchOrder({
+      pageIndex: pagination.pageIndex,
+      pageLimit: pagination.pageSize
     }));
   }, [dispatch, pagination.pageIndex, pagination.pageSize]);
 
   const handleViewClick = (id) => {
     navigate('/customer/order/view/' + id);
   };
-  
+
   const handleEditClick = (id) => {
     navigate('/customer/order/edit/' + id);
   };
-  
+
   const handleDelete = (row) => {
     setDeleteRow(row);
     setOpenDelete(true);
   };
 
-  const deleteData = async(id) => {
+  const deleteData = async (id) => {
     await dispatch(deleteOrder(id));
     setOpenDelete(false);
     // Refresh data after deletion
-    dispatch(fetchOrder({ 
-      pageIndex: pagination.pageIndex, 
-      pageLimit: pagination.pageSize 
+    dispatch(fetchOrder({
+      pageIndex: pagination.pageIndex,
+      pageLimit: pagination.pageSize
     }));
   };
 
@@ -137,25 +145,25 @@ const Order = () => {
   };
 
   const handleIQtyCount = (items) => {
-  try {
-    const parsed = JSON.parse(items);
-    if (!Array.isArray(parsed)) return 0;
+    try {
+      const parsed = JSON.parse(items);
+      if (!Array.isArray(parsed)) return 0;
 
-    // sum up 'production_qty' (or fallback to 'original_qty' if needed)
-    // return parsed.reduce(
-    //   (total, item) => total + Number(item.production_qty || item.original_qty || 0),
-    //   0
-    // );
-   return parsed.length?? 0;
-  } catch (e) {
-    console.error("Invalid product_ids format:", e);
-    return 0;
-  }
-};
+      // sum up 'production_qty' (or fallback to 'original_qty' if needed)
+      // return parsed.reduce(
+      //   (total, item) => total + Number(item.production_qty || item.original_qty || 0),
+      //   0
+      // );
+      return parsed.length ?? 0;
+    } catch (e) {
+      console.error("Invalid product_ids format:", e);
+      return 0;
+    }
+  };
 
   const calculateQCPassed = (items) => {
     try {
-      const parsed = JSON.parse(items); 
+      const parsed = JSON.parse(items);
       if (!Array.isArray(parsed)) return 0;
       return parsed.reduce((total, item) => total + Number(item.qc_passed || 0), 0);
     } catch (e) {
@@ -166,7 +174,7 @@ const Order = () => {
 
   const calculateDelivered = (items) => {
     try {
-      const parsed = JSON.parse(items); 
+      const parsed = JSON.parse(items);
       if (!Array.isArray(parsed)) return 0;
       return parsed.reduce((total, item) => total + Number(item.delivered || 0), 0);
     } catch (e) {
@@ -178,17 +186,17 @@ const Order = () => {
   //  Table columns
   const columns = useMemo(
     () => [
-      { accessorKey: "orderNumber", header: "Order No.", Cell: ({row}) => row.original?.batch_no ?? '' },
-      { accessorKey: "customerName", header: "Customer Name", Cell: ({row}) => row.original?.customer?.name ?? '' },
-      { accessorKey: "dated", header: "Dated", Cell: ({row}) => handleDateFormate(row.original.created_at) },
-      { accessorKey: "itemOrdered", header: "Item Ordered", Cell: ({row}) => handleIQtyCount(row.original?.product_ids) },
-      { accessorKey: "commencement_date", header: "Commencement Date", Cell: ({row}) => handleDateFormate(row.original.commencement_date) },
+      { accessorKey: "orderNumber", header: "Order No.", Cell: ({ row }) => row.original?.batch_no ?? '' },
+      { accessorKey: "customerName", header: "Customer Name", Cell: ({ row }) => row.original?.customer?.name ?? '' },
+      { accessorKey: "dated", header: "Dated", Cell: ({ row }) => handleDateFormate(row.original.created_at) },
+      { accessorKey: "itemOrdered", header: "Item Ordered", Cell: ({ row }) => handleIQtyCount(row.original?.product_ids) },
+      { accessorKey: "commencement_date", header: "Commencement Date", Cell: ({ row }) => handleDateFormate(row.original.commencement_date) },
       // { accessorKey: "qcPassedItem", header: "QC Passed Item", Cell: ({row}) => calculateQCPassed(row.original?.product_ids) },
-      { accessorKey: "delivered_date", header: "Delivered Date", Cell: ({row}) =>handleDateFormate(row.original.delivery_date) },
+      { accessorKey: "delivered_date", header: "Delivered Date", Cell: ({ row }) => handleDateFormate(row.original.delivery_date) },
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ row }) => getStatusChip(row.original?.status),
+        Cell: ({ row }) => getStatusChip(row.original?.status, row.original?.production_product_count),
       },
       {
         id: "actions",
@@ -308,7 +316,7 @@ const Order = () => {
             data={tableData}
             manualPagination
             rowCount={totalRecords}
-            state={{ 
+            state={{
               isLoading: loading,
               pagination: pagination,
             }}
@@ -373,7 +381,7 @@ const Order = () => {
           />
         </Paper>
       </Grid>
-      
+
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>{"Delete this order?"}</DialogTitle>

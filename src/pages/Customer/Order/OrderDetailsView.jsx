@@ -31,11 +31,11 @@ import AddIcon from "@mui/icons-material/Add";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { MdOutlineCheckCircle } from "react-icons/md";
 import { useDispatch } from "react-redux";
-import { 
-  approveAllProduct, 
-  approveSingleProduct, 
-  editOrder, 
-  getPreviousPO 
+import {
+  approveAllProduct,
+  approveSingleProduct,
+  editOrder,
+  getPreviousPO
 } from "../slice/orderSlice";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { format } from "date-fns";
@@ -97,7 +97,7 @@ const OrderDetailsView = () => {
   const [previousPOData, setPreviousPOData] = useState([]);
   const [editingItemId, setEditingItemId] = useState(null);
   const [editedProductionQty, setEditedProductionQty] = useState({});
-  
+
   // Modal states
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState(null);
@@ -260,13 +260,13 @@ const OrderDetailsView = () => {
     async (poID, group, productID) => {
       try {
         const item = items.find(
-          (i) => i.product_id == productID && i.group.trim() === group.trim()
+          (i) => i.product_id == productID && (i.group ?? "").trim() === (group ?? "").trim()
         );
 
         await dispatch(
           approveSingleProduct({
             po_id: poID,
-            group: trim(group),
+            group: trim(group ?? ""),
             product_id: productID,
             production_qty: item
               ? editedProductionQty[item.id] || item.production_qty
@@ -395,7 +395,7 @@ const OrderDetailsView = () => {
 
       {/* Main Content */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Card>
             <CardContent>
               {/* Order Header */}
@@ -494,7 +494,7 @@ const OrderDetailsView = () => {
                     startIcon={<MdOutlineCheckCircle />}
                     onClick={handleApproveAll}
                   >
-                    Approve All
+                    {items.length > 1 ? "Approve All" : "Approve"}
                   </Button>
                   <Button
                     variant="contained"
@@ -544,12 +544,12 @@ const OrderDetailsView = () => {
                       items.map((item) => {
                         const matchedProduct = products.find(
                           (p) =>
-                            p.group.trim() === item.group.trim() && p.product_id == item.product_id
+                            (p.group ?? "").trim() === (item.group ?? "").trim() && p.product_id == item.product_id
                         );
 
                         const prevMatch = previousPOData.find(
                           (p) =>
-                            p.product_id == item.product_id && p.group.trim() === item.group.trim()
+                            p.product_id == item.product_id && (p.group ?? "").trim() === (item.group ?? "").trim()
                         );
 
                         const isEditing = editingItemId === item.id;
@@ -622,20 +622,23 @@ const OrderDetailsView = () => {
                             <Td>
                               {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.NOT_STARTED && (
                                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                  <Tooltip title="Start Production">
-                                    <IconButton
-                                      color="warning"
-                                      onClick={() =>
-                                        handleApproveSingle(
-                                          matchedProduct.po_id,
-                                          matchedProduct.group,
-                                          matchedProduct.product_id
-                                        )
-                                      }
-                                    >
-                                      <AiOutlineSetting size={16} />
-                                    </IconButton>
-                                  </Tooltip>
+                                  {item.length > 1 && (
+                                    <Tooltip title="Start Production">
+                                      <IconButton
+                                        color="warning"
+                                        onClick={() =>
+                                          handleApproveSingle(
+                                            matchedProduct.po_id,
+                                            matchedProduct.group,
+                                            matchedProduct.product_id
+                                          )
+                                        }
+                                      >
+                                        <AiOutlineSetting size={16} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+
 
                                   {isEditing ? (
                                     <>

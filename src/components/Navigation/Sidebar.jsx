@@ -10,6 +10,7 @@ import {
   ListItemIcon,
   useMediaQuery,
   useTheme,
+  Skeleton,
 } from "@mui/material";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -30,9 +31,6 @@ import { IoConstructOutline } from "react-icons/io5";
 import { TbUsersPlus } from "react-icons/tb";
 import { useAuth } from "../../context/AuthContext";
 import { RiFlowChart } from "react-icons/ri";
-
-
-
 
 import Logo from "../../assets/images/logo.svg";
 
@@ -56,9 +54,7 @@ const menuSections = [
           { text: "Purchase Order", to: "/vendor/purchase-order", icon: <RiFileList3Line /> },
           { text: "QC PO", to: "/vendor/purchase-order/approve", icon: <RiFileList3Line /> },
           { text: "Vendor Invoice", to: "/vendor/invoice", icon: <LiaFileInvoiceSolid /> },
-          // { text: "Vendor Payment", to: "/vendor/payment", icon: <MdPayment /> },
           { text: "Vendor list", to: "/vendor/list", icon: <LuTable /> },
-          // { text: "Create Vendor", to: "/vendor/create-vendor", icon: <MdStorefront /> },
         ],
       },
       {
@@ -69,7 +65,6 @@ const menuSections = [
           { text: "Quotation", to: "/customer/quote", icon: <RiFileList3Line /> },
           { text: "Order", to: "/customer/order", icon: <RiFileList3Line /> },
           { text: "Customer List", to: "/customer/list", icon: <LuTable /> },
-          // { text: "Customer Ledger", to: "/customer/ledger", icon: <LuTable /> },
         ],
       },
       {
@@ -78,6 +73,7 @@ const menuSections = [
         children: [
           { text: "Production Chain", to: "/production/production-chain", icon: <RiFlowChart /> },
           { text: "Order", to: "/production/orders", icon: <MdOutlineDashboard /> },
+          { text: "product Requests", to: "/production/product-request", icon: <MdOutlineDashboard /> },
         ],
       },
       {
@@ -97,31 +93,42 @@ const menuSections = [
 const Sidebar = ({ mobileOpen, onClose }) => {
   const { appDetails } = useAuth();
   const [openSubmenu, setOpenSubmenu] = useState(null);
-  const [displayLogo, setDisplayLogo] = useState(Logo);
-  const [displayAppName, setDisplayAppName] = useState("");
+  const [imageLoaded, setImageLoaded] = useState(false);
   const location = useLocation();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // Check if appDetails is loaded
+  const isAppDetailsLoaded = appDetails && Object.keys(appDetails).length > 0;
+  
+  // Get logo and app name from appDetails
+  const displayLogo = appDetails?.horizontal_logo || Logo;
+  const displayAppName = appDetails?.application_name || "";
+
+  // Initialize openSubmenu based on current route
   useEffect(() => {
+    // Find which parent menu should be open based on current path
+    menuSections.forEach(({ items }) => {
+      items.forEach(({ text, children }) => {
+        if (children) {
+          const isChildActive = children.some((child) =>
+            location.pathname.startsWith(child.to)
+          );
+          if (isChildActive) {
+            setOpenSubmenu(text);
+          }
+        }
+      });
+    });
+  }, [location.pathname]);
 
-    const logo = appDetails.horizontal_logo ||
-      localStorage.getItem("horizontalLogo") ||
-      Logo;
-
-    const appName = appDetails.application_name ||
-      localStorage.getItem("application_name") ||
-      "";
-
-    setDisplayLogo(logo);
-    setDisplayAppName(appName);
-
-
-    if (appName) {
-      document.title = appName;
+  // Update document title when appDetails loads
+  useEffect(() => {
+    if (displayAppName) {
+      document.title = displayAppName;
     }
-  }, [appDetails]);
+  }, [displayAppName]);
 
   const handleToggle = (menu) => {
     setOpenSubmenu(openSubmenu === menu ? null : menu);
@@ -136,36 +143,36 @@ const Sidebar = ({ mobileOpen, onClose }) => {
   const drawerContent = (
     <>
       {/* Logo */}
-      {/* <Box display="flex" alignItems="center" justifyContent="center" sx={{ p: 2 }}>
-        <img
-          src={appDetails.horizontal_logo ?? storedHLogo ?? Logo}
-          alt="logo"
-          style={{ width: "-webkit-fill-available", marginRight: "10px" }}
-          style={{ width: "120px", marginRight: "10px" }}
-        />
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          {storedAppName ?? 'Aarish Ply'}
-        </Typography>
-      </Box> */}
       <Box
         display="flex"
         alignItems="center"
         justifyContent="center"
         sx={{ p: 2 }}
       >
-        <img
-          src={displayLogo}
-          alt={displayAppName || "logo"}
-          style={{ width: "120px", marginRight: "10px" }}
-          onError={(e) => {
-            // Fallback to default logo if image fails to load
-            e.target.src = Logo;
-          }}
-        />
-        {/* Uncomment if you want to display app name as text */}
-        {/* <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          {displayAppName || 'Aarish Ply'}
-        </Typography> */}
+        {!isAppDetailsLoaded ? (
+          <Skeleton
+            variant="rectangular"
+            width={120}
+            height={40}
+            sx={{ borderRadius: 1 }}
+          />
+        ) : (
+          <img
+            src={displayLogo}
+            alt={displayAppName || "logo"}
+            style={{ 
+              width: "120px", 
+              marginRight: "10px",
+              display: imageLoaded ? "block" : "none"
+            }}
+            onLoad={() => setImageLoaded(true)}
+            onError={(e) => {
+              // Fallback to default logo if image fails to load
+              e.target.src = Logo;
+              setImageLoaded(true);
+            }}
+          />
+        )}
       </Box>
 
       {/* Menu */}
@@ -224,14 +231,14 @@ const Sidebar = ({ mobileOpen, onClose }) => {
 
                 {/* Submenu */}
                 {children && (
-                  <Collapse in={openSubmenu === text}>
+                  <Collapse in={openSubmenu === text} timeout="auto" unmountOnExit>
                     <List disablePadding>
                       {children.map((sub) => (
                         <ListItemButton
                           key={sub.text}
                           component={NavLink}
                           to={sub.to}
-                          onClick={handleItemClick} //  close only on mobile
+                          onClick={handleItemClick} // close only on mobile
                           className="menu-item"
                           sx={{
                             pl: 4,
@@ -244,7 +251,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
                               minWidth: 20,
                             },
                             "&.active, &:hover": {
-                              backgroundColor: 'theme.active',
+                              backgroundColor: "rgba(25,118,210,0.08)",
                               color: "primary.main",
                               "& .MuiListItemIcon-root": {
                                 color: "primary.main",

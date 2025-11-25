@@ -38,14 +38,14 @@ import { fetchActiveSupervisor } from "../Users/slices/userSlice";
 
 export default function Production() {
   const dispatch = useDispatch();
-  
+
   // Redux State
   const { activeBatch } = useSelector((state) => state.productionChain);
   const { data: departments = [] } = useSelector((state) => state.department);
-  const { 
-    batchProduct: batchProductsData = {}, 
+  const {
+    batchProduct: batchProductsData = {},
     loading: batchLoading,
-    error: batchError 
+    error: batchError,
   } = useSelector((state) => state.productionChain);
 
   const theme = useTheme();
@@ -106,14 +106,17 @@ export default function Production() {
     setTimeout(() => setSelectedProduct(null), 300);
   }, []);
 
-  const handleAddDepartment = useCallback(async (values, { resetForm }) => {
-    const res = await dispatch(addDepartment(values));
-    if (!res.error) {
-      resetForm();
-      setOpenDepartmentDialog(false);
-      dispatch(fetchActiveDepartments());
-    }
-  }, [dispatch]);
+  const handleAddDepartment = useCallback(
+    async (values, { resetForm }) => {
+      const res = await dispatch(addDepartment(values));
+      if (!res.error) {
+        resetForm();
+        setOpenDepartmentDialog(false);
+        dispatch(fetchActiveDepartments());
+      }
+    },
+    [dispatch]
+  );
 
   const handleOpenRequestStock = useCallback(() => {
     setOpenRequestStockDrawer(true);
@@ -150,12 +153,14 @@ export default function Production() {
         }}
       >
         {/* Header with loading indicator */}
-        <Box sx={{ 
-          mb: 2, 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center" 
-        }}>
+        <Box
+          sx={{
+            mb: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <Typography variant="h6">Production</Typography>
           {isRefreshing && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -268,12 +273,16 @@ export default function Production() {
                   </Box>
 
                   {/* Department Columns - Enhanced scrollbar */}
-                  <Box 
-                    sx={{ 
-                      display: "flex", 
-                      gap: 3, 
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexWrap: "nowrap", // ❗ forces single row
+                      gap: 2,
                       overflowX: "auto",
                       pb: 2,
+
+                      scrollBehavior: "smooth",
+
                       "&::-webkit-scrollbar": {
                         height: 8,
                       },
@@ -288,74 +297,89 @@ export default function Production() {
                           backgroundColor: "rgba(0,0,0,0.3)",
                         },
                       },
+
+                      // 📱 Responsive card layout
+                      "& > div": {
+                        flex: "0 0 auto",
+                        width: {
+                          xs: "220px", // small screens
+                          sm: "240px", // tablets
+                          md: "260px", // medium screens
+                          lg: "280px", // desktop (your original size)
+                        },
+                      },
                     }}
                   >
-                    {batchLoading ? (
-                      // Skeleton loading state
-                      sortedDepartments.map((dept) => (
-                        <ProductCardSkeleton key={dept.id} department={dept} />
-                      ))
-                    ) : (
-                      // Render department columns
-                      sortedDepartments.map((dept) => {
-                        const products = batchProductsData?.[dept.id] || [];
-                        return (
-                          <Box
+                    {batchLoading
+                      ? sortedDepartments.map((dept) => (
+                          <ProductCardSkeleton
                             key={dept.id}
-                            sx={{
-                              flex: "0 0 280px",
-                              backgroundColor: "white",
-                              p: 2,
-                              borderRadius: 1,
-                              mb: 2,
-                              boxShadow: 1,
-                              transition: "box-shadow 0.2s ease-in-out",
-                              "&:hover": {
-                                boxShadow: 2,
-                              },
-                            }}
-                          >
-                            <Chip
-                              size="small"
-                              label={dept.name}
+                            department={dept}
+                          />
+                        ))
+                      : sortedDepartments.map((dept) => {
+                          const products = batchProductsData?.[dept.id] || [];
+                          return (
+                            <Box
+                              key={dept.id}
                               sx={{
+                                backgroundColor: "white",
+                                p: 2,
                                 borderRadius: 1,
-                                backgroundColor: dept.color || "grey.500",
-                                color: "#fff",
-                                mb: 1,
-                                fontWeight: 500,
+                                mb: 2,
+                                boxShadow: 1,
+                                transition: "0.2s",
+                                "&:hover": { boxShadow: 2 },
                               }}
-                            />
-                            {products.length === 0 ? (
-                              <Box
+                            >
+                              <Chip
+                                size="small"
+                                label={dept.name}
                                 sx={{
-                                  p: 2,
-                                  textAlign: "center",
-                                  color: "text.secondary",
-                                  border: "1px dashed #ddd",
                                   borderRadius: 1,
-                                  mt: 1,
+                                  backgroundColor: dept.color || "grey.500",
+                                  color: "#fff",
+                                  mb: 1,
+                                  fontWeight: 500,
                                 }}
-                              >
-                                <Typography variant="body2">
-                                  No products
-                                </Typography>
-                              </Box>
-                            ) : (
-                              products.map((product) => (
-                                <ProductCard
-                                  key={product.id}
-                                  product={product}
-                                  onOpen={() => handleOpenDetailsModal(product)}
-                                  onMenuOpen={(e) => handleOpenMenu(e, product)}
-                                  menuOpen={menuOpen && selectedProduct?.id === product.id}
-                                />
-                              ))
-                            )}
-                          </Box>
-                        );
-                      })
-                    )}
+                              />
+
+                              {products.length === 0 ? (
+                                <Box
+                                  sx={{
+                                    p: 2,
+                                    textAlign: "center",
+                                    color: "text.secondary",
+                                    border: "1px dashed #ddd",
+                                    borderRadius: 1,
+                                    mt: 1,
+                                  }}
+                                >
+                                  <Typography variant="body2">
+                                    No products
+                                  </Typography>
+                                </Box>
+                              ) : (
+                                products.map((product) => (
+                                  <ProductCard
+                                    key={product.id}
+                                    product={product}
+                                    onOpen={() =>
+                                      handleOpenDetailsModal(product)
+                                    }
+                                    onMenuOpen={(e) =>
+                                      handleOpenMenu(e, product)
+                                    }
+                                    menuOpen={
+                                      menuOpen &&
+                                      selectedProduct?.id === product.id
+                                    }
+                                  />
+                                ))
+                              )}
+                            </Box>
+                          );
+                        })}
 
                     {/* Add Department Button */}
                     <Box sx={{ flex: "0 0 auto" }}>
@@ -367,7 +391,6 @@ export default function Production() {
                             color: "grey.700",
                             borderRadius: 1,
                             p: 1,
-                            transition: "all 0.2s ease-in-out",
                             "&:hover": {
                               backgroundColor: "grey.400",
                               transform: "scale(1.05)",
@@ -448,6 +471,7 @@ export default function Production() {
       <TentativeItemDrawer
         open={openTentativeDrawer}
         onClose={() => setOpenTentativeDrawer(false)}
+        onCloseParentModal={ ()=> handleCloseDetailsModal(false)}
         product={selectedProduct}
         onSuccess={handleRefreshBatch}
       />

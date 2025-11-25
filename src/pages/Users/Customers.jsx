@@ -34,7 +34,7 @@ import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 import { useDispatch, useSelector } from "react-redux";
 import {
   addCustomer,
-  fetchCustomers,
+  fetchAllCustomersWithSearch,
   statusUpdate,
   updateCustomer,
   deleteCustomer,
@@ -154,7 +154,7 @@ const Customers = () => {
   // Fetch customers with pagination
   useEffect(() => {
     dispatch(
-      fetchCustomers({
+      fetchAllCustomersWithSearch({
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       })

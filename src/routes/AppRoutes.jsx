@@ -48,6 +48,7 @@ import OwnProductionOrder from "../pages/Production/order";
 import AddOrder from "../pages/Production/addOrder";
 import Customer from "../pages/Customer/Ledger/Customer";
 import Production from "../pages/Production/Production";
+import ProductRequest from "../pages/Production/ProductRequest";
 
 import Error404 from "../pages/error/404";
 
@@ -101,11 +102,12 @@ const AppRoutes = () => {
       <Route path="/customer/list" element={<ProtectedRoute><MainLayout><Customer /></MainLayout></ProtectedRoute>} />
       <Route path="/customer/ledger/:id" element={<ProtectedRoute><MainLayout><CustomerLedger /></MainLayout></ProtectedRoute>} />
 
-
+ 
       {/* Production */}
       <Route path="/production/create-order" element={<ProtectedRoute><MainLayout><AddOrder /></MainLayout></ProtectedRoute>} />
       <Route path="/production/orders" element={<ProtectedRoute><MainLayout><OwnProductionOrder /></MainLayout></ProtectedRoute>} />
       <Route path="/production/production-chain" element={<ProtectedRoute><MainLayout><Production /></MainLayout></ProtectedRoute>} />
+      <Route path="/production/product-request" element={<ProtectedRoute><MainLayout><ProductRequest /></MainLayout></ProtectedRoute>} />
 
       {/* Catch-all */}
       <Route path="*" element={<Error404 />} />

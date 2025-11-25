@@ -28,8 +28,10 @@ import { fetchQuotation, deleteOrder, fetchSupervisor, addOrder, getPreviousPO }
 import { useDispatch, useSelector } from "react-redux";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { Chip } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 const CreateOrder = () => {
+  const navigate = useNavigate();
   const [creationDate, setCreationDate] = useState(null);
   const [eddDate, setEddDate] = useState(null);
   const [openDelete, setOpenDelete] = useState(false);
@@ -215,6 +217,7 @@ const CreateOrder = () => {
 
       // Reset form on success
       setItemRowData(null);
+      navigate('/customer/order');
       setItems([]);
       setSelectedSupervisor(null);
       setCreationDate(null);

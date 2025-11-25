@@ -60,6 +60,7 @@ const Customer = () => {
     total: totalRows = 0,
     loading = false,
   } = useSelector((state) => state.customer);
+  console.log(customerData)
 
   // Initialize state from URL params
   const getInitialPage = useCallback(() => {
@@ -176,7 +177,7 @@ const Customer = () => {
   const downloadCSV = useCallback(() => {
     try {
       const headers = ["Customer Name", "Mobile", "Email", "City", "GST"];
-      const rows = (customerData.data).map((row) => [
+      const rows = (customerData).map((row) => [
         row.name || "",
         row.mobile || "",
         row.email || "",
@@ -203,7 +204,7 @@ const Customer = () => {
     } catch (error) {
       console.error("CSV download error:", error);
     }
-  }, [customerData.data]);
+  }, [customerData]);
 
   // Print Handler
   const handlePrint = useCallback(() => {
@@ -238,7 +239,7 @@ const Customer = () => {
           >
             <MaterialReactTable
               columns={columns}
-              data={customerData.data || []}
+              data={customerData || []}
               getRowId={(row) => row.id}
               manualPagination
               manualFiltering

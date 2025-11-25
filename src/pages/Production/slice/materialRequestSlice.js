@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 
+// STORE MATERIAL REQUEST
 export const storeMaterialRequest = createAsyncThunk(
   "materialRequest/storeMaterialRequest",
   async (values, { rejectWithValue }) => {
@@ -9,7 +10,7 @@ export const storeMaterialRequest = createAsyncThunk(
       const res = await api.post(`admin/production-order/store-material-request`, values);
       successMessage(res.data.message);
 
-      return res.data.data || [];
+      return res.data.data || null; // return single created item
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
@@ -18,13 +19,13 @@ export const storeMaterialRequest = createAsyncThunk(
   }
 );
 
+// FETCH REQUEST ITEMS
 export const fetchAllRequestItems = createAsyncThunk(
   "materialRequest/fetchAllRequestItems",
-  async (id, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/production-order/get-material-request`,{pp_id:id});
-      successMessage(res.data.message);
-       return res.data.data;
+      const res = await api.post(`admin/production-order/get-material-request`);
+      return res.data.data; // DO NOT toast on fetch
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
@@ -33,6 +34,25 @@ export const fetchAllRequestItems = createAsyncThunk(
   }
 );
 
+// APPROVE MATERIAL REQUEST
+export const approveRequest = createAsyncThunk(
+  "materialRequest/approveRequest",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/approve-material-request`, {
+        id: id,
+        status: "1",
+      });
+      successMessage(res.data.message);
+
+      return res.data.data; // returns updated record
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
 
 const materialRequestSlice = createSlice({
   name: "materialRequest",
@@ -43,28 +63,46 @@ const materialRequestSlice = createSlice({
     activeBatch: null,
     totalRecords: 0,
   },
-  reducers: {
-    
-  },
+  reducers: {},
 
   extraReducers: (builder) => {
     builder
-       .addCase(fetchAllRequestItems.pending, (state) => {
+      // -------------------------
+      // FETCH ITEMS
+      // -------------------------
+      .addCase(fetchAllRequestItems.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAllRequestItems.fulfilled, (state, action) => {
-        state.loading = false; 
-        state.data = action.payload;
+        state.loading = false;
+        state.data = action.payload ?? [];
       })
       .addCase(fetchAllRequestItems.rejected, (state, action) => {
-        state.loading = false;             
+        state.loading = false;
         state.error = action.payload;
       })
 
-      // STORE REQUEST ITEM
+      // -------------------------
+      // STORE MATERIAL REQUEST
+      // -------------------------
       .addCase(storeMaterialRequest.fulfilled, (state, action) => {
-        state.data.push(action.payload);
+        if (action.payload) {
+          state.data.push(action.payload); // push only one object
+        }
+      })
+
+      // -------------------------
+      // APPROVE MATERIAL REQUEST
+      // -------------------------
+      .addCase(approveRequest.fulfilled, (state, action) => {
+        const updated = action.payload;
+        if (!updated) return;
+
+        // Update specific request item in Redux state
+        state.data = state.data.map((item) =>
+          item.id === updated.id ? updated : item
+        );
       });
   },
 });
