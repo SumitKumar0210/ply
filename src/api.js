@@ -9,7 +9,7 @@ const api = axios.create({
 const PUBLIC_ENDPOINTS = [
   "/login",
   "/forgot-password",
-  "/public/quote/",
+  "/public/quotation/",
   "/public/order/",
   "/public/invoice/",
 ];

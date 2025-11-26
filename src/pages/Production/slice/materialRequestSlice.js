@@ -19,12 +19,27 @@ export const storeMaterialRequest = createAsyncThunk(
   }
 );
 
-// FETCH REQUEST ITEMS
+// FETCH ALL REQUEST ITEMS
 export const fetchAllRequestItems = createAsyncThunk(
   "materialRequest/fetchAllRequestItems",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/production-order/get-material-request`);
+      const res = await api.post(`admin/production-order/get-all-material-request`);
+      return res.data.data; // DO NOT toast on fetch
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+// FETCH REQUEST ITEMS
+export const fetchRequestItems = createAsyncThunk(
+  "materialRequest/fetchRequestItems",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`admin/production-order/get-material-request`,{id:id});
       return res.data.data; // DO NOT toast on fetch
     } catch (error) {
       const errMsg = getErrorMessage(error);
@@ -39,7 +54,7 @@ export const approveRequest = createAsyncThunk(
   "materialRequest/approveRequest",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/production-order/approve-material-request`, {
+      const res = await api.post(`admin/production-order/approve-all-material-request`, {
         id: id,
         status: "1",
       });
@@ -81,6 +96,10 @@ const materialRequestSlice = createSlice({
       .addCase(fetchAllRequestItems.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(fetchRequestItems.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload ?? [];
       })
 
       // -------------------------

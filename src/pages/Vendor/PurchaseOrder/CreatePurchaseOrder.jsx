@@ -37,7 +37,7 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { addDays, format } from "date-fns";
 import { successMessage, errorMessage } from "../../../toast";
-import VendorFormModal from "../../../components/vendor/VendorFormModal";
+import VendorFormModal from "../../../components/Vendor/VendorFormModal";
 import MaterialFormModal from "../../../components/Material/MaterialFormModal";
 
 // Validation Schema
@@ -76,6 +76,7 @@ const CreatePurchaseOrder = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openVendorModal, setOpenVendorModal] = useState(false);
   const [openMaterialModal, setOpenMaterialModal] = useState(false);
+  const [previousVendorId, setPreviousVendorId] = useState(null);
 
   const { data: vendors = [], loading: vendorLoading } = useSelector((state) => state.vendor);
   const { data: materials = [] } = useSelector((state) => state.material);
@@ -276,7 +277,7 @@ const CreatePurchaseOrder = () => {
         gst_amount: gstAmount,
         grand_total: grandTotal,
         gst_percentage: gstRateValue,
-        order_terms: values.orderTerms || "",
+        order_terms: values.orderTerms || values.vendor?.terms || "",
         is_draft: isDraft,
       };
     },
@@ -291,7 +292,7 @@ const CreatePurchaseOrder = () => {
       const res = await dispatch(addPO(poData));
 
       if (res.meta.requestStatus === "fulfilled") {
-        setTimeout(() => navigate("/vendor/purchase-order"), 1500);
+        setTimeout(() => navigate("/vendor/purchase-order"), 500);
       } else {
         errorMessage(res.error?.message || "Failed to save Purchase Order");
       }
@@ -327,7 +328,7 @@ const CreatePurchaseOrder = () => {
               eddDate: null,
               discount: "",
               additionalCharges: "",
-              gstRate: 18,
+              gstRate: "18.00",
               orderTerms: "",
             }}
             validationSchema={validationSchema}
@@ -340,6 +341,23 @@ const CreatePurchaseOrder = () => {
                   setFieldValue("eddDate", newDate);
                 }
               }, [values.creditDays, setFieldValue]);
+
+              useEffect(() => {
+                if (!previousVendorId && values.vendor?.id) {
+                  setPreviousVendorId(values.vendor.id);
+                  if (values.vendor?.terms) {
+                    setFieldValue("orderTerms", values.vendor.terms);
+                  }
+                  return;
+                }
+                if (values.vendor?.id && previousVendorId !== values.vendor?.id) {
+                  if (values.vendor?.terms) {
+                    setFieldValue("orderTerms", values.vendor.terms);
+                  }
+
+                  setPreviousVendorId(values.vendor.id);
+                }
+              }, [values.vendor?.id, previousVendorId]);
 
               const { discountAmount, additionalChargesAmount, gstAmount, grandTotal } =
                 calculateTotals(values);
@@ -433,7 +451,7 @@ const CreatePurchaseOrder = () => {
                             onChange={(e, value) => {
                               if (value?.id === "add_new") {
                                 setOpenMaterialModal(true);
-                                setSelectedItemCode(null); // Reset field
+                                setSelectedItemCode(null);
                                 return;
                               }
                               setSelectedItemCode(value);
@@ -471,7 +489,6 @@ const CreatePurchaseOrder = () => {
                           >
                             Add Item
                           </Button>
-
                         </Box>
                       </Grid>
 
@@ -533,6 +550,7 @@ const CreatePurchaseOrder = () => {
 
                       <Grid size={12} sx={{ mt: 3 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2 }}>
+                          {/* Fixed TextareaAutosize - now always uses values.orderTerms */}
                           <TextareaAutosize
                             minRows={3}
                             maxRows={6}
@@ -540,7 +558,13 @@ const CreatePurchaseOrder = () => {
                             name="orderTerms"
                             value={values.orderTerms}
                             onChange={handleChange}
-                            style={{ width: '50%', padding: '8px', fontFamily: 'inherit', borderRadius: '4px', border: '1px solid #ccc' }}
+                            style={{
+                              width: '50%',
+                              padding: '8px',
+                              fontFamily: 'inherit',
+                              borderRadius: '4px',
+                              border: '1px solid #ccc'
+                            }}
                           />
 
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '20%' }}>

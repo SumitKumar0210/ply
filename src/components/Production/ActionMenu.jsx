@@ -113,7 +113,6 @@ const PrioritySubmenu = React.memo(function PrioritySubmenu({
   onChange,
 }) {
   const levels = ["High", "Medium", "Low"];
-
   return (
     <Menu
       anchorEl={submenu.anchorEl}
@@ -164,13 +163,13 @@ export default function ActionMenu({
   const prioSub = useSubmenu();
 
   const [selectedSupervisor, setSelectedSupervisor] = useState(null);
-  const [priority, setPriority] = useState("High");
+  const [priority, setPriority] = useState("Not Set");
 
   /* ------------ Sync initial state when PRODUCT loads ------------- */
   React.useEffect(() => {
     if (product) {
       setSelectedSupervisor(product.supervisor_id || null);
-      setPriority(product.priority || "High");
+      setPriority(product.priority || "Not Set");
     }
   }, [product]);
 

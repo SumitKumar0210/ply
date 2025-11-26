@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
 import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
+import { id } from "date-fns/locale";
 
 // Fetch quotations with pagination
 export const fetchQuotation = createAsyncThunk(
@@ -10,9 +11,10 @@ export const fetchQuotation = createAsyncThunk(
       const page = (params.pageIndex ?? 1);
       const limit = params.pageLimit ?? 10;
       const search = params.search ?? "";
+      const approved = params.approved ?? "";
 
       const res = await api.get("admin/quotation-order/get-data", {
-        params: { page, limit, search },
+        params: { page, limit, search, approved },
       });
 
       const response = res.data;
@@ -74,38 +76,13 @@ export const updateQuotation = createAsyncThunk(
   "quotation/updateQuotation",
   async ({ id, formData }, { rejectWithValue }) => {
     try {
-      // ✅ Debug: Log FormData contents properly
-      console.group('📤 Sending FormData to API:');
-      console.log('Endpoint:', `admin/quotation-order/update/${id}`);
-      console.log('FormData type:', formData.constructor.name);
-      console.log('FormData entries:');
-      
-      let entriesCount = 0;
-      for (const [key, value] of formData.entries()) {
-        entriesCount++;
-        if (value instanceof File) {
-          console.log(`  ${key}:`, `[File] ${value.name} (${value.size} bytes)`);
-        } else {
-          console.log(`  ${key}:`, value);
-        }
-      }
-      
-      console.log('Total entries:', entriesCount);
-      console.groupEnd();
-      
-      console.log('🚀 Making API call...');
-
-      // ✅ Send FormData (not values) - let axios handle headers automatically
       const res = await api.post(`admin/quotation-order/update/${id}`, formData);
-      
-      console.log('✅ API Response received:', res.data);
-      
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
       const errMsg = getErrorMessage(error);
       
-      // ✅ Enhanced error logging
+      //  Enhanced error logging
       console.error('❌ Update Quotation Error:', {
         message: errMsg,
         response: error.response?.data,
@@ -142,6 +119,22 @@ export const approveQuotation = createAsyncThunk(
       const res = await api.post(`admin/quotation-order/status-update`, {id:id});
       successMessage(res.data.message);
       return { id };
+    } catch (error) {
+      const errMsg = getErrorMessage(error);
+      errorMessage(errMsg);
+      return rejectWithValue(errMsg);
+    }
+  }
+);
+
+// Approve quotation
+export const sendQuotationMail = createAsyncThunk(
+  "quotation/sendQuotationMail",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await api.post('admin/quotation-order/send-quotation-mail', values);
+      successMessage(res.data.message);
+      return { values };
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);

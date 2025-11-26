@@ -56,6 +56,18 @@ const validationSchema = Yup.object({
     .min(0, "Cannot be negative")
     .required("Opening stock is required"),
   urgently_required: Yup.string().required("Urgent is required"),
+  minimum_qty: Yup.number()
+    .transform((value, originalValue) =>
+      originalValue === "" ? undefined : value
+    )
+    .when("urgently_required", {
+      is: (val) => val === "1",
+      then: (schema) =>
+        schema
+          .required("Minimum Qty is required")
+          .min(2, "Minimum Qty must be greater than 1"),
+      otherwise: (schema) => schema.notRequired(),
+    }),
   tag: Yup.string().required("Tag is required"),
   remark: Yup.string().required("Remarks are required"),
   image: Yup.mixed().nullable(),
@@ -92,6 +104,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
     group_id: String(editData?.group_id || ""),
     opening_stock: editData?.opening_stock || "",
     urgently_required: String(editData?.urgently_required || "0"),
+    minimum_qty: (editData?.minimum_qty || 0),
     tag: editData?.tag || "",
     remark: editData?.remark || "",
     image: null,
@@ -204,7 +217,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     error={touched.name && Boolean(errors.name)}
                     helperText={touched.name && errors.name}
                     disabled={isSubmitting}
-                    
+
                   />
                 </Grid>
 
@@ -226,7 +239,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                       errors.unit_of_measurement_id
                     }
                     disabled={isSubmitting}
-                    
+
                   >
                     <MenuItem value="">
                       <em>Select UOM</em>
@@ -250,7 +263,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     error={touched.size && Boolean(errors.size)}
                     helperText={touched.size && errors.size}
                     disabled={isSubmitting}
-                    
+
                   />
                 </Grid>
 
@@ -266,7 +279,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     error={touched.price && Boolean(errors.price)}
                     helperText={touched.price && errors.price}
                     disabled={isSubmitting}
-                    
+
                   />
                 </Grid>
 
@@ -282,7 +295,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     error={touched.category_id && Boolean(errors.category_id)}
                     helperText={touched.category_id && errors.category_id}
                     disabled={isSubmitting}
-                    
+
                   >
                     <MenuItem value="">
                       <em>Select Category</em>
@@ -307,7 +320,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     error={touched.group_id && Boolean(errors.group_id)}
                     helperText={touched.group_id && errors.group_id}
                     disabled={isSubmitting}
-                    
+
                   >
                     <MenuItem value="">
                       <em>Select Group</em>
@@ -332,7 +345,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     error={touched.opening_stock && Boolean(errors.opening_stock)}
                     helperText={touched.opening_stock && errors.opening_stock}
                     disabled={isSubmitting}
-                    
+
                   />
                 </Grid>
 
@@ -353,12 +366,31 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                       touched.urgently_required && errors.urgently_required
                     }
                     disabled={isSubmitting}
-                    
+
                   >
                     <MenuItem value="0">No</MenuItem>
                     <MenuItem value="1">Yes</MenuItem>
                   </TextField>
                 </Grid>
+                {values.urgently_required === '1' && (
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      type="number"
+                      fullWidth
+                      name="minimum_qty"
+                      label="Minimum Quantity"
+                      size="small"
+                      value={values.minimum_qty}
+                      onChange={handleChange}
+                      inputProps={{ min: 0 }}
+                      error={touched.minimum_qty && Boolean(errors.minimum_qty)}
+                      helperText={touched.minimum_qty && errors.minimum_qty}
+                      disabled={isSubmitting}
+                    />
+                  </Grid>
+                )}
+
+
 
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
@@ -372,7 +404,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     error={touched.tag && Boolean(errors.tag)}
                     helperText={touched.tag && errors.tag}
                     disabled={isSubmitting}
-                    
+
                   >
                     <MenuItem value="">
                       <em>Select Tag</em>
@@ -448,7 +480,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     error={touched.remark && Boolean(errors.remark)}
                     helperText={touched.remark && errors.remark}
                     disabled={isSubmitting}
-                    
+
                   />
                 </Grid>
               </Grid>
@@ -477,8 +509,8 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                 {isSubmitting
                   ? "Saving..."
                   : isEditMode
-                  ? "Save Changes"
-                  : "Submit"}
+                    ? "Save Changes"
+                    : "Submit"}
               </Button>
             </DialogActions>
           </Form>

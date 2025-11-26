@@ -37,7 +37,7 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { addDays, format, parseISO } from "date-fns";
 import { successMessage, errorMessage } from "../../../toast";
-import VendorFormModal from "../../../components/vendor/VendorFormModal";
+import VendorFormModal from "../../../components/Vendor/VendorFormModal";
 import MaterialFormModal from "../../../components/Material/MaterialFormModal";
 
 // Validation Schema
@@ -82,6 +82,7 @@ const EditPurchaseOrder = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openVendorModal, setOpenVendorModal] = useState(false);
   const [openMaterialModal, setOpenMaterialModal] = useState(false);
+  const [previousVendorId, setPreviousVendorId] = useState(null);
 
   const [initialValues, setInitialValues] = useState({
     vendor: null,
@@ -129,7 +130,7 @@ const EditPurchaseOrder = () => {
         edd_date: poData.edd_date ? parseISO(poData.edd_date) : null,
         discount: poData.discount || 0,
         cariage_amount: poData.cariage_amount || 0,
-        gst_per: parseInt(poData.gst_per) || 18,
+        gst_per: poData.gst_per || "18.00",
         term_and_conditions: poData.term_and_conditions || "",
       });
     }
@@ -378,6 +379,20 @@ const EditPurchaseOrder = () => {
                 }
               }, [values.creditDays, setFieldValue]);
 
+              useEffect(() => {
+                if (!previousVendorId && values.vendor?.id) {
+                  setPreviousVendorId(values.vendor.id);
+                  return;
+                }
+
+                if (values.vendor?.id && previousVendorId !== values.vendor?.id) {
+                  if (values.vendor?.terms) {
+                    setFieldValue("term_and_conditions", values.vendor.terms);
+                  }
+                  setPreviousVendorId(values.vendor.id);
+                }
+              }, [values.vendor?.id, previousVendorId]);
+
               const { discountAmount, cariageAmount, gstAmount, grandTotal } =
                 calculateTotals(values);
 
@@ -470,7 +485,7 @@ const EditPurchaseOrder = () => {
                             onChange={(e, value) => {
                               if (value?.id === "add_new") {
                                 setOpenMaterialModal(true);
-                                setSelectedItemCode(null); 
+                                setSelectedItemCode(null);
                                 return;
                               }
                               setSelectedItemCode(value);

@@ -49,6 +49,8 @@ import AddOrder from "../pages/Production/addOrder";
 import Customer from "../pages/Customer/Ledger/Customer";
 import Production from "../pages/Production/Production";
 import ProductRequest from "../pages/Production/ProductRequest";
+import ReadyProduct from "../pages/Production/ReadyProduct";
+import ProductChallan from "../pages/Production/ProductChallna";
 
 import Error404 from "../pages/error/404";
 
@@ -108,6 +110,8 @@ const AppRoutes = () => {
       <Route path="/production/orders" element={<ProtectedRoute><MainLayout><OwnProductionOrder /></MainLayout></ProtectedRoute>} />
       <Route path="/production/production-chain" element={<ProtectedRoute><MainLayout><Production /></MainLayout></ProtectedRoute>} />
       <Route path="/production/product-request" element={<ProtectedRoute><MainLayout><ProductRequest /></MainLayout></ProtectedRoute>} />
+      <Route path="/product/ready-product" element={<ProtectedRoute><MainLayout><ReadyProduct /></MainLayout></ProtectedRoute>} />
+      <Route path="/product/challan/:id" element={<ProtectedRoute><MainLayout><ProductChallan /></MainLayout></ProtectedRoute>} />
 
       {/* Catch-all */}
       <Route path="*" element={<Error404 />} />

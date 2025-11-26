@@ -96,6 +96,7 @@ const getStatusChip = (status) => {
 const Quote = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
+  const [showApproved, setShowApproved] = useState(false);
 
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
@@ -147,6 +148,7 @@ const Quote = () => {
     const params = {
       pageIndex: pagination.pageIndex + 1,
       pageLimit: pagination.pageSize,
+      approved: showApproved ? "true" : "false",
     };
     
     if (globalFilter) {
@@ -156,7 +158,7 @@ const Quote = () => {
 
     dispatch(fetchQuotation(params));
     updateURLParams(pagination.pageIndex, pagination.pageSize, globalFilter);
-  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter, updateURLParams]);
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter, showApproved, updateURLParams]);
 
   // Debounced fetch on pagination or search change
   useEffect(() => {
@@ -165,7 +167,7 @@ const Quote = () => {
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timer);
-  }, [pagination, globalFilter]);
+  }, [pagination, globalFilter, showApproved]);
 
   // Handle pagination change
   const handlePaginationChange = useCallback((updater) => {
@@ -179,6 +181,13 @@ const Quote = () => {
   const handleGlobalFilterChange = useCallback((value) => {
     setGlobalFilter(value || "");
     // Reset to first page when searching
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  // Toggle approved data
+  const handleToggleApproved = useCallback(() => {
+    setShowApproved((prev) => !prev);
+    // Reset to first page when toggling
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
@@ -273,7 +282,11 @@ const Quote = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <LinkGenerator id={row.original.id} />
+            <LinkGenerator
+              id={row.original.id}
+              customerId={row.original.customer?.id}
+              quotationData={row.original}
+            />
             <Tooltip title="View">
               <IconButton
                 color="warning"
@@ -378,14 +391,24 @@ const Quote = () => {
           <Typography variant="h6">Quotation</Typography>
         </Grid>
         <Grid>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            component={Link}
-            to="/customer/quote/create"
-          >
-            Create Quote
-          </Button>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            <Button
+              variant={showApproved ? "contained" : "outlined"}
+              startIcon={<CheckCircleIcon />}
+              onClick={handleToggleApproved}
+              color={showApproved ? "success" : "primary"}
+            >
+              {showApproved ? "Showing Approved" : "Approved Data"}
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              component={Link}
+              to="/customer/quote/create"
+            >
+              Create Quote
+            </Button>
+          </Box>
         </Grid>
       </Grid>
 
@@ -454,7 +477,7 @@ const Quote = () => {
                 }}
               >
                 <Typography variant="h6" fontWeight={400}>
-                  Quote List
+                  {showApproved ? "Approved Quote List" : "Quote List"}
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <MRT_GlobalFilterTextField table={table} />

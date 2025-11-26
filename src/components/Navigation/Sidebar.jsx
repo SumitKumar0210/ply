@@ -47,12 +47,13 @@ const menuSections = [
     title: "Dashboard",
     items: [
       {
-        text: "Vendors",
+        text: "Store",
         icon: <MdStorefront />,
         children: [
           { text: "Dashboard", to: "/vendor/dashboard", icon: <MdOutlineDashboard /> },
           { text: "Purchase Order", to: "/vendor/purchase-order", icon: <RiFileList3Line /> },
           { text: "QC PO", to: "/vendor/purchase-order/approve", icon: <RiFileList3Line /> },
+          { text: "Material Requests", to: "/production/product-request", icon: <MdOutlineDashboard /> },
           { text: "Vendor Invoice", to: "/vendor/invoice", icon: <LiaFileInvoiceSolid /> },
           { text: "Vendor list", to: "/vendor/list", icon: <LuTable /> },
         ],
@@ -73,7 +74,7 @@ const menuSections = [
         children: [
           { text: "Production Chain", to: "/production/production-chain", icon: <RiFlowChart /> },
           { text: "Order", to: "/production/orders", icon: <MdOutlineDashboard /> },
-          { text: "product Requests", to: "/production/product-request", icon: <MdOutlineDashboard /> },
+          
         ],
       },
       {

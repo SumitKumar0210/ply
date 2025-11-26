@@ -33,6 +33,7 @@ import { storeMessage } from "../../pages/Production/slice/messageSlice";
 import { storeAttachment } from "../../pages/Production/slice/attachmentSlice";
 import { compressImage } from "../imageCompressor/imageCompressor";
 import { markReadyForDelivey } from "../../pages/Production/slice/productionChainSlice";
+import { successMessage, errorMessage } from "../../toast";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -250,20 +251,28 @@ export default function ProductDetailsModal({
     setUploadingFiles(true);
 
     try {
+      const MAX_SIZE = 5 * 1024 * 1024;
       const formData = new FormData();
       formData.append("pp_id", product.id);
 
       for (const file of files) {
+
+        if (file.size > MAX_SIZE) {
+          errorMessage(`${file.name} exceeds the 5MB file size limit.`);
+          return;
+        }
+
         if (!isValidFile(file)) {
-          alert(
+          errorMessage(
             `File ${file.name} is not supported. Only images and PDFs are allowed.`
           );
-          continue;
+          return;
         }
 
         if (isImageFile(file)) {
           const compressed = await compressImage(file);
           formData.append("attachments", compressed, file.name);
+
         } else if (isPdfFile(file)) {
           formData.append("attachments", file);
         }
@@ -271,25 +280,24 @@ export default function ProductDetailsModal({
 
       const res = await dispatch(storeAttachment(formData));
       if (!res.error) {
-        // Append new attachments to local state
-        if (res.payload && res.payload) {
+        if (res.payload) {
           const newAttachments = Array.isArray(res.payload)
             ? res.payload
             : [res.payload];
 
           setLocalAttachments((prev) => [...prev, ...newAttachments]);
         }
-        // Still call onRefresh to update parent state if needed
         onRefresh();
       }
     } catch (error) {
       console.error("File upload error:", error);
-      alert("Failed to upload files. Please try again.");
+      errorMessage("Failed to upload files. Please try again.");
     } finally {
       setUploadingFiles(false);
       event.target.value = "";
     }
   };
+
 
   const handleReadyProduct = async () => {
     if (!product?.id) return;
@@ -371,7 +379,8 @@ export default function ProductDetailsModal({
                     {product.group?.trim()}
                   </Typography>
                 </Box>
-                <Button
+                {currentDepartment?.id == '8' && (
+                  <Button
                   variant="outlined"
                   startIcon={<TbTruckDelivery />}
                   color="warning"
@@ -379,6 +388,8 @@ export default function ProductDetailsModal({
                 >
                   Ready For Delivery
                 </Button>
+                )}
+                
               </Box>
 
               <Grid container spacing={2} justifyContent="space-between">
@@ -391,6 +402,7 @@ export default function ProductDetailsModal({
                         </td>
                         <td>{currentDepartment?.name || "-"}</td>
                       </tr>
+                      
                       <tr>
                         <td className="title">
                           <strong>Supervisor:</strong>
@@ -413,6 +425,14 @@ export default function ProductDetailsModal({
                                   : "success"
                             }
                           />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="title">
+                          <strong>quantity:</strong>
+                        </td>
+                        <td>
+                          {product?.qty || "-"}
                         </td>
                       </tr>
                       <tr>

@@ -28,7 +28,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchActiveMaterials } from "../../pages/settings/slices/materialSlice";
 import {
   storeMaterialRequest,
-  fetchAllRequestItems
+  fetchRequestItems
 } from "../../pages/Production/slice/materialRequestSlice";
 
 export default function RequestStockDrawer({ open, onClose, product, onSuccess }) {
@@ -60,7 +60,7 @@ export default function RequestStockDrawer({ open, onClose, product, onSuccess }
     if (open) {
       if (product?.id) {
         dispatch(fetchActiveMaterials(product.id));
-        dispatch(fetchAllRequestItems(product.id));
+        dispatch(fetchRequestItems(product.id));
       }
     }
   }, [open, dispatch, product?.id]);
@@ -154,7 +154,7 @@ export default function RequestStockDrawer({ open, onClose, product, onSuccess }
 
     // Refresh the request items list
     if (product?.id) {
-      dispatch(fetchAllRequestItems(product.id));
+      dispatch(fetchRequestItems(product.id));
     }
 
     onSuccess();
@@ -277,7 +277,7 @@ export default function RequestStockDrawer({ open, onClose, product, onSuccess }
                 <TableBody>
                   {stockItems.length > 0 ? (
                     stockItems.map((item, index) => (
-                      <TableRow key={item.id}>
+                      <TableRow key={`${item.id}-${index}-${item.created_at || 'new'}`}>
                         <TableCell>
                           {item.name}
                           <br />({item.size || item.category?.name || "—"})
