@@ -32,6 +32,7 @@ import labourLogReducer from '../pages/Production/slice/labourLogSlice';
 import tentativeItemReducer from '../pages/Production/slice/tentativeItemSlice';
 import materialRequestReducer from '../pages/Production/slice/materialRequestSlice';
 import readyProductReducer from '../pages/Production/slice/readyProductSlice';
+import billsReducer from '../pages/Billing/slice/billsSlice';
 
 export const store = configureStore({
     reducer: {
@@ -68,5 +69,6 @@ export const store = configureStore({
         tentativeItem: tentativeItemReducer,
         materialRequest: materialRequestReducer,
         readyProduct: readyProductReducer,
+        bill: billsReducer,
     }
 })

@@ -51,6 +51,10 @@ import Production from "../pages/Production/Production";
 import ProductRequest from "../pages/Production/ProductRequest";
 import ReadyProduct from "../pages/Production/ReadyProduct";
 import ProductChallan from "../pages/Production/ProductChallna";
+import Bills from "../pages/Billing/Bills";
+import GenerateBill from "../pages/Billing/GenerateBill";
+import EditBill from "../pages/Billing/slice/EditGenerateBill";
+import ViewBill from "../pages/Billing/ViewBill";
 
 import Error404 from "../pages/error/404";
 
@@ -104,7 +108,7 @@ const AppRoutes = () => {
       <Route path="/customer/list" element={<ProtectedRoute><MainLayout><Customer /></MainLayout></ProtectedRoute>} />
       <Route path="/customer/ledger/:id" element={<ProtectedRoute><MainLayout><CustomerLedger /></MainLayout></ProtectedRoute>} />
 
- 
+
       {/* Production */}
       <Route path="/production/create-order" element={<ProtectedRoute><MainLayout><AddOrder /></MainLayout></ProtectedRoute>} />
       <Route path="/production/orders" element={<ProtectedRoute><MainLayout><OwnProductionOrder /></MainLayout></ProtectedRoute>} />
@@ -112,6 +116,14 @@ const AppRoutes = () => {
       <Route path="/production/product-request" element={<ProtectedRoute><MainLayout><ProductRequest /></MainLayout></ProtectedRoute>} />
       <Route path="/product/ready-product" element={<ProtectedRoute><MainLayout><ReadyProduct /></MainLayout></ProtectedRoute>} />
       <Route path="/product/challan/:id" element={<ProtectedRoute><MainLayout><ProductChallan /></MainLayout></ProtectedRoute>} />
+
+      {/* Bills */}
+      <Route path="/bills" element={<ProtectedRoute><MainLayout><Bills /></MainLayout></ProtectedRoute>} />
+      <Route path="/bill/generate-bill" element={<ProtectedRoute><MainLayout><GenerateBill /></MainLayout></ProtectedRoute>} />
+      <Route path="/bill/edit-bill/:id" element={<ProtectedRoute><MainLayout><EditBill /></MainLayout></ProtectedRoute>} />
+      <Route path="/bill/view/:id" element={<ProtectedRoute><MainLayout><ViewBill /></MainLayout></ProtectedRoute>} />
+
+
 
       {/* Catch-all */}
       <Route path="*" element={<Error404 />} />
