@@ -8,6 +8,9 @@ import {
     IconButton,
     TextField,
     Tooltip,
+    DialogContentText,
+    Skeleton,
+    CircularProgress,
 } from "@mui/material";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -85,6 +88,10 @@ const TaxSlab = () => {
     const [open, setOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [editData, setEditData] = useState(null);
+    const [openDelete, setOpenDelete] = useState(false);
+    const [deleteData, setDeleteData] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     const [pagination, setPagination] = useState({
         pageIndex: 0,
@@ -113,7 +120,9 @@ const TaxSlab = () => {
     }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
     const handleAdd = async (values, resetForm) => {
+        setIsSaving(true);
         const res = await dispatch(addTaxSlab(values));
+        setIsSaving(false);
         if (res.error) return;
 
         setPagination(prev => ({ ...prev, pageIndex: 0 }));
@@ -123,9 +132,21 @@ const TaxSlab = () => {
         setOpen(false);
     };
 
-    const handleDelete = async (id) => {
+    const handleDeleteClick = (row) => {
+        setDeleteData(row);
+        setOpenDelete(true);
+    };
+
+    const handleConfirmDelete = async (id) => {
+        setIsDeleting(true);
         const res = await dispatch(deleteTaxSlab(id));
-        if (res.error) return;
+        setIsDeleting(false);
+
+        if (res.error) {
+            setOpenDelete(false);
+            setDeleteData(null);
+            return;
+        }
 
         const itemsOnCurrentPage = tableData.length;
         if (itemsOnCurrentPage === 1 && pagination.pageIndex > 0) {
@@ -137,6 +158,9 @@ const TaxSlab = () => {
                 query: debouncedSearch
             }));
         }
+
+        setOpenDelete(false);
+        setDeleteData(null);
     };
 
     const handleUpdate = (row) => {
@@ -145,7 +169,9 @@ const TaxSlab = () => {
     };
 
     const handleEditSubmit = async (values, resetForm) => {
+        setIsSaving(true);
         const res = await dispatch(updateTaxSlab({ id: editData.id, ...values }));
+        setIsSaving(false);
         if (res.error) return;
 
         await dispatch(fetchTaxSlabs({
@@ -171,40 +197,54 @@ const TaxSlab = () => {
 
     const columns = useMemo(
         () => [
-            { accessorKey: "percentage", header: "Percentage (%)" },
+            {
+                accessorKey: "percentage",
+                header: "Percentage (%)",
+                Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+            },
             {
                 accessorKey: "status",
                 header: "Status",
-                Cell: ({ row }) => (
-                    <CustomSwitch
-                        checked={!!row.original.status}
-                        onChange={(e) => {
-                            const newStatus = e.target.checked ? 1 : 0;
-                            handleStatusChange(row.original, newStatus);
-                        }}
-                    />
-                ),
+                Cell: ({ row }) => {
+                    if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+
+                    return (
+                        <CustomSwitch
+                            checked={!!row.original.status}
+                            onChange={(e) => {
+                                const newStatus = e.target.checked ? 1 : 0;
+                                handleStatusChange(row.original, newStatus);
+                            }}
+                        />
+                    );
+                },
             },
             {
                 id: "actions",
                 header: "Actions",
-                Cell: ({ row }) => (
-                    <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                        <Tooltip title="Edit">
-                            <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
-                                <BiSolidEditAlt size={16} />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                            <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
-                                <RiDeleteBinLine size={16} />
-                            </IconButton>
-                        </Tooltip>
-                    </Box>
-                ),
+                muiTableHeadCellProps: { align: "right" },
+                muiTableBodyCellProps: { align: "right" },
+                Cell: ({ row }) => {
+                    if (loading) return <Skeleton variant="text" width={80} />;
+
+                    return (
+                        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                            <Tooltip title="Edit">
+                                <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                                    <BiSolidEditAlt size={16} />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete">
+                                <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
+                                    <RiDeleteBinLine size={16} />
+                                </IconButton>
+                            </Tooltip>
+                        </Box>
+                    );
+                },
             },
         ],
-        []
+        [loading]
     );
 
     const getRowId = (originalRow) => originalRow.id;
@@ -253,6 +293,7 @@ const TaxSlab = () => {
                             state={{
                                 pagination,
                                 isLoading: loading,
+                                showLoadingOverlay: loading,
                             }}
                             onPaginationChange={setPagination}
                             enableTopToolbar
@@ -329,8 +370,10 @@ const TaxSlab = () => {
                                 />
                             </DialogContent>
                             <DialogActions>
-                                <Button color="error" onClick={() => setOpen(false)}>Close</Button>
-                                <Button type="submit" variant="contained">Submit</Button>
+                                <Button color="error" onClick={() => setOpen(false)} disabled={isSaving}>Close</Button>
+                                <Button type="submit" variant="contained" disabled={isSaving} startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                                    {isSaving ? "Saving..." : "Submit"}
+                                </Button>
                             </DialogActions>
                         </Form>
                     )}
@@ -370,13 +413,38 @@ const TaxSlab = () => {
                                 />
                             </DialogContent>
                             <DialogActions>
-                                <Button color="error" onClick={() => setEditOpen(false)}>Close</Button>
-                                <Button type="submit" variant="contained">Save Changes</Button>
+                                <Button color="error" onClick={() => setEditOpen(false)} disabled={isSaving}>Close</Button>
+                                <Button type="submit" variant="contained" disabled={isSaving} startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                                    {isSaving ? "Saving..." : "Save Changes"}
+                                </Button>
                             </DialogActions>
                         </Form>
                     )}
                 </Formik>
             </BootstrapDialog>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+                <DialogTitle>{"Delete this tax slab?"}</DialogTitle>
+                <DialogContent style={{ width: "300px" }}>
+                    <DialogContentText>This action cannot be undone</DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={() => handleConfirmDelete(deleteData?.id)}
+                        variant="contained"
+                        color="error"
+                        autoFocus
+                        disabled={isDeleting}
+                        startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+                    >
+                        {isDeleting ? "Deleting..." : "Delete"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </ErrorBoundary>
     );
 };

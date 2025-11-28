@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  DialogContentText,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { styled } from "@mui/material/styles";
@@ -33,7 +34,7 @@ import {
   addBranch,
   fetchBranches,
   deleteBranch,
-  statusUpdate ,
+  statusUpdate,
   updateBranch,
 } from "../slices/branchSlice"; //  you’ll create this slice
 
@@ -74,14 +75,16 @@ const Branch = () => {
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteRow, setDeleteRow] = useState(null);
 
   const { data: branchData = [] } = useSelector((state) => state.branch);
 
   //  Validation Schema
   const validationSchema = Yup.object({
     name: Yup.string()
-    .min(2, "Branch name must be at least 2 characters")
-    .required("Branch Name is required"),
+      .min(2, "Branch name must be at least 2 characters")
+      .required("Branch Name is required"),
     mobile: Yup.string()
       .matches(/^[0-9]{10}$/, "Enter valid 10-digit mobile number")
       .required("Mobile is required"),
@@ -97,13 +100,14 @@ const Branch = () => {
 
   const handleAdd = async (values, resetForm) => {
     const res = await dispatch(addBranch(values));
-    if(res.error) return;
+    if (res.error) return;
     resetForm();
     handleClose();
   };
 
-  const handleDelete = (id) => {
-    dispatch(deleteBranch(id));
+  const handleDelete = async(id) => {
+    await dispatch(deleteBranch(id));
+    setOpenDelete(false);
   };
 
   const handleUpdate = (row) => {
@@ -116,10 +120,9 @@ const Branch = () => {
   };
   const handleEditSubmit = async (values, resetForm) => {
     const res = await dispatch(updateBranch({ id: editData.id, ...values }));
-    if(res.error)
-      {
-        return;
-      }
+    if (res.error) {
+      return;
+    }
     resetForm();
     handleEditClose();
   };
@@ -397,6 +400,25 @@ const Branch = () => {
           )}
         </Formik>
       </BootstrapDialog>
+
+      {/* Delete Modal */}
+      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
+        <DialogTitle>{"Delete this group?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
+          <Button
+            onClick={() => handleDelete(deleteRow?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ErrorBoundary>
   );
 };

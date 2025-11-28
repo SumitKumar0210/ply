@@ -9,6 +9,9 @@ import {
   TextField,
   Tooltip,
   MenuItem,
+  DialogContentText,
+  Skeleton,
+  CircularProgress,
 } from "@mui/material";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -51,14 +54,18 @@ const Category = () => {
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
 
-  // redux state
-  const { data: data = []} = useSelector((state) => state.category);
+  // redux state - Add loading state
+  const { data: data = [], loading = false } = useSelector((state) => state.category);
   const { data: groups = [] } = useSelector((state) => state.group);
 
   // modal states
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteRow, setDeleteRow] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // fetch initial data
   useEffect(() => {
@@ -85,39 +92,47 @@ const Category = () => {
 
   // add
   const handleAddSubmit = async (values, { resetForm }) => {
+    setIsSaving(true);
     const payload = {
       name: values.name,
       group_id: Number(values.group_id),
     };
     const res = await dispatch(addCategory(payload));
-    if (res.error) return ; 
+    setIsSaving(false);
+    if (res.error) return;
     resetForm();
     handleCloseAdd();
   };
 
   // update
   const handleEditSubmit = async (values, { resetForm }) => {
+    setIsSaving(true);
     const payload = {
       id: editData.id,
       name: values.name,
       group_id: Number(values.group_id),
     };
-    try{
+    try {
       const res = await dispatch(updateCategory(payload));
+      setIsSaving(false);
       if (res.error) {
-      console.log("Update failed:", res.payload);
+        console.log("Update failed:", res.payload);
         return;
       }
       resetForm();
       handleCloseEdit();
-    }catch(error){
-
+    } catch (error) {
+      setIsSaving(false);
     }
   };
 
   // delete
-  const handleDelete = (id) => {
-    dispatch(deleteCategory(id));
+  const handleDelete = async (id) => {
+    setIsDeleting(true);
+    await dispatch(deleteCategory(id));
+    setIsDeleting(false);
+    setOpenDelete(false);
+    setDeleteRow(null);
   };
 
   // columns
@@ -126,24 +141,29 @@ const Category = () => {
       {
         accessorKey: "name",
         header: "Category Name",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
       },
       {
         accessorKey: "group",
         header: "Group",
-        Cell: ({ row }) => row.original.group?.name || "—",
+        Cell: ({ row }) => loading ? <Skeleton variant="text" width="60%" /> : (row.original.group?.name || "—"),
       },
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ row }) => (
-          <CustomSwitch
-            checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+          
+          return (
+            <CustomSwitch
+              checked={!!row.original.status}
+              onChange={(e) => {
+                const newStatus = e.target.checked ? 1 : 0;
+                dispatch(statusUpdate({ ...row.original, status: newStatus }));
+              }}
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -152,23 +172,30 @@ const Category = () => {
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton onClick={() => handleOpenEdit(row.original)}>
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
+          
+          return (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              <Tooltip title="Edit">
+                <IconButton onClick={() => handleOpenEdit(row.original)}>
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton color="error" onClick={() => {
+                  setOpenDelete(true);
+                  setDeleteRow(row.original);
+                }}>
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          );
+        },
       },
     ],
-    [dispatch]
+    [dispatch, loading]
   );
 
   // CSV export
@@ -219,6 +246,10 @@ const Category = () => {
             enableColumnVisibilityToggle={false}
             initialState={{ density: "compact" }}
             muiTableContainerProps={{ sx: { backgroundColor: "#fff" } }}
+            state={{
+              isLoading: loading,
+              showLoadingOverlay: loading,
+            }}
             renderTopToolbar={({ table }) => (
               <Box
                 sx={{
@@ -268,8 +299,8 @@ const Category = () => {
           initialValues={{ name: "", group_id: "" }}
           validationSchema={Yup.object({
             name: Yup.string()
-            .min(2, "Category must be at least 2 characters")
-            .required("Category is required"),
+              .min(2, "Category must be at least 2 characters")
+              .required("Category is required"),
             group_id: Yup.string().required("Group is required"),
           })}
           onSubmit={handleAddSubmit}
@@ -287,7 +318,7 @@ const Category = () => {
                   onChange={handleChange}
                   error={touched.group_id && Boolean(errors.group_id)}
                   helperText={touched.group_id && errors.group_id}
-                  sx={{marginBottom: 1}}
+                  sx={{ marginBottom: 1 }}
                 >
                   {groups.map((group) => (
                     <MenuItem key={group.id} value={String(group.id)}>
@@ -295,24 +326,24 @@ const Category = () => {
                     </MenuItem>
                   ))}
                 </TextField>
-                  <TextField
-                    fullWidth
-                    name="name"
-                    label="Category"
-                    variant="standard"
-                    value={values.name}
-                    onChange={handleChange}
-                    error={touched.name && Boolean(errors.name)}
-                    helperText={touched.name && errors.name}
-                    sx={{ mb: 3 }}
-                  />
+                <TextField
+                  fullWidth
+                  name="name"
+                  label="Category"
+                  variant="standard"
+                  value={values.name}
+                  onChange={handleChange}
+                  error={touched.name && Boolean(errors.name)}
+                  helperText={touched.name && errors.name}
+                  sx={{ mb: 3 }}
+                />
               </DialogContent>
               <DialogActions>
-                <Button onClick={handleCloseAdd} variant="outlined" color="error">
+                <Button onClick={handleCloseAdd} variant="outlined" color="error" disabled={isSaving}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained">
-                  Submit
+                <Button type="submit" variant="contained" disabled={isSaving} startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                  {isSaving ? "Saving..." : "Submit"}
                 </Button>
               </DialogActions>
             </Form>
@@ -357,7 +388,7 @@ const Category = () => {
                   onChange={handleChange}
                   error={touched.group_id && Boolean(errors.group_id)}
                   helperText={touched.group_id && errors.group_id}
-                  sx={{marginBottom: 1}}
+                  sx={{ marginBottom: 1 }}
                 >
                   {groups.map((group) => (
                     <MenuItem key={group.id} value={String(group.id)}>
@@ -365,31 +396,55 @@ const Category = () => {
                     </MenuItem>
                   ))}
                 </TextField>
-                  <TextField
-                    fullWidth
-                    name="name"
-                    label="Category"
-                    variant="standard"
-                    value={values.name}
-                    onChange={handleChange}
-                    error={touched.name && Boolean(errors.name)}
-                    helperText={touched.name && errors.name}
-                    sx={{ mb: 3 }}
-                  />
+                <TextField
+                  fullWidth
+                  name="name"
+                  label="Category"
+                  variant="standard"
+                  value={values.name}
+                  onChange={handleChange}
+                  error={touched.name && Boolean(errors.name)}
+                  helperText={touched.name && errors.name}
+                  sx={{ mb: 3 }}
+                />
               </DialogContent>
               <DialogActions>
-                <Button variant="outlined" color="error" onClick={handleCloseEdit}>
+                <Button variant="outlined" color="error" onClick={handleCloseEdit} disabled={isSaving}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained">
-                  Save Changes
+                <Button type="submit" variant="contained" disabled={isSaving} startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogActions>
             </Form>
           )}
         </Formik>
       </BootstrapDialog>
+
+      {/* Delete Modal */}
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+        <DialogTitle>{"Delete this category?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleDelete(deleteRow?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Grid>
+
   );
 };
 

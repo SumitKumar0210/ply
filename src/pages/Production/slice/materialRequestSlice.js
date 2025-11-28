@@ -22,10 +22,35 @@ export const storeMaterialRequest = createAsyncThunk(
 // FETCH ALL REQUEST ITEMS
 export const fetchAllRequestItems = createAsyncThunk(
   "materialRequest/fetchAllRequestItems",
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/production-order/get-all-material-request`);
-      return res.data.data; // DO NOT toast on fetch
+      const query = new URLSearchParams();
+
+      if (params.pageIndex !== undefined) {
+        query.append("page", params.pageIndex + 1);
+      }
+      if (params.pageLimit) {
+        query.append("per_page", params.pageLimit);
+      }
+      if (params.search) {
+        query.append("search", params.search);
+      }
+
+      const url = query.toString()
+        ? `admin/production-order/get-all-material-request?${query}`
+        : `admin/production-order/get-all-material-request`;
+
+      console.log("API URL:", url);
+      
+      const res = await api.post(url);
+      
+      console.log("result:", res.data.data);
+      return {
+        data: res.data.data.data ?? [],
+        total: res.data.data.total ?? 0,
+        page: res.data.data.current_page ?? 1,
+        per_page: res.data.data.per_page ?? params.pageLimit ?? 10,
+      };
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
@@ -33,6 +58,8 @@ export const fetchAllRequestItems = createAsyncThunk(
     }
   }
 );
+
+
 
 // FETCH REQUEST ITEMS
 export const fetchRequestItems = createAsyncThunk(
@@ -92,6 +119,7 @@ const materialRequestSlice = createSlice({
       .addCase(fetchAllRequestItems.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload ?? [];
+         state.totalRecords = action.payload.total ?? 0;
       })
       .addCase(fetchAllRequestItems.rejected, (state, action) => {
         state.loading = false;

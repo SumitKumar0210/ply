@@ -78,6 +78,14 @@ const menuSections = [
         ],
       },
       {
+        text: "Billing",
+        icon: <FiUsers />,
+        children: [
+          { text: "Bills", to: "/bills", icon: <RiFlowChart /> },
+          
+        ],
+      },
+      {
         text: "Users",
         icon: <FiUsers />,
         children: [

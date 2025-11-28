@@ -7,16 +7,29 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // Fetch all bills
 export const fetchBills = createAsyncThunk(
   "bill/fetchBills",
-  async (_, { rejectWithValue }) => {
+  async ({ pageIndex = 0, pageLimit = 10, search = "" }, { rejectWithValue }) => {
     try {
-      const response = await api.get("/admin/billing/get-data");
-      return response.data.data;
+      const res = await api.get("/admin/billing/get-data", {
+        params: {
+          page: pageIndex + 1,
+          limit: pageLimit,
+          search: search,
+        }
+      });
+      console.log(res.data.data);
+      console.log(res.data);
+
+      return {
+        data: res.data.data ?? [],
+        totalRecords: res.data.total ?? 0,
+      };
     } catch (error) {
       errorMessage(getErrorMessage(error));
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
+
 
 // Fetch active bills
 export const fetchActiveBills = createAsyncThunk(
@@ -66,9 +79,9 @@ export const updateBill = createAsyncThunk(
   "bill/updateBill",
   async ({ id, formData }, { rejectWithValue }) => {
     try {
-        console.log(id, formData);
+      console.log(id, formData);
       const response = await api.post(`/admin/billing/update/${id}`, formData);
-      
+
       successMessage("Bill updated successfully!");
       return response.data;
     } catch (error) {
@@ -96,9 +109,9 @@ export const deleteBill = createAsyncThunk(
 // Update bill status (pending/paid)
 export const updateBillStatus = createAsyncThunk(
   "bill/updateBillStatus",
-  async ({ id, status }, { rejectWithValue }) => {
+  async (id, { rejectWithValue }) => {
     try {
-      const response = await api.patch(`/admin/billing/status-update`, {id:id , status: status });
+      const response = await api.post(`/admin/billing/status-update`, { id: id });
       successMessage(`Bill status updated to ${status}!`);
       return response.data;
     } catch (error) {
@@ -128,6 +141,7 @@ const billsSlice = createSlice({
     data: [],
     activeData: [],
     selected: {},
+    totalRecords: 0,
     loading: false,
     error: null,
   },
@@ -148,7 +162,8 @@ const billsSlice = createSlice({
       })
       .addCase(fetchBills.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload;
+        state.data = action.payload.data;         
+        state.totalRecords = action.payload.totalRecords;
       })
       .addCase(fetchBills.rejected, (state, action) => {
         state.loading = false;

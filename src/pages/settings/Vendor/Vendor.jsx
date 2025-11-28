@@ -8,6 +8,13 @@ import {
   Button,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
+  Skeleton,
+  CircularProgress,
 } from "@mui/material";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import {
@@ -35,9 +42,13 @@ const Vendor = () => {
 
   const [openVendorDialog, setOpenVendorDialog] = useState(false);
   const [editVendorData, setEditVendorData] = useState(null);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteData, setDeleteData] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data: vendorData = [], loading } = useSelector((state) => state.vendor);
-
+  const { data: vendorDatas = [], loading } = useSelector((state) => state.vendor);
+  const vendorData = vendorDatas?.data ?? [];
+console.log(vendorData);
   useEffect(() => {
     dispatch(fetchVendors());
   }, [dispatch]);
@@ -57,10 +68,17 @@ const Vendor = () => {
     setEditVendorData(null);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this vendor?")) {
-      dispatch(deleteVendor(id));
-    }
+  const handleDeleteClick = (row) => {
+    setDeleteData(row);
+    setOpenDelete(true);
+  };
+
+  const handleConfirmDelete = async (id) => {
+    setIsDeleting(true);
+    await dispatch(deleteVendor(id));
+    setIsDeleting(false);
+    setOpenDelete(false);
+    setDeleteData(null);
   };
 
   const handleStatusToggle = (row, newStatus) => {
@@ -73,38 +91,49 @@ const Vendor = () => {
         accessorKey: "name",
         header: "Vendor Name",
         size: 150,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
       },
       {
         accessorKey: "mobile",
         header: "Mobile",
         size: 120,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="70%" /> : cell.getValue(),
       },
       {
         accessorKey: "email",
         header: "Email",
         size: 200,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="85%" /> : cell.getValue(),
       },
       {
         accessorKey: "category_id",
         header: "Category",
         size: 130,
-        Cell: ({ row }) => row.original.category?.name || "—",
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width="70%" />;
+          return row.original.category?.name || "—";
+        },
       },
       {
         accessorKey: "gst",
         header: "GST",
         size: 150,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="75%" /> : cell.getValue(),
       },
       {
         accessorKey: "city",
         header: "City",
         size: 120,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="70%" /> : cell.getValue(),
       },
       {
         accessorKey: "state_id",
         header: "State",
         size: 120,
-        Cell: ({ row }) => row.original.state?.name || "—",
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width="70%" />;
+          return row.original.state?.name || "—";
+        },
       },
       {
         accessorKey: "status",
@@ -112,14 +141,18 @@ const Vendor = () => {
         size: 100,
         enableSorting: false,
         enableColumnFilter: false,
-        Cell: ({ row }) => (
-          <CustomSwitch
-            checked={!!row.original.status}
-            onChange={(e) =>
-              handleStatusToggle(row.original, e.target.checked ? 1 : 0)
-            }
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+
+          return (
+            <CustomSwitch
+              checked={!!row.original.status}
+              onChange={(e) =>
+                handleStatusToggle(row.original, e.target.checked ? 1 : 0)
+              }
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -129,29 +162,33 @@ const Vendor = () => {
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleEditVendor(row.original)}
-              >
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() => handleDelete(row.original.id)}
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
+
+          return (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              <Tooltip title="Edit">
+                <IconButton
+                  color="primary"
+                  onClick={() => handleEditVendor(row.original)}
+                >
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton
+                  color="error"
+                  onClick={() => handleDeleteClick(row.original)}
+                >
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          );
+        },
       },
     ],
-    [dispatch]
+    [dispatch, loading]
   );
 
   // Download CSV
@@ -227,7 +264,10 @@ const Vendor = () => {
               enableColumnActions={false}
               enableColumnVisibilityToggle={false}
               initialState={{ density: "compact" }}
-              state={{ isLoading: loading }}
+              state={{
+                isLoading: loading,
+                showLoadingOverlay: loading,
+              }}
               muiTableContainerProps={{
                 sx: {
                   width: "100%",
@@ -293,6 +333,29 @@ const Vendor = () => {
         onClose={handleCloseDialog}
         editData={editVendorData}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+        <DialogTitle>{"Delete this vendor?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleConfirmDelete(deleteData?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

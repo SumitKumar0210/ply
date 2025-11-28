@@ -45,7 +45,10 @@ import { successMessage, errorMessage } from "../../../toast";
 import { useNavigate } from "react-router-dom";
 import { compressImage } from "../../../components/imageCompressor/imageCompressor";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
-import ProductFormDialog from "../../../components/Product/ProductFormDialog"; 
+import ProductFormDialog from "../../../components/Product/ProductFormDialog";
+import CustomerFormDialog, {
+  getInitialCustomerValues,
+} from "../../../components/Customer/CustomerFormDialog";
 
 // Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -89,29 +92,6 @@ const itemValidationSchema = Yup.object({
     .positive("Quantity must be positive")
     .integer("Quantity must be a whole number"),
   narration: Yup.string(),
-});
-
-const customerValidationSchema = Yup.object({
-  name: Yup.string()
-    .min(2, "Name must be at least 2 characters")
-    .required("Name is required"),
-  mobile: Yup.string()
-    .matches(/^[0-9]{10}$/, "Mobile must be 10 digits")
-    .required("Mobile is required"),
-  email: Yup.string()
-    .email("Invalid email format")
-    .required("E-mail is required"),
-  address: Yup.string().required("Address is required"),
-  alternate_mobile: Yup.string().matches(
-    /^[0-9]{10}$/,
-    "Alternate Mobile must be 10 digits"
-  ),
-  city: Yup.string().required("City is required"),
-  state_id: Yup.string().required("State is required"),
-  zip_code: Yup.string()
-    .matches(/^[0-9]{6}$/, "ZIP must be 6 digits")
-    .required("ZIP code is required"),
-  note: Yup.string(),
 });
 
 const quoteValidationSchema = Yup.object({
@@ -221,7 +201,6 @@ const CreateQuote = () => {
     [items]
   );
 
-
   const generateCode = (model) => {
     return model + "@" + Math.floor(1000 + Math.random() * 9000);
   };
@@ -253,7 +232,7 @@ const CreateQuote = () => {
     }
 
     // Use product image from API
-    
+
     const productImageUrl = product.image ? `${mediaUrl}${product.image}` : "";
 
     const newItem = {
@@ -459,36 +438,47 @@ const CreateQuote = () => {
                 </Box>
 
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
-                  <DatePicker
-                    label="Quote Date"
-                    value={creationDate}
-                    onChange={(newValue) => setCreationDate(newValue)}
-                    slotProps={{
-                      textField: { size: "small", sx: { width: 250 } },
-                    }}
-                  />
-                  <DatePicker
-                    label="Delivery Date"
-                    value={deliveryDate}
-                    onChange={(newValue) => setDeliveryDate(newValue)}
-                    slotProps={{
-                      textField: { size: "small", sx: { width: 250 } },
-                    }}
-                  />
-                  <Autocomplete
-                    options={["Normal", "High", "Low"]}
-                    size="small"
-                    value={priority}
-                    onChange={(e, value) => setPriority(value)}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Priority"
-                        variant="outlined"
-                        sx={{ width: 150 }}
-                      />
-                    )}
-                  />
+                  <Box
+                  sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "end",
+                  flexWrap: "wrap",
+                  gap: 2,
+                  mb: 2,
+                }}
+                  >
+                    <DatePicker
+                      label="Quote Date"
+                      value={creationDate}
+                      onChange={(newValue) => setCreationDate(newValue)}
+                      slotProps={{
+                        textField: { size: "small", sx: { width: 250 } },
+                      }}
+                    />
+                    <DatePicker
+                      label="Delivery Date"
+                      value={deliveryDate}
+                      onChange={(newValue) => setDeliveryDate(newValue)}
+                      slotProps={{
+                        textField: { size: "small", sx: { width: 250 } },
+                      }}
+                    />
+                    <Autocomplete
+                      options={["Normal", "High", "Low"]}
+                      size="small"
+                      value={priority}
+                      onChange={(e, value) => setPriority(value)}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Priority"
+                          variant="outlined"
+                          sx={{ width: 150 }}
+                        />
+                      )}
+                    />
+                  </Box>
                 </LocalizationProvider>
               </Box>
 
@@ -656,7 +646,9 @@ const CreateQuote = () => {
                         }}
                       />
 
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
                         {/* <Button
                           variant="outlined"
                           component="label"
@@ -676,10 +668,10 @@ const CreateQuote = () => {
                             }}
                           />
                         </Button> */}
-                        
+
                         {selectedProduct?.image && (
                           <ImagePreviewDialog
-                            imageUrl={ mediaUrl + selectedProduct?.image}
+                            imageUrl={mediaUrl + selectedProduct?.image}
                             alt="Document Preview"
                           />
                         )}
@@ -1009,190 +1001,14 @@ const CreateQuote = () => {
       </Grid>
 
       {/* Add Customer Modal */}
-      <BootstrapDialog
+      <CustomerFormDialog
         open={openAddCustomer}
         onClose={() => setOpenAddCustomer(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <BootstrapDialogTitle onClose={() => setOpenAddCustomer(false)}>
-          Add Customer
-        </BootstrapDialogTitle>
-        <Formik
-          initialValues={{
-            name: "",
-            mobile: "",
-            email: "",
-            address: "",
-            alternate_mobile: "",
-            city: "",
-            state_id: "",
-            zip_code: "",
-            note: "",
-          }}
-          validationSchema={customerValidationSchema}
-          onSubmit={handleAddCustomer}
-        >
-          {({ handleChange, values, touched, errors }) => (
-            <Form>
-              <DialogContent dividers>
-                <Grid container rowSpacing={1} columnSpacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="name"
-                      label="Name"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.name}
-                      onChange={handleChange}
-                      error={touched.name && Boolean(errors.name)}
-                      helperText={touched.name && errors.name}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="mobile"
-                      label="Mobile"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.mobile}
-                      onChange={handleChange}
-                      error={touched.mobile && Boolean(errors.mobile)}
-                      helperText={touched.mobile && errors.mobile}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="alternate_mobile"
-                      label="Alternate Mobile"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.alternate_mobile}
-                      onChange={handleChange}
-                      error={
-                        touched.alternate_mobile &&
-                        Boolean(errors.alternate_mobile)
-                      }
-                      helperText={
-                        touched.alternate_mobile && errors.alternate_mobile
-                      }
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="email"
-                      label="E-mail"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.email}
-                      onChange={handleChange}
-                      error={touched.email && Boolean(errors.email)}
-                      helperText={touched.email && errors.email}
-                    />
-                  </Grid>
-                  <Grid size={12}>
-                    <TextField
-                      name="address"
-                      label="Address"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.address}
-                      onChange={handleChange}
-                      error={touched.address && Boolean(errors.address)}
-                      helperText={touched.address && errors.address}
-                    />
-                  </Grid>
-                  <Grid size={12}>
-                    <TextField
-                      name="state_id"
-                      label="State"
-                      select
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.state_id}
-                      onChange={handleChange}
-                      error={touched.state_id && Boolean(errors.state_id)}
-                      helperText={touched.state_id && errors.state_id}
-                    >
-                      {states.map((s) => (
-                        <MenuItem key={s.id} value={s.id}>
-                          {s.name}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="city"
-                      label="City"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.city}
-                      onChange={handleChange}
-                      error={touched.city && Boolean(errors.city)}
-                      helperText={touched.city && errors.city}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="zip_code"
-                      label="Zip Code"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.zip_code}
-                      onChange={handleChange}
-                      error={touched.zip_code && Boolean(errors.zip_code)}
-                      helperText={touched.zip_code && errors.zip_code}
-                    />
-                  </Grid>
-                  <Grid size={12}>
-                    <TextField
-                      name="note"
-                      label="Note"
-                      fullWidth
-                      multiline
-                      rows={3}
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.note}
-                      onChange={handleChange}
-                    />
-                  </Grid>
-                </Grid>
-              </DialogContent>
-              <DialogActions>
-                <Button
-                  onClick={() => setOpenAddCustomer(false)}
-                  variant="outlined"
-                  color="error"
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Submit
-                </Button>
-              </DialogActions>
-            </Form>
-          )}
-        </Formik>
-      </BootstrapDialog>
+        title="Add Customer"
+        initialValues={getInitialCustomerValues()}
+        onSubmit={handleAddCustomer}
+        states={states}
+      />
 
       {/* Add Product Dialog */}
       <ProductFormDialog

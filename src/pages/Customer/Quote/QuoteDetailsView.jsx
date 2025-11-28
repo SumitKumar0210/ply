@@ -17,11 +17,13 @@ import { useReactToPrint } from "react-to-print";
 import { useDispatch, useSelector } from "react-redux";
 import { editQuotation, approveQuotation } from "../slice/quotationSlice";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
+import { useAuth } from "../../../context/AuthContext";
 
 const QuoteDetailsView = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { appDetails } = useAuth();
   const contentRef = useRef(null);
 
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
@@ -236,15 +238,12 @@ const QuoteDetailsView = () => {
                     From:
                   </Typography>
                   <Typography variant="body2">
-                    TECHIE SQUAD PRIVATE LIMITED
+                    {appDetails.application_name}
                     <br />
-                    CIN: U72900BR2019PTC042431
+                    {appDetails.company_address}
                     <br />
-                    RK NIWAS, GOLA ROAD MOR, BAILEY ROAD
-                    <br />
-                    DANAPUR, PATNA-801503, BIHAR, INDIA
-                    <br />
-                    GSTIN: 10AAHCT3899A1ZI
+                    GSTIN: {appDetails.gst_no}
+                    
                   </Typography>
                 </Grid>
 

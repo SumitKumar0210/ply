@@ -140,21 +140,33 @@ const vendorSlice = createSlice({
         state.error = action.payload || action.error.message;
       })
 
-      // Add
+      .addCase(addVendor.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(addVendor.fulfilled, (state, action) => {
+        state.loading = false;
         state.data.unshift(action.payload);
+
+
+        state.total += 1;
+      })
+      .addCase(addVendor.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       })
 
-      // Update
       .addCase(updateVendor.fulfilled, (state, action) => {
-        const index = state.data.findIndex(d => d.id === action.payload.id);
-        if (index !== -1) state.data[index] = action.payload;
+        const index = state.data.findIndex(
+          (item) => item.id === action.payload.id
+        );
+        if (index > -1) {
+          state.data[index] = action.payload;
+        }
       })
 
-      // Delete
       .addCase(deleteVendor.fulfilled, (state, action) => {
-        const deletedId = action.payload; // use payload, not meta.arg
-        state.data = state.data.filter(item => item.id !== deletedId);
+        state.data = state.data.filter((item) => item.id !== action.payload);
+        state.total -= 1;
       })
 
       // Status update

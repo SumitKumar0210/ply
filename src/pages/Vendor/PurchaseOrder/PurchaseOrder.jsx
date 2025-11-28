@@ -113,7 +113,7 @@ const PurchaseOrder = () => {
         // Reset to first page when searching
         setPagination((prev) => ({ ...prev, pageIndex: 0 }));
         fetchData(searchValue);
-      }, 2000);
+      }, 1000);
     },
     [fetchData]
   );

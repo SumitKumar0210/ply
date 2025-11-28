@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState  } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Typography,
   Grid,
@@ -10,7 +10,10 @@ import {
   TextField,
   Tooltip,
   MenuItem,
-  FormLabel 
+  FormLabel,
+  DialogContentText,
+  Skeleton,
+  CircularProgress,
 } from "@mui/material";
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -71,85 +74,106 @@ const Group = () => {
   //  Validation Schema
   const validationSchema = Yup.object({
     name: Yup.string()
-    .min(2, "Group must be at least 2 characters")
-    .required("Group is required"),
+      .min(2, "Group must be at least 2 characters")
+      .required("Group is required"),
   });
 
   const tableContainerRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteRow, setDeleteRow] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
   const handleAdd = async (value, resetForm) => {
+    setIsSaving(true);
     const res = await dispatch(addGroup(value));
-    if(res.error) return ;
+    setIsSaving(false);
+    if (res.error) return;
     resetForm();
     handleClose();
   };
 
   // Delete
-    const handleDelete = (id) => {
-      dispatch(deleteGroup(id));
-    };
-  
+  const handleDelete = async (id) => {
+    setIsDeleting(true);
+    await dispatch(deleteGroup(id));
+    setIsDeleting(false);
+    setOpenDelete(false);
+    setDeleteRow(null);
+  };
 
-    const { data: groupData = [], loading, error } = useSelector(
-      (state) => state.group
-    );
-    
-    useEffect(() => {
-      dispatch(fetchGroups());
-    }, [dispatch]);
-    
-    const [editOpen, setEditOpen] = useState(false);
-    const [editData, setEditData] = useState(null);
-  
-    // open modal with row data
+  const { data: groupData = [], loading, error } = useSelector(
+    (state) => state.group
+  );
+
+  useEffect(() => {
+    dispatch(fetchGroups());
+  }, [dispatch]);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+
+  // open modal with row data
   const handleUpdate = (row) => {
     setEditData(row);   // save selected row
     setEditOpen(true);  // open modal
   };
-  
+
   // close modal
   const handleEditClose = () => {
     setEditOpen(false);
     setEditData(null);
   };
-  
+
   // update dispatch
   const handleEditSubmit = async (values, resetForm) => {
-  try {
-    const res = await dispatch(updateGroup({ id: editData.id, name: values.name }));
-    if (res.error) {
-      console.log("Update failed:", res.payload);
-      alert("Update failed: " + res.payload);
-      return;
+    setIsEditSaving(true);
+    try {
+      const res = await dispatch(updateGroup({ id: editData.id, name: values.name }));
+      setIsEditSaving(false);
+      if (res.error) {
+        console.log("Update failed:", res.payload);
+        alert("Update failed: " + res.payload);
+        return;
+      }
+      resetForm();
+      handleEditClose();
+    } catch (err) {
+      setIsEditSaving(false);
+      console.error("Update failed:", err);
     }
-    resetForm();
-    handleEditClose();
-  } catch (err) {
-    console.error("Update failed:", err);
-  }
-};
+  };
 
   const columns = useMemo(
     () => [
-      { accessorKey: "name", header: "Group" },
+      {
+        accessorKey: "name",
+        header: "Group",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
+      },
       {
         accessorKey: "status",
         header: "Status",
         enableSorting: false,
         enableColumnFilter: false,
-        Cell: ({ row }) => (
-          <CustomSwitch
-            checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+
+          return (
+            <CustomSwitch
+              checked={!!row.original.status}
+              onChange={(e) => {
+                const newStatus = e.target.checked ? 1 : 0;
+                dispatch(statusUpdate({ ...row.original, status: newStatus }));
+              }}
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -158,27 +182,36 @@ const Group = () => {
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
+
+          return (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              <Tooltip title="Edit">
+                <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton color="error"
+                  onClick={() => {
+                    setOpenDelete(true);
+                    setDeleteRow(row.original);
+                  }}
+                >
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          );
+        },
       },
     ],
-    [dispatch]
+    [dispatch, loading]
   );
+
   //  Tell MRT which field is the unique row id
   const getRowId = (originalRow) => originalRow.id;
-
 
   // Function to download CSV from data
   const downloadCSV = () => {
@@ -220,7 +253,7 @@ const Group = () => {
 
   return (
     <ErrorBoundary>
-     <Grid container spacing={2}>
+      <Grid container spacing={2}>
         <Grid size={12}>
           <Paper
             elevation={0}
@@ -229,8 +262,12 @@ const Group = () => {
           >
             <MaterialReactTable
               columns={columns}
-              data={groupData}   //  direct array
+              data={groupData}
               getRowId={(row) => row.id}
+              state={{
+                isLoading: loading,
+                showLoadingOverlay: loading,
+              }}
               enableTopToolbar
               enableColumnFilters
               enableSorting
@@ -292,7 +329,7 @@ const Group = () => {
         </Grid>
       </Grid>
 
-      {/* Modal */}
+      {/* Add Modal */}
       <BootstrapDialog onClose={handleClose} open={open} fullWidth maxWidth="xs">
         <DialogTitle sx={{ m: 0, p: 1.5 }}>Add Group</DialogTitle>
         <IconButton
@@ -332,18 +369,17 @@ const Group = () => {
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleClose}>
+                <Button variant="outlined" color="error" onClick={handleClose} disabled={isSaving}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Submit
+                <Button type="submit" variant="contained" color="primary" disabled={isSaving} startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                  {isSaving ? "Saving..." : "Submit"}
                 </Button>
               </DialogActions>
             </Form>
           )}
         </Formik>
       </BootstrapDialog>
-
 
       {/* Edit Modal */}
       <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
@@ -384,17 +420,40 @@ const Group = () => {
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleEditClose}>
+                <Button variant="outlined" color="error" onClick={handleEditClose} disabled={isEditSaving}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained">
-                  Save Changes
+                <Button type="submit" variant="contained" disabled={isEditSaving} startIcon={isEditSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                  {isEditSaving ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogActions>
             </Form>
           )}
         </Formik>
       </BootstrapDialog>
+
+      {/* Delete Modal */}
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+        <DialogTitle>{"Delete this group?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleDelete(deleteRow?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ErrorBoundary>
   );
 };

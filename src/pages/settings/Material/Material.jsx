@@ -7,6 +7,13 @@ import {
   Button,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
+  Skeleton,
+  CircularProgress,
 } from "@mui/material";
 import {
   MaterialReactTable,
@@ -38,6 +45,11 @@ const Material = () => {
   const tableContainerRef = useRef(null);
   const [openMaterialDialog, setOpenMaterialDialog] = useState(false);
   const [editMaterialData, setEditMaterialData] = useState(null);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteData, setDeleteData] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Note: Material form modal handles its own saving state internally
 
   useEffect(() => {
     dispatch(fetchMaterials());
@@ -58,10 +70,17 @@ const Material = () => {
     setEditMaterialData(null);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this material?")) {
-      dispatch(deleteMaterial(id));
-    }
+  const handleDeleteClick = (row) => {
+    setDeleteData(row);
+    setOpenDelete(true);
+  };
+
+  const handleConfirmDelete = async (id) => {
+    setIsDeleting(true);
+    await dispatch(deleteMaterial(id));
+    setIsDeleting(false);
+    setOpenDelete(false);
+    setDeleteData(null);
   };
 
   const columns = useMemo(
@@ -70,62 +89,110 @@ const Material = () => {
         accessorKey: "image",
         header: "Image",
         size: 80,
-        Cell: ({ row }) => (
-          <ImagePreviewDialog
-            imageUrl={
-              row.original.image ? mediaUrl + row.original.image : Profile
-            }
-            alt={row.original.name}
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="rectangular" width={40} height={40} />;
+
+          return (
+            <ImagePreviewDialog
+              imageUrl={
+                row.original.image ? mediaUrl + row.original.image : Profile
+              }
+              alt={row.original.name}
+            />
+          );
+        },
       },
-      { accessorKey: "name", header: "Name", size: 200 },
+      {
+        accessorKey: "name",
+        header: "Name",
+        size: 200,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
+      },
       {
         accessorKey: "unit_of_measurement_id",
         header: "UOM",
         size: 50,
-        Cell: ({ row }) => row.original.unit_of_measurement?.name || "—",
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width="60%" />;
+          return row.original.unit_of_measurement?.name || "—";
+        },
       },
-      { accessorKey: "size", header: "Size", size: 50 },
-      { accessorKey: "price", header: "Price", size: 75 },
+      {
+        accessorKey: "size",
+        header: "Size",
+        size: 50,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="50%" /> : cell.getValue(),
+      },
+      {
+        accessorKey: "price",
+        header: "Price",
+        size: 75,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+      },
       {
         accessorKey: "category_id",
         header: "Category",
         size: 100,
-        Cell: ({ row }) => row.original.category?.name || "—",
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width="70%" />;
+          return row.original.category?.name || "—";
+        },
       },
       {
         accessorKey: "group_id",
         header: "Group",
         size: 100,
-        Cell: ({ row }) => row.original.group?.name || "—",
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width="70%" />;
+          return row.original.group?.name || "—";
+        },
       },
-      { accessorKey: "opening_stock", header: "Opening Stock", size: 50 },
+      {
+        accessorKey: "opening_stock",
+        header: "Opening Stock",
+        size: 50,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="50%" /> : cell.getValue(),
+      },
       {
         accessorKey: "urgently_required",
         header: "Urgent",
         size: 100,
         Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width="50%" />;
           const value = row.original.urgently_required;
           return value == "1" ? "Yes" : value == "0" ? "No" : "—";
         },
       },
-      { accessorKey: "tag", header: "Tag", size: 50 },
-      { accessorKey: "remark", header: "Remarks", size: 100 },
+      {
+        accessorKey: "tag",
+        header: "Tag",
+        size: 50,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+      },
+      {
+        accessorKey: "remark",
+        header: "Remarks",
+        size: 100,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="70%" /> : cell.getValue(),
+      },
       {
         accessorKey: "status",
         header: "Status",
         enableSorting: false,
         enableColumnFilter: false,
-        Cell: ({ row }) => (
-          <CustomSwitch
-            checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+
+          return (
+            <CustomSwitch
+              checked={!!row.original.status}
+              onChange={(e) => {
+                const newStatus = e.target.checked ? 1 : 0;
+                dispatch(statusUpdate({ ...row.original, status: newStatus }));
+              }}
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -134,29 +201,33 @@ const Material = () => {
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleEditMaterial(row.original)}
-              >
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() => handleDelete(row.original.id)}
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
+
+          return (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              <Tooltip title="Edit">
+                <IconButton
+                  color="primary"
+                  onClick={() => handleEditMaterial(row.original)}
+                >
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton
+                  color="error"
+                  onClick={() => handleDeleteClick(row.original)}
+                >
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          );
+        },
       },
     ],
-    [dispatch, mediaUrl]
+    [dispatch, mediaUrl, loading]
   );
 
   const downloadCSV = () => {
@@ -212,7 +283,10 @@ const Material = () => {
               enableColumnActions={false}
               enableColumnVisibilityToggle={false}
               initialState={{ density: "compact" }}
-              state={{ isLoading: loading }}
+              state={{
+                isLoading: loading,
+                showLoadingOverlay: loading,
+              }}
               muiTableContainerProps={{
                 sx: {
                   width: "100%",
@@ -278,6 +352,29 @@ const Material = () => {
         onClose={handleCloseDialog}
         editData={editMaterialData}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+        <DialogTitle>{"Delete this material?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleConfirmDelete(deleteData?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

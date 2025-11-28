@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Typography, Grid, Paper, Box, Button, IconButton, TextField, Tooltip,
+  DialogContentText, Skeleton, CircularProgress,
 } from "@mui/material";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -23,28 +24,11 @@ import * as Yup from "yup";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchUserTypes, addUserType, updateUserType, deleteUserType, statusUpdate } from "../slices/userTypeSlice";
-// import { fetchUserTypes } from "../slices/userTypeSlice";
-import { successMessage, errorMessage } from "../../../toast";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": { padding: theme.spacing(2) },
   "& .MuiDialogActions-root": { padding: theme.spacing(1) },
 }));
-
-//  Give each row a unique id and an initial status
-const seed = [
-  { id: "1", name: "Admin", status: true },
-  { id: "2", name: "Manager", status: false },
-  { id: "3", name: "Support", status: true },
-  { id: "4", name: "Sales", status: false },
-  { id: "5", name: "Accountant", status: true },
-  { id: "6", name: "Admin", status: false },      // duplicates are fine now
-  { id: "7", name: "Admin", status: true },       // because id is unique
-  { id: "8", name: "Manager", status: true },
-  { id: "9", name: "Support", status: false },
-  { id: "10", name: "Sales", status: true },
-  { id: "11", name: "Accountant", status: false },
-];
 
 const UserType = () => {
   const validationSchema = Yup.object({
@@ -54,112 +38,125 @@ const UserType = () => {
   });
 
   const tableContainerRef = useRef(null);
-  // const [open, setOpen] = useState(false);
-  // const [tableData, setTableData] = useState(seed); //  controlled data
+  const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteData, setDeleteData] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditSaving, setIsEditSaving] = useState(false);
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
-  const handleClickEditOpen = () => setEditOpen(true);
 
   const dispatch = useDispatch();
   const { data: tableData, loading, error } = useSelector((state) => state.userType);
-
-  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserTypes());
   }, [dispatch]);
   
-
   // Add
   const handleAdd = async (values, resetForm) => {
+    setIsSaving(true);
     try {
-      const res =  await dispatch(addUserType({ name: values.userType, status: 1 }));
-      console.log(res)
-       if (res.error) {
-         console.log("Add failed:", res.payload);
-          return;
-        }
-
+      const res = await dispatch(addUserType({ name: values.userType, status: 1 }));
+      setIsSaving(false);
+      if (res.error) {
+        console.log("Add failed:", res.payload);
+        return;
+      }
       // Success
       resetForm();
       setOpen(false);
     } catch (err) {
-     
+      setIsSaving(false);
     }
   };
-
-
-  // Update
-  // const handleUpdate = (row) => {
-  //   dispatch(updateUserType({ id: row.id, name: "New Name", status: row.status }));
-  // };
 
   // Delete
-  const handleDelete = async (id) => {
-    try {
-      const res =  await dispatch(deleteUserType(id));
-      console.log(res)
-       if (res.error) {
-         console.log("Add failed:", res.payload);
-          return;
-        }
+  const handleDeleteClick = (row) => {
+    setDeleteData(row);
+    setOpenDelete(true);
+  };
 
+  const handleConfirmDelete = async (id) => {
+    setIsDeleting(true);
+    try {
+      const res = await dispatch(deleteUserType(id));
+      setIsDeleting(false);
+      if (res.error) {
+        console.log("Delete failed:", res.payload);
+        setOpenDelete(false);
+        setDeleteData(null);
+        return;
+      }
       // Success
-      resetForm();
-      setOpen(false);
+      setOpenDelete(false);
+      setDeleteData(null);
     } catch (err) {
-     
+      setIsDeleting(false);
+      setOpenDelete(false);
+      setDeleteData(null);
     }
   };
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [editData, setEditData] = useState(null);
-
   // open modal with row data
-const handleUpdate = (row) => {
-  setEditData(row);   // save selected row
-  setEditOpen(true);  // open modal
-};
+  const handleUpdate = (row) => {
+    setEditData(row);
+    setEditOpen(true);
+  };
 
-// close modal
-const handleEditClose = () => {
-  setEditOpen(false);
-  setEditData(null);
-};
+  // close modal
+  const handleEditClose = () => {
+    setEditOpen(false);
+    setEditData(null);
+  };
 
-// update dispatch
-const handleEditSubmit = async (values, resetForm) => {
-  try {
-    const res = await dispatch(updateUserType({ id: editData.id, name: values.userType }));
-    if (res.error) {
-         console.log("Update failed:", res.payload);
-          return;
-        }
-    resetForm();
-    handleEditClose();
-  } catch (err) {
-    console.error("Update failed:", err);
-  }
-};
+  // update dispatch
+  const handleEditSubmit = async (values, resetForm) => {
+    setIsEditSaving(true);
+    try {
+      const res = await dispatch(updateUserType({ id: editData.id, name: values.userType }));
+      setIsEditSaving(false);
+      if (res.error) {
+        console.log("Update failed:", res.payload);
+        return;
+      }
+      resetForm();
+      handleEditClose();
+    } catch (err) {
+      setIsEditSaving(false);
+      console.error("Update failed:", err);
+    }
+  };
 
- const columns = useMemo(
+  const columns = useMemo(
     () => [
-      { accessorKey: "name", header: "User Role" },
+      {
+        accessorKey: "name",
+        header: "User Role",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
+      },
       {
         accessorKey: "status",
         header: "Status",
         enableSorting: false,
         enableColumnFilter: false,
-        Cell: ({ row }) => (
-          <CustomSwitch
-            checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+
+          return (
+            <CustomSwitch
+              checked={!!row.original.status}
+              onChange={(e) => {
+                const newStatus = e.target.checked ? 1 : 0;
+                dispatch(statusUpdate({ ...row.original, status: newStatus }));
+              }}
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -168,24 +165,29 @@ const handleEditSubmit = async (values, resetForm) => {
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
+
+          return (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              <Tooltip title="Edit">
+                <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          );
+        },
       },
     ],
-    [dispatch]
+    [dispatch, loading]
   );
+
   //  Tell MRT which field is the unique row id
   const getRowId = (originalRow) => originalRow.id;
 
@@ -226,7 +228,11 @@ const handleEditSubmit = async (values, resetForm) => {
             <MaterialReactTable
               columns={columns}
               data={tableData}               
-              getRowId={getRowId}           
+              getRowId={getRowId}
+              state={{
+                isLoading: loading,
+                showLoadingOverlay: loading,
+              }}
               enableTopToolbar
               enableColumnFilters
               enableSorting
@@ -283,7 +289,7 @@ const handleEditSubmit = async (values, resetForm) => {
         </Grid>
       </Grid>
 
-      {/* Modal user type start */}
+      {/* Add Modal */}
       <BootstrapDialog onClose={handleClose} open={open} fullWidth maxWidth="xs">
         <DialogTitle sx={{ m: 0, p: 1.5 }}>Add User Role</DialogTitle>
         <IconButton
@@ -298,14 +304,6 @@ const handleEditSubmit = async (values, resetForm) => {
           initialValues={{ userType: "" }}
           validationSchema={validationSchema}
           onSubmit={async (values, { resetForm }) => {
-            //  add a new row with a unique id and default status
-            // const newRow = {
-            //   id: `u-${Date.now()}`, // simple unique id
-            //   name: values.userType,
-            //   status: true,
-            // };
-            // setTableData((prev) => [newRow, ...prev]);
-            // handleClose();
             await handleAdd(values, resetForm);
           }}
         >
@@ -326,19 +324,19 @@ const handleEditSubmit = async (values, resetForm) => {
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleClose}>
+                <Button variant="outlined" color="error" onClick={handleClose} disabled={isSaving}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained">
-                  Submit
+                <Button type="submit" variant="contained" disabled={isSaving} startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                  {isSaving ? "Saving..." : "Submit"}
                 </Button>
               </DialogActions>
             </Form>
           )}
         </Formik>
       </BootstrapDialog>
-      {/* Modal user type end */}
-      {/* Edit Modal user type start */}
+
+      {/* Edit Modal */}
       <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="xs">
         <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit User Role</DialogTitle>
         <IconButton
@@ -355,7 +353,7 @@ const handleEditSubmit = async (values, resetForm) => {
         </IconButton>
 
         <Formik
-          enableReinitialize //  makes sure form updates when editData changes
+          enableReinitialize
           initialValues={{ userType: editData?.name || "" }}
           validationSchema={validationSchema}
           onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
@@ -377,11 +375,11 @@ const handleEditSubmit = async (values, resetForm) => {
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleEditClose}>
+                <Button variant="outlined" color="error" onClick={handleEditClose} disabled={isEditSaving}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained">
-                  Save Changes
+                <Button type="submit" variant="contained" disabled={isEditSaving} startIcon={isEditSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                  {isEditSaving ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogActions>
             </Form>
@@ -389,7 +387,28 @@ const handleEditSubmit = async (values, resetForm) => {
         </Formik>
       </BootstrapDialog>
 
-      {/* Edit Modal user type end */}
+      {/* Delete Confirmation Modal */}
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+        <DialogTitle>{"Delete this user role?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleConfirmDelete(deleteData?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Dialog,
     DialogTitle,
@@ -9,6 +9,7 @@ import {
     TextField,
     MenuItem,
     Grid,
+    CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { styled } from "@mui/material/styles";
@@ -70,6 +71,7 @@ const validationSchema = Yup.object({
 
 const VendorFormModal = ({ open, onClose, editData = null }) => {
     const dispatch = useDispatch();
+    const [isSaving, setIsSaving] = useState(false);
 
     // Get categories and states from Redux store
     const { data: categories = [] } = useSelector((state) => state.category);
@@ -99,6 +101,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
     };
 
     const handleSubmit = async (values, { resetForm, setSubmitting }) => {
+        setIsSaving(true);
         try {
             // Trim all string values
             const trimmedValues = Object.keys(values).reduce((acc, key) => {
@@ -115,14 +118,20 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
             } else {
                 result = await dispatch(addVendor(trimmedValues));
             }
+            console.log(result);
 
+            setIsSaving(false);
+            
             if (!result.error) {
                 // Refresh vendor list after successful operation
                 await dispatch(fetchVendors());
                 resetForm();
                 onClose();
+            } else {
+                console.error("Form submission error:", result.error);
             }
         } catch (error) {
+            setIsSaving(false);
             console.error("Form submission error:", error);
         } finally {
             setSubmitting(false);
@@ -131,11 +140,11 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
 
     return (
         <BootstrapDialog
-            onClose={onClose}
+            onClose={() => !isSaving && onClose()}
             open={open}
             fullWidth
             maxWidth="md"
-            disableEscapeKeyDown={false}
+            disableEscapeKeyDown={isSaving}
         >
             <DialogTitle sx={{ m: 0, p: 2, pr: 6 }}>
                 {isEditMode ? "Edit Vendor" : "Add New Vendor"}
@@ -143,6 +152,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
             <IconButton
                 aria-label="close"
                 onClick={onClose}
+                disabled={isSaving}
                 sx={{
                     position: "absolute",
                     right: 8,
@@ -165,7 +175,6 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                     touched,
                     handleChange,
                     handleBlur,
-                    isSubmitting,
                 }) => (
                     <Form>
                         <DialogContent dividers>
@@ -182,7 +191,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                         onBlur={handleBlur}
                                         error={touched.name && Boolean(errors.name)}
                                         helperText={touched.name && errors.name}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                         required
                                     />
                                 </Grid>
@@ -200,7 +209,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                         error={touched.mobile && Boolean(errors.mobile)}
                                         helperText={touched.mobile && errors.mobile}
                                         inputProps={{ maxLength: 10 }}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                         required
                                     />
                                 </Grid>
@@ -218,7 +227,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                         onBlur={handleBlur}
                                         error={touched.email && Boolean(errors.email)}
                                         helperText={touched.email && errors.email}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                         required
                                     />
                                 </Grid>
@@ -236,13 +245,13 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                         onBlur={handleBlur}
                                         error={touched.category_id && Boolean(errors.category_id)}
                                         helperText={touched.category_id && errors.category_id}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                         required
                                     >
                                         <MenuItem value="">
                                             <em>Select Category</em>
                                         </MenuItem>
-                                        {categories.map((category) => (
+                                        {Array.isArray(categories) && categories.map((category) => (
                                             <MenuItem key={category.id} value={String(category.id)}>
                                                 {category.name}
                                             </MenuItem>
@@ -269,7 +278,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                             maxLength: 15,
                                             style: { textTransform: "uppercase" },
                                         }}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                         required
                                     />
                                 </Grid>
@@ -286,7 +295,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                         onBlur={handleBlur}
                                         error={touched.city && Boolean(errors.city)}
                                         helperText={touched.city && errors.city}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                         required
                                     />
                                 </Grid>
@@ -304,13 +313,13 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                         onBlur={handleBlur}
                                         error={touched.state_id && Boolean(errors.state_id)}
                                         helperText={touched.state_id && errors.state_id}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                         required
                                     >
                                         <MenuItem value="">
                                             <em>Select State</em>
                                         </MenuItem>
-                                        {states.map((state) => (
+                                        {Array.isArray(states) && states.map((state) => (
                                             <MenuItem key={state.id} value={String(state.id)}>
                                                 {state.name}
                                             </MenuItem>
@@ -331,7 +340,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                         error={touched.zip_code && Boolean(errors.zip_code)}
                                         helperText={touched.zip_code && errors.zip_code}
                                         inputProps={{ maxLength: 6 }}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                         required
                                     />
                                 </Grid>
@@ -350,7 +359,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                         onBlur={handleBlur}
                                         error={touched.address && Boolean(errors.address)}
                                         helperText={touched.address && errors.address}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                         required
                                     />
                                 </Grid>
@@ -369,7 +378,7 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                         onBlur={handleBlur}
                                         error={touched.terms && Boolean(errors.terms)}
                                         helperText={touched.terms && errors.terms}
-                                        disabled={isSubmitting}
+                                        disabled={isSaving}
                                     />
                                 </Grid>
                             </Grid>
@@ -380,12 +389,17 @@ const VendorFormModal = ({ open, onClose, editData = null }) => {
                                 onClick={onClose}
                                 color="error"
                                 variant="outlined"
-                                disabled={isSubmitting}
+                                disabled={isSaving}
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" variant="contained" disabled={isSubmitting}>
-                                {isSubmitting
+                            <Button 
+                                type="submit" 
+                                variant="contained" 
+                                disabled={isSaving}
+                                startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
+                            >
+                                {isSaving
                                     ? "Saving..."
                                     : isEditMode
                                         ? "Save Changes"

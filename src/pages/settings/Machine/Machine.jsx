@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import {
   Typography,
   Grid,
@@ -12,6 +12,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  DialogContentText,
+  Skeleton,
+  CircularProgress,
 } from "@mui/material";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import CloseIcon from "@mui/icons-material/Close";
@@ -42,27 +45,46 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogActions-root": { padding: theme.spacing(1) },
 }));
 
+// Enhanced validation schema with better rules
 const validationSchema = Yup.object({
   name: Yup.string()
-    .min(2, "Machine must be at least 2 characters")
-    .required("Machine Name is required"),
+    .trim()
+    .min(2, "Machine name must be at least 2 characters")
+    .max(100, "Machine name must not exceed 100 characters")
+    .required("Machine name is required"),
   run_hours_at_service: Yup.number()
-    .typeError("Enter valid number of hours")
-    .required("Run Hours at Service are required"),
-  cycle_days: Yup.number()
-    .typeError("Enter valid number of days")
-    .required("Cycle Days are required"),
-  cycle_month: Yup.number()
-    .typeError("Enter valid number of months")
-    .required("Cycle Month is required"),
-  message: Yup.string().required("Message is required"),
+    .typeError("Please enter a valid number")
+    .positive("Run hours must be positive")
+    .integer("Run hours must be a whole number")
+    .min(1, "Run hours must be at least 1")
+    .max(100000, "Run hours cannot exceed 100,000")
+    .required("Run hours at service are required"),
+  service_interval_days: Yup.number()
+    .typeError("Please enter a valid number")
+    .positive("Service interval must be positive")
+    .integer("Service interval must be a whole number")
+    .min(1, "Service interval must be at least 1 day")
+    .max(365, "Service interval cannot exceed 365 days")
+    .required("Service interval days are required"),
+  service_cycle_months: Yup.number()
+    .typeError("Please enter a valid number")
+    .positive("Service cycle must be positive")
+    .integer("Service cycle must be a whole number")
+    .min(1, "Service cycle must be at least 1 month")
+    .max(60, "Service cycle cannot exceed 60 months")
+    .required("Service cycle months are required"),
+  message: Yup.string()
+    .trim()
+    .min(5, "Message must be at least 5 characters")
+    .max(500, "Message must not exceed 500 characters")
+    .required("Message is required"),
 });
 
 const INITIAL_VALUES = {
   name: "",
   run_hours_at_service: "",
-  cycle_days: "",
-  cycle_month: "",
+  service_interval_days: "",
+  service_cycle_months: "",
   message: "",
 };
 
@@ -72,61 +94,119 @@ const Machine = () => {
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteData, setDeleteData] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const { data: machines = [] } = useSelector((state) => state.machine);
+  const { data: machines = [], loading } = useSelector((state) => state.machine);
 
   useEffect(() => {
     dispatch(fetchMachines());
   }, [dispatch]);
 
-  const handleClose = () => setOpen(false);
-  const handleEditClose = () => {
+  const handleClose = useCallback(() => setOpen(false), []);
+  const handleEditClose = useCallback(() => {
     setEditOpen(false);
     setEditData(null);
-  };
+  }, []);
 
-  const handleAdd = async (values, { resetForm }) => {
-    const res = await dispatch(addMachine(values));
-    if (res.error) return;
-    resetForm();
-    handleClose();
-  };
+  const handleAdd = useCallback(async (values, { resetForm }) => {
+    setIsSaving(true);
+    try {
+      const res = await dispatch(addMachine(values));
+      if (!res.error) {
+        resetForm();
+        handleClose();
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, [dispatch, handleClose]);
 
-  const handleDelete = (id) => {
-    dispatch(deleteMachine(id));
-  };
+  const handleDeleteClick = useCallback((row) => {
+    setDeleteData(row);
+    setOpenDelete(true);
+  }, []);
 
-  const handleUpdate = (row) => {
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteData?.id) return;
+    
+    setIsDeleting(true);
+    try {
+      await dispatch(deleteMachine(deleteData.id));
+      setOpenDelete(false);
+      setDeleteData(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [dispatch, deleteData]);
+
+  const handleUpdate = useCallback((row) => {
     setEditData(row);
     setEditOpen(true);
-  };
+  }, []);
 
-  const handleEditSubmit = async (values, { resetForm }) => {
-    const res = await dispatch(updateMachine({ id: editData.id, ...values }));
-    if (res.error) return;
-    resetForm();
-    handleEditClose();
-  };
+  const handleEditSubmit = useCallback(async (values, { resetForm }) => {
+    if (!editData?.id) return;
+    
+    setIsSaving(true);
+    try {
+      const res = await dispatch(updateMachine({ id: editData.id, ...values }));
+      if (!res.error) {
+        resetForm();
+        handleEditClose();
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, [dispatch, editData, handleEditClose]);
+
+  const handleStatusToggle = useCallback((row, checked) => {
+    const newStatus = checked ? 1 : 0;
+    dispatch(statusUpdate({ ...row, status: newStatus }));
+  }, [dispatch]);
 
   const columns = useMemo(
     () => [
-      { accessorKey: "name", header: "Name" },
-      { accessorKey: "run_hours_at_service", header: "Working Hours" },
-      { accessorKey: "cycle_days", header: "Servicing Time" },
-      { accessorKey: "cycle_month", header: "Service Cycle" },
-      { accessorKey: "message", header: "Message" },
+      {
+        accessorKey: "name",
+        header: "Machine Name",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
+      },
+      {
+        accessorKey: "run_hours_at_service",
+        header: "Run Hours at Service",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+      },
+      {
+        accessorKey: "service_interval_days",
+        header: "Service Interval (Days)",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+      },
+      {
+        accessorKey: "service_cycle_months",
+        header: "Service Cycle (Months)",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+      },
+      {
+        accessorKey: "message",
+        header: "Service Message",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="70%" /> : cell.getValue(),
+      },
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ row }) => (
-          <CustomSwitch
-            checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+
+          return (
+            <CustomSwitch
+              checked={!!row.original.status}
+              onChange={(e) => handleStatusToggle(row.original, e.target.checked)}
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -135,26 +215,30 @@ const Machine = () => {
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton color="error" onClick={() => handleDelete(row.original.id)}>
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
+
+          return (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              <Tooltip title="Edit Machine">
+                <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete Machine">
+                <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          );
+        },
       },
     ],
-    [dispatch]
+    [loading, handleStatusToggle, handleUpdate, handleDeleteClick]
   );
 
-  const downloadCSV = () => {
+  const downloadCSV = useCallback(() => {
     const headers = columns
       .filter((col) => col.accessorKey)
       .map((col) => col.header);
@@ -172,13 +256,14 @@ const Machine = () => {
 
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "Machine_data.csv");
+    link.setAttribute("download", `Machine_Data_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+    URL.revokeObjectURL(url);
+  }, [columns, machines]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
     const originalContents = document.body.innerHTML;
@@ -187,19 +272,20 @@ const Machine = () => {
     window.print();
     document.body.innerHTML = originalContents;
     window.location.reload();
-  };
+  }, []);
 
-  const FormFields = ({ values, errors, touched, handleChange }) => (
+  const FormFields = useCallback(({ values, errors, touched, handleChange, handleBlur }) => (
     <Grid container spacing={2}>
       <Grid size={{ xs: 12, md: 6 }}>
         <TextField
           fullWidth
           id="name"
           name="name"
-          label="Name"
+          label="Machine Name"
           size="small"
           value={values.name}
           onChange={handleChange}
+          onBlur={handleBlur}
           error={touched.name && Boolean(errors.name)}
           helperText={touched.name && errors.name}
           sx={{ mb: 3 }}
@@ -210,10 +296,12 @@ const Machine = () => {
           fullWidth
           id="run_hours_at_service"
           name="run_hours_at_service"
-          label="Working Hours"
+          label="Run Hours at Service"
           size="small"
+          type="number"
           value={values.run_hours_at_service}
           onChange={handleChange}
+          onBlur={handleBlur}
           error={touched.run_hours_at_service && Boolean(errors.run_hours_at_service)}
           helperText={touched.run_hours_at_service && errors.run_hours_at_service}
           sx={{ mb: 3 }}
@@ -222,28 +310,32 @@ const Machine = () => {
       <Grid size={{ xs: 12, md: 6 }}>
         <TextField
           fullWidth
-          id="cycle_days"
-          name="cycle_days"
-          label="Servicing Time"
+          id="service_interval_days"
+          name="service_interval_days"
+          label="Service Interval (Days)"
           size="small"
-          value={values.cycle_days}
+          type="number"
+          value={values.service_interval_days}
           onChange={handleChange}
-          error={touched.cycle_days && Boolean(errors.cycle_days)}
-          helperText={touched.cycle_days && errors.cycle_days}
+          onBlur={handleBlur}
+          error={touched.service_interval_days && Boolean(errors.service_interval_days)}
+          helperText={touched.service_interval_days && errors.service_interval_days}
           sx={{ mb: 3 }}
         />
       </Grid>
       <Grid size={{ xs: 12, md: 6 }}>
         <TextField
           fullWidth
-          id="cycle_month"
-          name="cycle_month"
-          label="Service Cycle"
+          id="service_cycle_months"
+          name="service_cycle_months"
+          label="Service Cycle (Months)"
           size="small"
-          value={values.cycle_month}
+          type="number"
+          value={values.service_cycle_months}
           onChange={handleChange}
-          error={touched.cycle_month && Boolean(errors.cycle_month)}
-          helperText={touched.cycle_month && errors.cycle_month}
+          onBlur={handleBlur}
+          error={touched.service_cycle_months && Boolean(errors.service_cycle_months)}
+          helperText={touched.service_cycle_months && errors.service_cycle_months}
           sx={{ mb: 3 }}
         />
       </Grid>
@@ -252,19 +344,20 @@ const Machine = () => {
           fullWidth
           id="message"
           name="message"
-          label="Message"
+          label="Service Message"
           size="small"
           multiline
-          minRows={2}
+          rows={3}
           value={values.message}
           onChange={handleChange}
+          onBlur={handleBlur}
           error={touched.message && Boolean(errors.message)}
           helperText={touched.message && errors.message}
           sx={{ mb: 3 }}
         />
       </Grid>
     </Grid>
-  );
+  ), []);
 
   return (
     <>
@@ -278,6 +371,10 @@ const Machine = () => {
             <MaterialReactTable
               columns={columns}
               data={machines}
+              state={{
+                isLoading: loading,
+                showLoadingOverlay: loading,
+              }}
               enableTopToolbar
               enableColumnFilters
               enableSorting
@@ -301,18 +398,18 @@ const Machine = () => {
                   }}
                 >
                   <Typography variant="h6" fontWeight={400}>
-                    Machine
+                    Machine Management
                   </Typography>
 
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <MRT_GlobalFilterTextField table={table} />
                     <MRT_ToolbarInternalButtons table={table} />
-                    <Tooltip title="Print">
+                    <Tooltip title="Print Table">
                       <IconButton onClick={handlePrint}>
                         <FiPrinter size={20} />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Download CSV">
+                    <Tooltip title="Download as CSV">
                       <IconButton onClick={downloadCSV}>
                         <BsCloudDownload size={20} />
                       </IconButton>
@@ -333,11 +430,12 @@ const Machine = () => {
       </Grid>
 
       {/* Add Machine Modal */}
-      <BootstrapDialog open={open} onClose={handleClose} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ m: 0, p: 1.5 }}>Add Machine</DialogTitle>
+      <BootstrapDialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ m: 0, p: 1.5 }}>Add New Machine</DialogTitle>
         <IconButton
           aria-label="close"
           onClick={handleClose}
+          disabled={isSaving}
           sx={(theme) => ({
             position: "absolute",
             right: 8,
@@ -358,11 +456,17 @@ const Machine = () => {
                 <FormFields {...formikProps} />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleClose}>
-                  Close
+                <Button variant="outlined" color="error" onClick={handleClose} disabled={isSaving}>
+                  Cancel
                 </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Submit
+                <Button 
+                  type="submit" 
+                  variant="contained" 
+                  color="primary" 
+                  disabled={isSaving || !formikProps.isValid}
+                  startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
+                >
+                  {isSaving ? "Saving..." : "Add Machine"}
                 </Button>
               </DialogActions>
             </Form>
@@ -371,11 +475,12 @@ const Machine = () => {
       </BootstrapDialog>
 
       {/* Edit Machine Modal */}
-      <BootstrapDialog open={editOpen} onClose={handleEditClose} fullWidth maxWidth="xs">
+      <BootstrapDialog open={editOpen} onClose={handleEditClose} fullWidth maxWidth="sm">
         <DialogTitle sx={{ m: 0, p: 1.5 }}>Edit Machine</DialogTitle>
         <IconButton
           aria-label="close"
           onClick={handleEditClose}
+          disabled={isSaving}
           sx={(theme) => ({
             position: "absolute",
             right: 8,
@@ -390,8 +495,8 @@ const Machine = () => {
             initialValues={{
               name: editData.name || "",
               run_hours_at_service: editData.run_hours_at_service || "",
-              cycle_days: editData.cycle_days || "",
-              cycle_month: editData.cycle_month || "",
+              service_interval_days: editData.service_interval_days || editData.cycle_days || "",
+              service_cycle_months: editData.service_cycle_months || editData.cycle_month || "",
               message: editData.message || "",
             }}
             validationSchema={validationSchema}
@@ -403,11 +508,17 @@ const Machine = () => {
                   <FormFields {...formikProps} />
                 </DialogContent>
                 <DialogActions sx={{ gap: 1, mb: 1 }}>
-                  <Button variant="outlined" color="error" onClick={handleEditClose}>
-                    Close
+                  <Button variant="outlined" color="error" onClick={handleEditClose} disabled={isSaving}>
+                    Cancel
                   </Button>
-                  <Button type="submit" variant="contained" color="primary">
-                    Save changes
+                  <Button 
+                    type="submit" 
+                    variant="contained" 
+                    color="primary"
+                    disabled={isSaving || !formikProps.isValid}
+                    startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
                   </Button>
                 </DialogActions>
               </Form>
@@ -415,6 +526,31 @@ const Machine = () => {
           </Formik>
         )}
       </BootstrapDialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+        <DialogTitle>Delete Machine?</DialogTitle>
+        <DialogContent sx={{ minWidth: 300 }}>
+          <DialogContentText>
+            Are you sure you want to delete <strong>{deleteData?.name}</strong>? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

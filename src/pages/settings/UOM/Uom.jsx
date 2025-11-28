@@ -8,6 +8,9 @@ import {
   IconButton,
   TextField,
   Tooltip,
+  DialogContentText,
+  Skeleton,
+  CircularProgress,
 } from "@mui/material";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -79,23 +82,38 @@ const UOM = () => {
 
   const tableContainerRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteData, setDeleteData] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleClickOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
   const handleAdd = async (value, resetForm) => {
+    setIsSaving(true);
     const res = await dispatch(addUnitOfMeasurement(value));
+    setIsSaving(false);
     if(res.error) return ; 
     resetForm();
     handleClose();
   };
 
   // Delete
-  const handleDelete = (id) => {
-    dispatch(deleteUnitOfMeasurement(id));
+  const handleDeleteClick = (row) => {
+    setDeleteData(row);
+    setOpenDelete(true);
   };
 
-  //  FIX: Use correct slice (unitOfMeasurements)
+  const handleConfirmDelete = async (id) => {
+    setIsDeleting(true);
+    await dispatch(deleteUnitOfMeasurement(id));
+    setIsDeleting(false);
+    setOpenDelete(false);
+    setDeleteData(null);
+  };
+
+  //  Use correct slice (unitOfMeasurements)
   const { data: tableData = [], loading, error } = useSelector(
     (state) => state.unitOfMeasurement
   );
@@ -107,6 +125,7 @@ const UOM = () => {
   //  Edit Modal
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [isEditSaving, setIsEditSaving] = useState(false);
 
   const handleUpdate = (row) => {
     setEditData(row);
@@ -119,10 +138,12 @@ const UOM = () => {
   };
 
   const handleEditSubmit = async (values, resetForm) => {
+    setIsEditSaving(true);
     try {
       const res = await dispatch(
         updateUnitOfMeasurement({ id: editData.id, name: values.name })
       );
+      setIsEditSaving(false);
       if (res.error) {
         console.log("Update failed:", res.payload);
         return;
@@ -130,6 +151,7 @@ const UOM = () => {
       resetForm();
       handleEditClose();
     } catch (err) {
+      setIsEditSaving(false);
       console.error("Update failed:", err);
     }
   };
@@ -137,21 +159,29 @@ const UOM = () => {
   //  Columns
   const columns = useMemo(
     () => [
-      { accessorKey: "name", header: "UOM" },
+      {
+        accessorKey: "name",
+        header: "UOM",
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
+      },
       {
         accessorKey: "status",
         header: "Status",
         enableSorting: false,
         enableColumnFilter: false,
-        Cell: ({ row }) => (
-          <CustomSwitch
-            checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
-          />
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+
+          return (
+            <CustomSwitch
+              checked={!!row.original.status}
+              onChange={(e) => {
+                const newStatus = e.target.checked ? 1 : 0;
+                dispatch(statusUpdate({ ...row.original, status: newStatus }));
+              }}
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -160,29 +190,33 @@ const UOM = () => {
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleUpdate(row.original)}
-              >
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() => handleDelete(row.original.id)}
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
+
+          return (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              <Tooltip title="Edit">
+                <IconButton
+                  color="primary"
+                  onClick={() => handleUpdate(row.original)}
+                >
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton
+                  color="error"
+                  onClick={() => handleDeleteClick(row.original)}
+                >
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          );
+        },
       },
     ],
-    [dispatch]
+    [dispatch, loading]
   );
 
   const getRowId = (originalRow) => originalRow.id;
@@ -233,6 +267,10 @@ const UOM = () => {
               columns={columns}
               data={tableData}
               getRowId={getRowId}
+              state={{
+                isLoading: loading,
+                showLoadingOverlay: loading,
+              }}
               enableTopToolbar
               enableColumnFilters
               enableSorting
@@ -334,11 +372,11 @@ const UOM = () => {
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleClose}>
+                <Button variant="outlined" color="error" onClick={handleClose} disabled={isSaving}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Submit
+                <Button type="submit" variant="contained" color="primary" disabled={isSaving} startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                  {isSaving ? "Saving..." : "Submit"}
                 </Button>
               </DialogActions>
             </Form>
@@ -392,17 +430,40 @@ const UOM = () => {
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleEditClose}>
+                <Button variant="outlined" color="error" onClick={handleEditClose} disabled={isEditSaving}>
                   Close
                 </Button>
-                <Button type="submit" variant="contained">
-                  Save Changes
+                <Button type="submit" variant="contained" disabled={isEditSaving} startIcon={isEditSaving ? <CircularProgress size={16} color="inherit" /> : null}>
+                  {isEditSaving ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogActions>
             </Form>
           )}
         </Formik>
       </BootstrapDialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+        <DialogTitle>{"Delete this UOM?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleConfirmDelete(deleteData?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ErrorBoundary>
   );
 };

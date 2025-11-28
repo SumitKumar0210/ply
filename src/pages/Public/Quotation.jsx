@@ -24,11 +24,13 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import api from "../../api";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
+import { useAuth } from "../../context/AuthContext"; 
 
 const PublicQuoteDetailsView = () => {
   const { link } = useParams();
   const navigate = useNavigate();
   const contentRef = useRef(null);
+  const { appDetails } = useAuth();
 
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
 
@@ -610,15 +612,11 @@ const PublicQuoteDetailsView = () => {
                 FROM:
               </Typography>
               <Typography variant="body2" sx={{ lineHeight: 1.6, fontSize: { xs: "0.7rem", sm: "0.8rem" } }}>
-                <strong style={{ fontSize: { xs: "0.75rem", sm: "0.85rem" } }}>TECHIE SQUAD PRIVATE LIMITED</strong>
+                <strong style={{ fontSize: { xs: "0.75rem", sm: "0.85rem" } }}>{appDetails.application_name}</strong>
                 <br />
-                CIN: U72900BR2019PTC042431
+                {appDetails.company_address}
                 <br />
-                RK NIWAS, GOLA ROAD MOR, BAILEY ROAD
-                <br />
-                DANAPUR, PATNA-801503, BIHAR, INDIA
-                <br />
-                GSTIN: 10AAHCT3899A1ZI
+                GSTIN: {appDetails.gst_no}
               </Typography>
             </Box>
 
@@ -646,10 +644,10 @@ const PublicQuoteDetailsView = () => {
                   {quotationDetails.customer.city},{" "}
                   {quotationDetails.customer.state?.name}{" "}
                   {quotationDetails.customer.zip_code}
-                  <br />
+                  {/* <br />
                   Mobile: {quotationDetails.customer.mobile}
                   <br />
-                  Email: {quotationDetails.customer.email}
+                  Email: {quotationDetails.customer.email} */}
                 </Typography>
               </Box>
             )}

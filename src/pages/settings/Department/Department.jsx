@@ -10,6 +10,7 @@ import {
   Tooltip,
   Skeleton,
   DialogContentText,
+  CircularProgress,
 } from "@mui/material";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
@@ -66,24 +67,6 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-
-
-// Skeleton Loading Component for Table
-const TableSkeleton = () => {
-  return (
-    <Box sx={{ p: 2 }}>
-      {[...Array(6)].map((_, index) => (
-        <Box key={index} sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center" }}>
-          <Skeleton variant="text" width="40%" height={40} />
-          <Skeleton variant="text" width="20%" height={40} />
-          <Skeleton variant="text" width="15%" height={40} />
-          <Skeleton variant="text" width="15%" height={40} />
-        </Box>
-      ))}
-    </Box>
-  );
-};
-
 const Department = () => {
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
@@ -93,6 +76,8 @@ const Department = () => {
   const [deleteData, setDeleteData] = useState(null);
   const [editData, setEditData] = useState(null);
   const [sequenceValues, setSequenceValues] = useState({});
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { data: tableData = [], loading } = useSelector(
     (state) => state.department
@@ -144,7 +129,9 @@ const Department = () => {
   };
 
   const handleAdd = async (values, resetForm) => {
+    setIsSaving(true);
     const res = await dispatch(addDepartment(values));
+    setIsSaving(false);
     if (!res.error) {
       resetForm();
       handleClose();
@@ -152,24 +139,27 @@ const Department = () => {
   };
 
   const handleEditSubmit = async (values, resetForm) => {
+    setIsSaving(true);
     const res = await dispatch(updateDepartment({ id: editData.id, ...values }));
+    setIsSaving(false);
     if (!res.error) {
       resetForm();
       handleEditClose();
     }
   };
 
-
   const handleDelete = (row) => {
     setDeleteData(row);
-    setOpenDelete(true)
+    setOpenDelete(true);
   };
-  const handleConfirmDelete = async (id) => {
-    await dispatch(deleteDepartment(id));
-    setDeleteData(null);
-    setOpenDelete(false)
-  }
 
+  const handleConfirmDelete = async (id) => {
+    setIsDeleting(true);
+    await dispatch(deleteDepartment(id));
+    setIsDeleting(false);
+    setDeleteData(null);
+    setOpenDelete(false);
+  };
 
   const columns = useMemo(
     () => [
@@ -210,7 +200,6 @@ const Department = () => {
             <TextField
               type="number"
               size="small"
-              // disabled={(row.original.sequence == 1 || row.original.sequence == 2 || row.original.sequence == 3 || row.original.sequence == 4)}
               value={sequenceValues[row.original.id] ?? row.original.sequence ?? ""}
               onChange={(e) => handleSequenceChange(row.original.id, e.target.value)}
               inputProps={{ min: 0 }}
@@ -322,7 +311,10 @@ const Department = () => {
               columns={columns}
               data={tableData}
               getRowId={getRowId}
-              state={{ isLoading: loading }}
+              state={{ 
+                isLoading: loading,
+                showLoadingOverlay: loading,
+              }}
               enableTopToolbar
               enableColumnFilters
               enableSorting
@@ -377,7 +369,8 @@ const Department = () => {
         onSubmit={async (values, { resetForm }) => handleAdd(values, resetForm)}
         initialValues={{ name: "", color: "" }}
         title="Add Department"
-        submitButtonText="Submit"
+        submitButtonText={isSaving ? "Saving..." : "Submit"}
+        isSubmitting={isSaving}
       />
 
       {/* Edit Modal */}
@@ -390,25 +383,29 @@ const Department = () => {
           color: editData?.color || ""
         }}
         title="Edit Department"
-        submitButtonText="Save Changes"
+        submitButtonText={isSaving ? "Saving..." : "Save Changes"}
+        isSubmitting={isSaving}
       />
 
       {/* Delete Modal */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
         <DialogTitle>{"Delete this department?"}</DialogTitle>
         <DialogContent style={{ width: "300px" }}>
           <DialogContentText>This action cannot be undone</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
-
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
           <Button
             onClick={() => handleConfirmDelete(deleteData?.id)}
             variant="contained"
             color="error"
             autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
           >
-            Delete
+            {isDeleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>

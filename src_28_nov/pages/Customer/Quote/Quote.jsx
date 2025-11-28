@@ -1,0 +1,529 @@
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import Grid from "@mui/material/Grid";
+import PropTypes from "prop-types";
+import {
+  Button,
+  Paper,
+  Typography,
+  IconButton,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Box,
+  Tooltip,
+  Chip,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { Link, useSearchParams } from "react-router-dom";
+import CloseIcon from "@mui/icons-material/Close";
+import { BiSolidEditAlt } from "react-icons/bi";
+import { AiOutlineLink, AiOutlineCheck } from "react-icons/ai";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ThumbUpIcon from "@mui/icons-material/ThumbUp";
+import TaskAltIcon from "@mui/icons-material/TaskAlt";
+import { RiDeleteBinLine } from "react-icons/ri";
+import AddIcon from "@mui/icons-material/Add";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { IoMdRefresh } from "react-icons/io";
+import { useNavigate } from "react-router-dom";
+import { TextField } from "@mui/material";
+import {
+  MaterialReactTable,
+  MRT_ToolbarInternalButtons,
+  MRT_GlobalFilterTextField,
+} from "material-react-table";
+import { FiPrinter } from "react-icons/fi";
+import { BsCloudDownload } from "react-icons/bs";
+import { fetchQuotation, deleteQuotation } from "../slice/quotationSlice";
+import { useDispatch, useSelector } from "react-redux";
+import LinkGenerator from "../../../components/Links/LinkGenerator";
+
+//  Styled Dialog
+const BootstrapDialog = styled(Dialog)(({ theme }) => ({
+  "& .MuiDialogContent-root": {
+    padding: theme.spacing(2),
+    paddingBottom: theme.spacing(4),
+  },
+  "& .MuiDialogActions-root": {
+    padding: theme.spacing(1),
+  },
+}));
+
+function BootstrapDialogTitle(props) {
+  const { children, onClose, ...other } = props;
+  return (
+    <DialogTitle sx={{ m: 0, p: 2 }} {...other}>
+      {children}
+      {onClose && (
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            position: "absolute",
+            right: 8,
+            top: 8,
+            color: (theme) => theme.palette.grey[500],
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      )}
+    </DialogTitle>
+  );
+}
+
+BootstrapDialogTitle.propTypes = {
+  children: PropTypes.node,
+  onClose: PropTypes.func.isRequired,
+};
+
+//  Status colors
+const getStatusChip = (status) => {
+  switch (status) {
+    case 0:
+      return <Chip label="Draft" color="warning" size="small" />;
+    case 2:
+      return <Chip label="Production" color="success" size="small" />;
+    case 1:
+      return <Chip label="Ordered" color="info" size="small" />;
+    default:
+      return <Chip label="Unknown" size="small" />;
+  }
+};
+
+const Quote = () => {
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteRow, setDeleteRow] = useState(null);
+  const [showApproved, setShowApproved] = useState(false);
+
+  const tableContainerRef = useRef(null);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const {
+    data: tableData = [],
+    loading,
+    error,
+    totalRecords = 0,
+  } = useSelector((state) => state.quotation);
+
+  // Get initial values from URL
+  const getInitialPage = () => {
+    const page = searchParams.get("page");
+    return page ? parseInt(page) - 1 : 0;
+  };
+
+  const getInitialPageSize = () => {
+    const pageSize = searchParams.get("per_page");
+    return pageSize ? parseInt(pageSize) : 10;
+  };
+
+  const getInitialSearch = () => {
+    return searchParams.get("search") || "";
+  };
+
+  // Local State for pagination and search
+  const [pagination, setPagination] = useState({
+    pageIndex: getInitialPage(),
+    pageSize: getInitialPageSize(),
+  });
+  const [globalFilter, setGlobalFilter] = useState(getInitialSearch());
+
+  // Update URL params
+  const updateURLParams = useCallback((page, pageSize, search) => {
+    const params = new URLSearchParams();
+    params.set("page", (page + 1).toString());
+    params.set("per_page", pageSize.toString());
+    if (search) {
+      params.set("search", search);
+    }
+    setSearchParams(params);
+  }, [setSearchParams]);
+
+  // Fetch Data
+  const fetchData = useCallback(() => {
+    const params = {
+      pageIndex: pagination.pageIndex + 1,
+      pageLimit: pagination.pageSize,
+      approved: showApproved ? "true" : "false",
+    };
+    
+    if (globalFilter) {
+      params.search = globalFilter;
+    }
+    console.log('Fetching data with params:', params);
+
+    dispatch(fetchQuotation(params));
+    updateURLParams(pagination.pageIndex, pagination.pageSize, globalFilter);
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter, showApproved, updateURLParams]);
+
+  // Debounced fetch on pagination or search change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+  }, [pagination, globalFilter, showApproved]);
+
+  // Handle pagination change
+  const handlePaginationChange = useCallback((updater) => {
+    setPagination((prev) => {
+      const newPagination = typeof updater === 'function' ? updater(prev) : updater;
+      return newPagination;
+    });
+  }, []);
+
+  // Handle search change
+  const handleGlobalFilterChange = useCallback((value) => {
+    setGlobalFilter(value || "");
+    // Reset to first page when searching
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  // Toggle approved data
+  const handleToggleApproved = useCallback(() => {
+    setShowApproved((prev) => !prev);
+    // Reset to first page when toggling
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  // Refresh data
+  const handleRefresh = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleViewClick = (id) => {
+    navigate("/customer/quote/view/" + id);
+  };
+
+  const handleEditClick = (id) => {
+    navigate("/customer/quote/edit/" + id);
+  };
+
+  const handlDelete = (row) => {
+    setDeleteRow(row);
+    setOpenDelete(true);
+  };
+
+  const deleteData = async (id) => {
+    await dispatch(deleteQuotation(id));
+    setOpenDelete(false);
+    // Refresh data after deletion
+    fetchData();
+  };
+
+  const handleDateFormate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const handleItemCount = (items) => {
+    try {
+      const parsed = JSON.parse(items);
+      if (!Array.isArray(parsed)) return 0;
+      return parsed.length ?? 0;
+    } catch (e) {
+      console.error("Invalid product_ids format:", e);
+      return 0;
+    }
+  };
+
+  //  Table columns
+  const columns = useMemo(
+    () => [
+      {
+        accessorKey: "quoteNumber",
+        header: "Quote No.",
+        Cell: ({ row }) => row.original?.batch_no ?? "",
+      },
+      {
+        accessorKey: "customerName",
+        header: "Customer Name",
+        Cell: ({ row }) => row.original?.customer?.name ?? "",
+      },
+      {
+        accessorKey: "date",
+        header: "Date",
+        Cell: ({ row }) => handleDateFormate(row.original.created_at),
+      },
+      {
+        accessorKey: "quoteTotal",
+        header: "Quote Total",
+        Cell: ({ row }) =>
+          row.original?.grand_total
+            ? "₹ " + parseInt(row.original?.grand_total)
+            : "",
+      },
+      {
+        accessorKey: "totalItems",
+        header: "Total Items",
+        Cell: ({ row }) => handleItemCount(row.original?.product_ids),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        Cell: ({ row }) => getStatusChip(row.original?.status),
+      },
+      {
+        id: "actions",
+        header: "Action",
+        size: 80,
+        enableSorting: false,
+        enableColumnFilter: false,
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+        Cell: ({ row }) => (
+          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            <LinkGenerator
+              id={row.original.id}
+              customerId={row.original.customer?.id}
+              quotationData={row.original}
+            />
+            <Tooltip title="View">
+              <IconButton
+                color="warning"
+                onClick={() => handleViewClick(row.original.id)}
+              >
+                <MdOutlineRemoveRedEye size={16} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Edit">
+              <IconButton
+                color="primary"
+                onClick={() => handleEditClick(row.original.id)}
+              >
+                <BiSolidEditAlt size={16} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Delete">
+              <IconButton
+                aria-label="delete"
+                color="error"
+                onClick={() => handlDelete(row.original)}
+              >
+                <RiDeleteBinLine size={16} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    []
+  );
+
+  //  CSV export
+  const downloadCSV = useCallback(() => {
+    try {
+      const headers = [
+        "Quote No.",
+        "Customer Name",
+        "Date",
+        "Quote Total",
+        "Total Items",
+        "Status",
+      ];
+      const rows = tableData.map((row) => [
+        row.batch_no || "",
+        row.customer?.name || "",
+        handleDateFormate(row.created_at),
+        row.grand_total ? "₹ " + parseInt(row.grand_total) : "",
+        handleItemCount(row.product_ids),
+        row.status === 0 ? "Draft" : row.status === 1 ? "Ordered" : row.status === 2 ? "Production" : "Unknown",
+      ]);
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row) =>
+          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `Quotes_${new Date().toISOString().split("T")[0]}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("CSV download error:", error);
+    }
+  }, [tableData]);
+
+  //  Print handler
+  const handlePrint = useCallback(() => {
+    if (!tableContainerRef.current) return;
+    try {
+      const printWindow = window.open("", "", "height=600,width=1200");
+      if (!printWindow) return;
+      printWindow.document.write(tableContainerRef.current.innerHTML);
+      printWindow.document.close();
+      printWindow.print();
+    } catch (error) {
+      console.error("Print error:", error);
+    }
+  }, []);
+
+  return (
+    <>
+      {/* Header Row */}
+      <Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 2 }}
+      >
+        <Grid>
+          <Typography variant="h6">Quotation</Typography>
+        </Grid>
+        <Grid>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            <Button
+              variant={showApproved ? "contained" : "outlined"}
+              startIcon={<CheckCircleIcon />}
+              onClick={handleToggleApproved}
+              color={showApproved ? "success" : "primary"}
+            >
+              {showApproved ? "Showing Approved" : "Approved Data"}
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              component={Link}
+              to="/customer/quote/create"
+            >
+              Create Quote
+            </Button>
+          </Box>
+        </Grid>
+      </Grid>
+
+      {/* Invoice Table */}
+      <Grid size={12}>
+        <Paper
+          elevation={0}
+          ref={tableContainerRef}
+          sx={{
+            width: "100%",
+            overflow: "hidden",
+            backgroundColor: "#fff",
+            px: 2,
+            py: 1,
+          }}
+        >
+          <MaterialReactTable
+            columns={columns}
+            data={tableData}
+            manualPagination
+            manualFiltering
+            rowCount={totalRecords}
+            state={{
+              isLoading: loading,
+              pagination: pagination,
+              globalFilter,
+            }}
+            onPaginationChange={handlePaginationChange}
+            onGlobalFilterChange={handleGlobalFilterChange}
+            enableTopToolbar
+            enableColumnFilters={false}
+            enableSorting={false}
+            enablePagination
+            enableBottomToolbar
+            enableGlobalFilter
+            enableDensityToggle={false}
+            enableColumnActions={false}
+            enableColumnVisibilityToggle={false}
+            initialState={{ density: "compact" }}
+            muiTableContainerProps={{
+              sx: {
+                width: "100%",
+                backgroundColor: "#fff",
+                overflowX: "auto",
+                minWidth: "1200px",
+              },
+            }}
+            muiTablePaperProps={{
+              sx: { backgroundColor: "#fff", boxShadow: "none" },
+            }}
+            muiTableBodyRowProps={({ row }) => ({
+              hover: false,
+              sx:
+                row.original.status === "inactive"
+                  ? { "&:hover": { backgroundColor: "transparent" } }
+                  : {},
+            })}
+            renderTopToolbar={({ table }) => (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  p: 1,
+                }}
+              >
+                <Typography variant="h6" fontWeight={400}>
+                  {showApproved ? "Approved Quote List" : "Quote List"}
+                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <MRT_GlobalFilterTextField table={table} />
+                  <MRT_ToolbarInternalButtons table={table} />
+                  <Tooltip title="Refresh">
+                    <IconButton onClick={handleRefresh} size="small">
+                      <IoMdRefresh size={20} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Print">
+                    <IconButton onClick={handlePrint} size="small">
+                      <FiPrinter size={20} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Download CSV">
+                    <IconButton onClick={downloadCSV} size="small">
+                      <BsCloudDownload size={20} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Box>
+            )}
+          />
+        </Paper>
+      </Grid>
+
+      {/* Delete Modal */}
+      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
+        <DialogTitle>{"Delete this quotation?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
+          <Button
+            onClick={() => deleteData(deleteRow.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+export default Quote;

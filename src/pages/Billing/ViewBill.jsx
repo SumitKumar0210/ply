@@ -21,9 +21,11 @@ import { useReactToPrint } from "react-to-print";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBillById, updateBillStatus } from "./slice/billsSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
+import { useAuth } from "../../context/AuthContext";
 
 const ViewBill = () => {
     const { id } = useParams();
+    const { appDetails } = useAuth();
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const contentRef = useRef(null);
@@ -190,10 +192,19 @@ const ViewBill = () => {
                                                 {quotationDetails.invoice_no || "N/A"}
                                             </Box>
                                         </Typography>
-                                        <Typography variant="body1" sx={{ m: 0 }}>
-                                            Quote Date:{" "}
+                                        <Box
+                                        sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "end",
+                                            gap: 2,
+                                            flexWrap: "wrap",
+                                        }}
+                                        >
+                                            <Typography variant="body1" sx={{ m: 0 }}>
+                                            Billing Date:{" "}
                                             <Box component="span" sx={{ fontWeight: 600 }}>
-                                                {formatDate(quotationDetails.created_at)}
+                                                {formatDate(quotationDetails.date)}
                                             </Box>
                                         </Typography>
                                         <Typography variant="body1" sx={{ m: 0 }}>
@@ -202,12 +213,7 @@ const ViewBill = () => {
                                                 {formatDate(quotationDetails.delivery_date)}
                                             </Box>
                                         </Typography>
-                                        <Typography variant="body1" sx={{ m: 0 }}>
-                                            Priority:{" "}
-                                            <Box component="span" sx={{ fontWeight: 600 }}>
-                                                {quotationDetails.priority || "Normal"}
-                                            </Box>
-                                        </Typography>
+                                        </Box>
                                     </Box>
                                 </Grid>
 
@@ -229,11 +235,9 @@ const ViewBill = () => {
                                             From:
                                         </Typography>
                                         <Typography variant="body2">
-                                            TECHIE SQUAD PRIVATE LIMITED <br />
-                                            CIN: U72900BR2019PTC042431 <br />
-                                            RK NIWAS, GOLA ROAD MOR, BAILEY ROAD <br />
-                                            DANAPUR, PATNA-801503, BIHAR, INDIA <br />
-                                            GSTIN: 10AAHCT3899A1ZI
+                                             <strong>{appDetails.application_name}</strong><br />
+                                            {appDetails.gst_no} <br />
+                                            {appDetails.company_address} <br />
                                         </Typography>
                                     </Box>
 
@@ -251,10 +255,10 @@ const ViewBill = () => {
                                                 {quotationDetails.customer.city},{" "}
                                                 {quotationDetails.customer.state?.name}{" "}
                                                 {quotationDetails.customer.zip_code}
-                                                <br />
+                                                {/* <br />
                                                 Mobile: {quotationDetails.customer.mobile}
                                                 <br />
-                                                Email: {quotationDetails.customer.email}
+                                                Email: {quotationDetails.customer.email} */}
                                             </Typography>
                                         </Box>
                                     )}
@@ -364,7 +368,7 @@ const ViewBill = () => {
                                                     whiteSpace: "pre-wrap",
                                                 }}
                                             >
-                                                {quotationDetails.order_terms ||
+                                                {quotationDetails.term_and_condition ||
                                                     "No order terms specified"}
                                             </Typography>
                                         </Box>

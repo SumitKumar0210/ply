@@ -53,7 +53,7 @@ import ReadyProduct from "../pages/Production/ReadyProduct";
 import ProductChallan from "../pages/Production/ProductChallna";
 import Bills from "../pages/Billing/Bills";
 import GenerateBill from "../pages/Billing/GenerateBill";
-import EditBill from "../pages/Billing/slice/EditGenerateBill";
+import EditBill from "../pages/Billing/EditGenerateBill";
 import ViewBill from "../pages/Billing/ViewBill";
 
 import Error404 from "../pages/error/404";

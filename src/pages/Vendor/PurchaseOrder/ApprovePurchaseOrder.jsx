@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -71,7 +71,7 @@ BootstrapDialogTitle.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-//  Status helper
+// Status helper
 const getStatusChip = (status) => {
   switch (status) {
     case "Pending":
@@ -88,6 +88,7 @@ const getStatusChip = (status) => {
 const ApprovePurchaseOrder = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -96,23 +97,57 @@ const ApprovePurchaseOrder = () => {
     (state) => state.purchaseOrder
   );
 
-  // Pagination state
+ 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
 
-  // Fetch paginated data
-  useEffect(() => {
-    dispatch(
-      getApprovePOData({
-        page: pagination.pageIndex + 1,
-        per_page: pagination.pageSize,
-      })
-    );
-  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+  const [globalFilter, setGlobalFilter] = useState("");
 
-  // Format data for table
+
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimeoutRef = useRef(null);
+
+  useEffect(() => {
+   
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(globalFilter);
+    }, 500); 
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [globalFilter]);
+
+  useEffect(() => {
+    const params = {
+      page: pagination.pageIndex + 1,
+      per_page: pagination.pageSize,
+    };
+
+
+    if (debouncedSearch) {
+      params.search = debouncedSearch;
+    }
+
+    dispatch(getApprovePOData(params));
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
+
+
+  useEffect(() => {
+    if (debouncedSearch) {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  }, [debouncedSearch]);
+
+
   const tableData = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return data.map((po) => ({
@@ -124,54 +159,85 @@ const ApprovePurchaseOrder = () => {
       itemsOrdered: po.material_items
         ? JSON.parse(po.material_items).length
         : 0,
-      qcPassed: po.inward
-        ? JSON.parse(po.inward.material_items).length
-        : 0,
-        qcData: po.inward,
+      qcPassed: po.inward ? JSON.parse(po.inward.material_items).length : 0,
+      qcData: po.inward,
       status: po.quality_status ? "Approved" : "Pending",
     }));
   }, [data]);
 
-  const handlePrintClick = (id) => navigate("/vendor/purchase-order/print/" + id);
-  const handleQualitycheckClick = (id) =>
-    navigate("/vendor/purchase-order/quality-check/" + id);
+  const handlePrintClick = useCallback(
+    (id) => navigate("/vendor/purchase-order/print/" + id),
+    [navigate]
+  );
+
+  const handleQualitycheckClick = useCallback(
+    (id) => navigate("/vendor/purchase-order/quality-check/" + id),
+    [navigate]
+  );
+
+  const handleDeleteClick = useCallback((id) => {
+    setDeleteId(id);
+    setOpenDelete(true);
+  }, []);
 
   const handleDeleteConfirm = async () => {
-  if (deleteId) {
+    if (!deleteId) return;
+
+    setIsDeleting(true);
     try {
       await dispatch(deletePO(deleteId)).unwrap();
-      // Reload the table data after successful deletion
+    
       dispatch(
         getApprovePOData({
           page: pagination.pageIndex + 1,
           per_page: pagination.pageSize,
+          search: debouncedSearch || undefined,
         })
       );
       setOpenDelete(false);
       setDeleteId(null);
     } catch (error) {
       console.error("Failed to delete purchase order:", error);
-      // Optionally show an error message to the user
+    } finally {
+      setIsDeleting(false);
     }
-  }
-};
+  };
 
   const columns = useMemo(
     () => [
-      { accessorKey: "poNumber", header: "Po No." },
-      { accessorKey: "vendorName", header: "Vendor Name" },
-      { accessorKey: "dated", header: "Order Date" },
-      { accessorKey: "orderTotal", header: "Order Total" },
-      { accessorKey: "itemsOrdered", header: "Items Ordered" },
-      { accessorKey: "qcPassed", header: "QC Passed Item" },
+      {
+        accessorKey: "poNumber",
+        header: "PO Number",
+      },
+      {
+        accessorKey: "vendorName",
+        header: "Vendor Name",
+      },
+      {
+        accessorKey: "dated",
+        header: "Order Date",
+      },
+      {
+        accessorKey: "orderTotal",
+        header: "Order Total",
+        Cell: ({ cell }) => `₹${Number(cell.getValue()).toLocaleString("en-IN")}`,
+      },
+      {
+        accessorKey: "itemsOrdered",
+        header: "Items Ordered",
+      },
+      {
+        accessorKey: "qcPassed",
+        header: "QC Passed Items",
+      },
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ cell }) => getStatusChip( cell.getValue() ),
+        Cell: ({ cell }) => getStatusChip(cell.getValue()),
       },
       {
         id: "actions",
-        header: "Action",
+        header: "Actions",
         size: 80,
         enableSorting: false,
         enableColumnFilter: false,
@@ -180,29 +246,30 @@ const ApprovePurchaseOrder = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             {row.original?.qcData && (
-              <UploadInvoiceButton 
-              row={row.original?.qcData} 
-            />
+              <UploadInvoiceButton row={row.original?.qcData} />
             )}
-            
+
             <Tooltip title="Quality Check">
-              <IconButton color="primary" onClick={() => handleQualitycheckClick(row.original.id)}>
+              <IconButton
+                color="primary"
+                onClick={() => handleQualitycheckClick(row.original.id)}
+              >
                 <IoMdCheckmarkCircleOutline size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Print">
-              <IconButton color="warning" onClick={() => handlePrintClick(row.original.id)}>
+            <Tooltip title="Print PO">
+              <IconButton
+                color="warning"
+                onClick={() => handlePrintClick(row.original.id)}
+              >
                 <FiPrinter size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Delete">
+            <Tooltip title="Delete PO">
               <IconButton
                 aria-label="delete"
                 color="error"
-                onClick={() => {
-                  setDeleteId(row.original.id);
-                  setOpenDelete(true);
-                }}
+                onClick={() => handleDeleteClick(row.original.id)}
               >
                 <RiDeleteBinLine size={16} />
               </IconButton>
@@ -211,46 +278,50 @@ const ApprovePurchaseOrder = () => {
         ),
       },
     ],
-    []
+    [handlePrintClick, handleQualitycheckClick, handleDeleteClick]
   );
 
-  const downloadCSV = () => {
+  const downloadCSV = useCallback(() => {
     const headers = columns
-      .filter((col) => col.accessorKey && col.accessorKey !== "actions")
+      .filter((col) => col.accessorKey)
       .map((col) => col.header);
+
     const rows = tableData.map((row) =>
       columns
-        .filter((col) => col.accessorKey && col.accessorKey !== "actions")
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
+        .filter((col) => col.accessorKey)
+        .map((col) => {
+          const value = row[col.accessorKey];
+          return `"${value ?? ""}"`;
+        })
         .join(",")
     );
+
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
+
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "PurchaseOrder.csv");
+    link.setAttribute(
+      "download",
+      `Purchase_Orders_${new Date().toISOString().split("T")[0]}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+    URL.revokeObjectURL(url);
+  }, [columns, tableData]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
     const originalContents = document.body.innerHTML;
+
     document.body.innerHTML = printContents;
     window.print();
     document.body.innerHTML = originalContents;
     window.location.reload();
-  };
-
-  if (loading)
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
-        <CircularProgress />
-      </Box>
-    );
+  }, []);
 
   return (
     <>
@@ -295,12 +366,15 @@ const ApprovePurchaseOrder = () => {
             rowCount={total}
             state={{
               pagination,
+              globalFilter,
               isLoading: loading,
+              showLoadingOverlay: loading,
             }}
             onPaginationChange={setPagination}
+            onGlobalFilterChange={setGlobalFilter}
             enableTopToolbar
-            enableColumnFilters
-            enableSorting
+            enableColumnFilters={false}
+            enableSorting={false}
             enableBottomToolbar
             enableGlobalFilter
             enableDensityToggle={false}
@@ -336,17 +410,17 @@ const ApprovePurchaseOrder = () => {
                 }}
               >
                 <Typography variant="h6" fontWeight={400}>
-                  Quality Checks
+                  Quality Checks Purchase Orders
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <MRT_GlobalFilterTextField table={table} />
                   <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print">
+                  <Tooltip title="Print Table">
                     <IconButton onClick={handlePrint}>
                       <FiPrinter size={20} />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Download CSV">
+                  <Tooltip title="Download as CSV">
                     <IconButton onClick={downloadCSV}>
                       <BsCloudDownload size={20} />
                     </IconButton>
@@ -359,20 +433,32 @@ const ApprovePurchaseOrder = () => {
       </Grid>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>Delete this purchase order?</DialogTitle>
-        <DialogContent style={{ width: "300px" }}>
-          <DialogContentText>This action cannot be undone.</DialogContentText>
+      <Dialog
+        open={openDelete}
+        onClose={() => !isDeleting && setOpenDelete(false)}
+      >
+        <DialogTitle>Delete Purchase Order?</DialogTitle>
+        <DialogContent sx={{ minWidth: 300 }}>
+          <DialogContentText>
+            Are you sure you want to delete this purchase order? This action
+            cannot be undone.
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
           <Button
             onClick={handleDeleteConfirm}
             variant="contained"
             color="error"
             autoFocus
+            disabled={isDeleting}
+            startIcon={
+              isDeleting ? <CircularProgress size={16} color="inherit" /> : null
+            }
           >
-            Delete
+            {isDeleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>

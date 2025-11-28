@@ -31,19 +31,14 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { BiSolidUserPlus } from "react-icons/bi";
 import { useDispatch, useSelector } from "react-redux";
-import {
-    addCustomer,
-    fetchActiveCustomers,
-} from "../Users/slices/customerSlice";
-import { fetchStates } from "../settings/slices/stateSlice";
+import { fetchActiveCustomers, addCustomer } from "../Users/slices/customerSlice";
 import { fetchActiveProducts } from "../settings/slices/productSlice";
 import { fetchActiveTaxSlabs } from "../settings/slices/taxSlabSlice";
-import { fetchActiveGroup } from "../settings/slices/groupSlice";
 import { addBill } from "./slice/billsSlice";
 import { successMessage, errorMessage } from "../../toast";
 import { useNavigate } from "react-router-dom";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
-import ProductFormDialog from "../../components/Product/ProductFormDialog";
+import CustomerFormDialog, { getInitialCustomerValues } from "../../components/Customer/CustomerFormDialog";
 
 // Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -56,29 +51,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     },
 }));
 
-function BootstrapDialogTitle({ children, onClose, ...other }) {
-    return (
-        <DialogTitle sx={{ m: 0, p: 2 }} {...other}>
-            {children}
-            {onClose && (
-                <IconButton
-                    aria-label="close"
-                    onClick={onClose}
-                    sx={{
-                        position: "absolute",
-                        right: 8,
-                        top: 8,
-                        color: (theme) => theme.palette.grey[500],
-                    }}
-                >
-                    <CloseIcon />
-                </IconButton>
-            )}
-        </DialogTitle>
-    );
-}
-
-// Enhanced Validation Schemas
+// Validation Schemas
 const itemValidationSchema = Yup.object({
     product_id: Yup.string().required("Product is required"),
     quantity: Yup.number()
@@ -92,39 +65,8 @@ const itemValidationSchema = Yup.object({
         .max(10000000, "Price cannot exceed 1 crore"),
 });
 
-const customerValidationSchema = Yup.object({
-    name: Yup.string()
-        .min(2, "Name must be at least 2 characters")
-        .max(100, "Name cannot exceed 100 characters")
-        .required("Name is required")
-        .matches(/^[a-zA-Z\s]*$/, "Name can only contain letters and spaces"),
-    mobile: Yup.string()
-        .matches(/^[0-9]{10}$/, "Mobile must be exactly 10 digits")
-        .required("Mobile is required"),
-    email: Yup.string()
-        .email("Invalid email format")
-        .required("E-mail is required")
-        .max(100, "Email cannot exceed 100 characters"),
-    address: Yup.string()
-        .required("Address is required")
-        .max(500, "Address cannot exceed 500 characters"),
-    alternate_mobile: Yup.string()
-        .matches(/^$|^[0-9]{10}$/, "Alternate Mobile must be 10 digits")
-        .nullable(),
-    city: Yup.string()
-        .required("City is required")
-        .max(50, "City cannot exceed 50 characters")
-        .matches(/^[a-zA-Z\s]*$/, "City can only contain letters and spaces"),
-    state_id: Yup.string().required("State is required"),
-    zip_code: Yup.string()
-        .matches(/^[0-9]{6}$/, "ZIP must be exactly 6 digits")
-        .required("ZIP code is required"),
-    note: Yup.string().max(1000, "Note cannot exceed 1000 characters"),
-});
-
 const quoteValidationSchema = Yup.object({
-    orderTerms: Yup.string()
-        .max(500, "Order terms cannot exceed 500 characters"),
+    orderTerms: Yup.string().max(500, "Order terms cannot exceed 500 characters"),
     discount: Yup.number()
         .min(0, "Discount cannot be negative")
         .max(10000000, "Discount cannot exceed 1 crore"),
@@ -135,20 +77,14 @@ const quoteValidationSchema = Yup.object({
         .required("GST rate is required")
         .min(0, "GST rate cannot be negative")
         .max(100, "GST rate cannot exceed 100%"),
-    invoiceNumber: Yup.string()
-        .required("Invoice number is required")
-        .max(50, "Invoice number cannot exceed 50 characters")
-        .matches(/^[a-zA-Z0-9\-\/]*$/, "Invoice number can only contain letters, numbers, hyphens, and slashes"),
 });
 
 const GenerateBill = () => {
     const [creationDate] = useState(new Date());
     const [deliveryDate, setDeliveryDate] = useState(null);
-    const [invoiceNumber, setInvoiceNumber] = useState("");
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [openAddCustomer, setOpenAddCustomer] = useState(false);
-    const [openAddProduct, setOpenAddProduct] = useState(false);
     const [deleteDialog, setDeleteDialog] = useState({
         open: false,
         itemId: null,
@@ -182,42 +118,6 @@ const GenerateBill = () => {
         loadData();
     }, [dispatch]);
 
-    const openCustomerModal = async () => {
-        await dispatch(fetchStates());
-        setOpenAddCustomer(true);
-    };
-
-    const openProductModal = async () => {
-        await dispatch(fetchActiveGroup());
-        setOpenAddProduct(true);
-    };
-
-    const handleAddCustomer = async (values, { resetForm, setSubmitting }) => {
-        try {
-            const res = await dispatch(addCustomer(values));
-            if (res.error) {
-                errorMessage("Failed to add customer");
-                return;
-            }
-            resetForm();
-            setOpenAddCustomer(false);
-            successMessage("Customer added successfully!");
-            await dispatch(fetchActiveCustomers());
-        } catch (error) {
-            console.error("Add customer failed:", error);
-            errorMessage("Failed to add customer");
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleProductSuccess = async () => {
-        setOpenAddProduct(false);
-        setSelectedProduct(null);
-        await dispatch(fetchActiveProducts());
-        successMessage("Product added successfully!");
-    };
-
     const isDuplicateItem = useCallback(
         (product_id) => {
             const normalizedProduct = String(product_id).trim();
@@ -230,7 +130,7 @@ const GenerateBill = () => {
         return model + "@" + Math.floor(1000 + Math.random() * 9000);
     };
 
-    const handleAddItem = async (values, { resetForm, setFieldValue, setSubmitting }) => {
+    const handleAddItem = async (values, { resetForm, setSubmitting }) => {
         const { product_id, quantity, price } = values;
 
         if (!product_id) {
@@ -259,9 +159,7 @@ const GenerateBill = () => {
         }
 
         if (isDuplicateItem(product_id)) {
-            errorMessage(
-                "This Product is already added. Update quantity in the table instead."
-            );
+            errorMessage("This Product is already added. Update quantity in the table instead.");
             setSubmitting(false);
             return;
         }
@@ -361,8 +259,6 @@ const GenerateBill = () => {
     };
 
     const validateForm = (values) => {
-        const errors = {};
-
         if (!selectedCustomer) {
             errorMessage("Please select a customer");
             return false;
@@ -370,11 +266,6 @@ const GenerateBill = () => {
 
         if (items.length === 0) {
             errorMessage("Please add at least one item");
-            return false;
-        }
-
-        if (!values.invoiceNumber?.trim()) {
-            errorMessage("Invoice number is required");
             return false;
         }
 
@@ -404,7 +295,6 @@ const GenerateBill = () => {
             const formData = new FormData();
 
             formData.append("customer_id", selectedCustomer.id);
-            formData.append("invoice_no", values.invoiceNumber);
             if (deliveryDate) {
                 formData.append("delivery_date", deliveryDate.toISOString());
             }
@@ -439,9 +329,7 @@ const GenerateBill = () => {
                 return;
             }
             
-            successMessage(
-                `Bill ${isDraft ? "saved as draft" : "created"} successfully!`
-            );
+            successMessage(`Bill ${isDraft ? "saved as draft" : "created"} successfully!`);
             navigate("/bills");
         } catch (error) {
             console.error("Submit bill failed:", error);
@@ -451,6 +339,18 @@ const GenerateBill = () => {
             setSavingFinal(false);
         }
     };
+
+    // Handle add customer
+      const handleAddCustomer = useCallback(async (values, { resetForm }) => {
+        try {
+          const res = await dispatch(addCustomer(values));
+          if (res.error) return;
+          resetForm();
+          setOpen(false);
+        } catch (error) {
+          console.error("Add customer failed:", error);
+        }
+      }, [dispatch]);
 
     const isLoading = customersLoading || productsLoading || gstsLoading;
 
@@ -519,39 +419,28 @@ const GenerateBill = () => {
                                     />
 
                                     <Tooltip title="Add New Customer">
-                                        <IconButton color="primary" onClick={openCustomerModal}>
+                                        <IconButton color="primary" onClick={() => setOpenAddCustomer(true)}>
                                             <BiSolidUserPlus size={22} />
                                         </IconButton>
                                     </Tooltip>
                                 </Box>
 
                                 <LocalizationProvider dateAdapter={AdapterDateFns}>
-                                    <Box
-                                        sx={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "end",
-                                            flexWrap: "wrap",
-                                            gap: 2,
-                                            mb: 2,
+                                    <DatePicker
+                                        label="Delivery Date"
+                                        value={deliveryDate}
+                                        onChange={(newValue) => setDeliveryDate(newValue)}
+                                        slotProps={{
+                                            textField: { 
+                                                size: "small", 
+                                                sx: { width: 250 },
+                                                error: deliveryDate && deliveryDate < creationDate,
+                                                helperText: deliveryDate && deliveryDate < creationDate 
+                                                    ? "Delivery date cannot be before creation date" 
+                                                    : ""
+                                            },
                                         }}
-                                    >
-                                        <DatePicker
-                                            label="Delivery Date"
-                                            value={deliveryDate}
-                                            onChange={(newValue) => setDeliveryDate(newValue)}
-                                            slotProps={{
-                                                textField: { 
-                                                    size: "small", 
-                                                    sx: { width: 250 },
-                                                    error: deliveryDate && deliveryDate < creationDate,
-                                                    helperText: deliveryDate && deliveryDate < creationDate 
-                                                        ? "Delivery date cannot be before creation date" 
-                                                        : ""
-                                                },
-                                            }}
-                                        />
-                                    </Box>
+                                    />
                                 </LocalizationProvider>
                             </Box>
 
@@ -609,7 +498,6 @@ const GenerateBill = () => {
                                                 onChange={(e, value) => {
                                                     setSelectedProduct(value);
                                                     setFieldValue("product_id", value?.id || "");
-                                                    // Set default price when product is selected
                                                     if (value) {
                                                         setFieldValue("price", value.rrp || "");
                                                     }
@@ -620,9 +508,7 @@ const GenerateBill = () => {
                                                         label="Model Code"
                                                         variant="outlined"
                                                         sx={{ width: 150 }}
-                                                        error={
-                                                            touched.product_id && Boolean(errors.product_id)
-                                                        }
+                                                        error={touched.product_id && Boolean(errors.product_id)}
                                                         helperText={touched.product_id && errors.product_id}
                                                         required
                                                     />
@@ -796,7 +682,6 @@ const GenerateBill = () => {
                                     discount: "",
                                     additionalCharges: "",
                                     gstRate: "18.00",
-                                    invoiceNumber: "",
                                 }}
                                 validationSchema={quoteValidationSchema}
                                 onSubmit={(values) => handleSubmitQuote(values, false)}
@@ -817,18 +702,7 @@ const GenerateBill = () => {
                                                     }}
                                                 >
                                                     <Box sx={{ width: "48%", minWidth: "300px" }}>
-                                                        <TextField
-                                                            label="Invoice Number"
-                                                            name="invoiceNumber"
-                                                            value={values.invoiceNumber}
-                                                            onChange={handleChange}
-                                                            error={touched.invoiceNumber && Boolean(errors.invoiceNumber)}
-                                                            helperText={touched.invoiceNumber && errors.invoiceNumber}
-                                                            size="small"
-                                                            fullWidth
-                                                            sx={{ mb: 2 }}
-                                                            required
-                                                        />
+                                                       
                                                         <TextareaAutosize
                                                             minRows={3}
                                                             maxRows={6}
@@ -861,28 +735,12 @@ const GenerateBill = () => {
                                                             minWidth: "300px",
                                                         }}
                                                     >
-                                                        <Box
-                                                            sx={{
-                                                                display: "flex",
-                                                                justifyContent: "space-between",
-                                                                borderBottom: "1px solid #ccc",
-                                                                pb: 0.5,
-                                                            }}
-                                                        >
+                                                        <Box sx={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #ccc", pb: 0.5 }}>
                                                             <span>Sub Total</span>
-                                                            <span>
-                                                                ₹{totals.subTotal.toLocaleString("en-IN")}
-                                                            </span>
+                                                            <span>₹{totals.subTotal.toLocaleString("en-IN")}</span>
                                                         </Box>
 
-                                                        <Box
-                                                            sx={{
-                                                                display: "flex",
-                                                                justifyContent: "space-between",
-                                                                gap: 1,
-                                                                alignItems: "center",
-                                                            }}
-                                                        >
+                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
                                                             <TextField
                                                                 label="Discount (₹)"
                                                                 type="number"
@@ -895,22 +753,10 @@ const GenerateBill = () => {
                                                                 sx={{ width: "55%" }}
                                                                 inputProps={{ min: 0, max: 10000000 }}
                                                             />
-                                                            <span>
-                                                                ₹
-                                                                {(
-                                                                    totals.subTotal - totals.discountAmount
-                                                                ).toLocaleString("en-IN")}
-                                                            </span>
+                                                            <span>₹{(totals.subTotal - totals.discountAmount).toLocaleString("en-IN")}</span>
                                                         </Box>
 
-                                                        <Box
-                                                            sx={{
-                                                                display: "flex",
-                                                                justifyContent: "space-between",
-                                                                gap: 1,
-                                                                alignItems: "center",
-                                                            }}
-                                                        >
+                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
                                                             <TextField
                                                                 label="Add Charges (₹)"
                                                                 type="number"
@@ -918,33 +764,15 @@ const GenerateBill = () => {
                                                                 name="additionalCharges"
                                                                 value={values.additionalCharges}
                                                                 onChange={handleChange}
-                                                                error={
-                                                                    touched.additionalCharges &&
-                                                                    !!errors.additionalCharges
-                                                                }
-                                                                helperText={
-                                                                    touched.additionalCharges &&
-                                                                    errors.additionalCharges
-                                                                }
+                                                                error={touched.additionalCharges && !!errors.additionalCharges}
+                                                                helperText={touched.additionalCharges && errors.additionalCharges}
                                                                 sx={{ width: "55%" }}
                                                                 inputProps={{ min: 0, max: 10000000 }}
                                                             />
-                                                            <span>
-                                                                ₹
-                                                                {totals.additionalChargesAmount.toLocaleString(
-                                                                    "en-IN"
-                                                                )}
-                                                            </span>
+                                                            <span>₹{totals.additionalChargesAmount.toLocaleString("en-IN")}</span>
                                                         </Box>
 
-                                                        <Box
-                                                            sx={{
-                                                                display: "flex",
-                                                                justifyContent: "space-between",
-                                                                gap: 1,
-                                                                alignItems: "center",
-                                                            }}
-                                                        >
+                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
                                                             <TextField
                                                                 select
                                                                 label="GST %"
@@ -957,57 +785,29 @@ const GenerateBill = () => {
                                                                 sx={{ width: "55%" }}
                                                             >
                                                                 {gsts.map((item) => (
-                                                                    <MenuItem
-                                                                        key={item.id}
-                                                                        value={item.percentage}
-                                                                    >
+                                                                    <MenuItem key={item.id} value={item.percentage}>
                                                                         {item.percentage}%
                                                                     </MenuItem>
                                                                 ))}
                                                             </TextField>
-                                                            <span>
-                                                                ₹{totals.gstAmount.toLocaleString("en-IN")}
-                                                            </span>
+                                                            <span>₹{totals.gstAmount.toLocaleString("en-IN")}</span>
                                                         </Box>
 
-                                                        <Box
-                                                            sx={{
-                                                                display: "flex",
-                                                                justifyContent: "space-between",
-                                                                borderTop: "2px solid #222",
-                                                                mt: 1,
-                                                                pt: 0.5,
-                                                                fontWeight: "600",
-                                                                fontSize: "1.1rem",
-                                                            }}
-                                                        >
+                                                        <Box sx={{ display: "flex", justifyContent: "space-between", borderTop: "2px solid #222", mt: 1, pt: 0.5, fontWeight: "600", fontSize: "1.1rem" }}>
                                                             <span>Grand Total</span>
-                                                            <span>
-                                                                ₹{totals.grandTotal.toLocaleString("en-IN")}
-                                                            </span>
+                                                            <span>₹{totals.grandTotal.toLocaleString("en-IN")}</span>
                                                         </Box>
                                                     </Box>
                                                 </Box>
                                             </Grid>
 
-                                            <Stack
-                                                direction="row"
-                                                spacing={2}
-                                                justifyContent="flex-end"
-                                                sx={{ mt: 4 }}
-                                            >
+                                            <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 4 }}>
                                                 <Button
                                                     variant="outlined"
                                                     color="secondary"
                                                     onClick={() => handleSubmitQuote(values, true)}
-                                                    disabled={
-                                                        savingDraft || savingFinal || items.length === 0 || isSubmitting
-                                                    }
-                                                    startIcon={
-                                                        savingDraft ? (
-                                                            <CircularProgress size={20} color="inherit" />
-                                                        ) : null
-                                                    }
+                                                    disabled={savingDraft || savingFinal || items.length === 0 || isSubmitting}
+                                                    startIcon={savingDraft ? <CircularProgress size={20} color="inherit" /> : null}
                                                 >
                                                     {savingDraft ? "Saving..." : "Save as Draft"}
                                                 </Button>
@@ -1015,14 +815,8 @@ const GenerateBill = () => {
                                                     type="submit"
                                                     variant="contained"
                                                     color="primary"
-                                                    disabled={
-                                                        savingDraft || savingFinal || items.length === 0 || isSubmitting
-                                                    }
-                                                    startIcon={
-                                                        savingFinal ? (
-                                                            <CircularProgress size={20} color="inherit" />
-                                                        ) : null
-                                                    }
+                                                    disabled={savingDraft || savingFinal || items.length === 0 || isSubmitting}
+                                                    startIcon={savingFinal ? <CircularProgress size={20} color="inherit" /> : null}
                                                 >
                                                     {savingFinal ? "Saving..." : "Create Bill"}
                                                 </Button>
@@ -1037,212 +831,13 @@ const GenerateBill = () => {
             </Grid>
 
             {/* Add Customer Modal */}
-            <BootstrapDialog
+            <CustomerFormDialog
                 open={openAddCustomer}
                 onClose={() => setOpenAddCustomer(false)}
-                fullWidth
-                maxWidth="sm"
-            >
-                <BootstrapDialogTitle onClose={() => setOpenAddCustomer(false)}>
-                    Add Customer
-                </BootstrapDialogTitle>
-                <Formik
-                    initialValues={{
-                        name: "",
-                        mobile: "",
-                        email: "",
-                        address: "",
-                        alternate_mobile: "",
-                        city: "",
-                        state_id: "",
-                        zip_code: "",
-                        note: "",
-                    }}
-                    validationSchema={customerValidationSchema}
-                    onSubmit={handleAddCustomer}
-                >
-                    {({ handleChange, values, touched, errors, isSubmitting }) => (
-                        <Form>
-                            <DialogContent dividers>
-                                <Grid container rowSpacing={1} columnSpacing={3}>
-                                    <Grid size={{ xs: 12, md: 6 }}>
-                                        <TextField
-                                            name="name"
-                                            label="Name"
-                                            fullWidth
-                                            margin="dense"
-                                            variant="outlined"
-                                            size="small"
-                                            value={values.name}
-                                            onChange={handleChange}
-                                            error={touched.name && Boolean(errors.name)}
-                                            helperText={touched.name && errors.name}
-                                            required
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 12, md: 6 }}>
-                                        <TextField
-                                            name="mobile"
-                                            label="Mobile"
-                                            fullWidth
-                                            margin="dense"
-                                            variant="outlined"
-                                            size="small"
-                                            value={values.mobile}
-                                            onChange={handleChange}
-                                            error={touched.mobile && Boolean(errors.mobile)}
-                                            helperText={touched.mobile && errors.mobile}
-                                            required
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 12, md: 6 }}>
-                                        <TextField
-                                            name="alternate_mobile"
-                                            label="Alternate Mobile"
-                                            fullWidth
-                                            margin="dense"
-                                            variant="outlined"
-                                            size="small"
-                                            value={values.alternate_mobile}
-                                            onChange={handleChange}
-                                            error={
-                                                touched.alternate_mobile &&
-                                                Boolean(errors.alternate_mobile)
-                                            }
-                                            helperText={
-                                                touched.alternate_mobile && errors.alternate_mobile
-                                            }
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 12, md: 6 }}>
-                                        <TextField
-                                            name="email"
-                                            label="E-mail"
-                                            fullWidth
-                                            margin="dense"
-                                            variant="outlined"
-                                            size="small"
-                                            value={values.email}
-                                            onChange={handleChange}
-                                            error={touched.email && Boolean(errors.email)}
-                                            helperText={touched.email && errors.email}
-                                            required
-                                        />
-                                    </Grid>
-                                    <Grid size={12}>
-                                        <TextField
-                                            name="address"
-                                            label="Address"
-                                            fullWidth
-                                            margin="dense"
-                                            variant="outlined"
-                                            size="small"
-                                            value={values.address}
-                                            onChange={handleChange}
-                                            error={touched.address && Boolean(errors.address)}
-                                            helperText={touched.address && errors.address}
-                                            required
-                                        />
-                                    </Grid>
-                                    <Grid size={12}>
-                                        <TextField
-                                            name="state_id"
-                                            label="State"
-                                            select
-                                            fullWidth
-                                            margin="dense"
-                                            variant="outlined"
-                                            size="small"
-                                            value={values.state_id}
-                                            onChange={handleChange}
-                                            error={touched.state_id && Boolean(errors.state_id)}
-                                            helperText={touched.state_id && errors.state_id}
-                                            required
-                                        >
-                                            <MenuItem value="">Select State</MenuItem>
-                                            {states.map((s) => (
-                                                <MenuItem key={s.id} value={s.id}>
-                                                    {s.name}
-                                                </MenuItem>
-                                            ))}
-                                        </TextField>
-                                    </Grid>
-                                    <Grid size={{ xs: 12, md: 6 }}>
-                                        <TextField
-                                            name="city"
-                                            label="City"
-                                            fullWidth
-                                            margin="dense"
-                                            variant="outlined"
-                                            size="small"
-                                            value={values.city}
-                                            onChange={handleChange}
-                                            error={touched.city && Boolean(errors.city)}
-                                            helperText={touched.city && errors.city}
-                                            required
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 12, md: 6 }}>
-                                        <TextField
-                                            name="zip_code"
-                                            label="Zip Code"
-                                            fullWidth
-                                            margin="dense"
-                                            variant="outlined"
-                                            size="small"
-                                            value={values.zip_code}
-                                            onChange={handleChange}
-                                            error={touched.zip_code && Boolean(errors.zip_code)}
-                                            helperText={touched.zip_code && errors.zip_code}
-                                            required
-                                        />
-                                    </Grid>
-                                    <Grid size={12}>
-                                        <TextField
-                                            name="note"
-                                            label="Note"
-                                            fullWidth
-                                            multiline
-                                            rows={3}
-                                            margin="dense"
-                                            variant="outlined"
-                                            size="small"
-                                            value={values.note}
-                                            onChange={handleChange}
-                                            error={touched.note && Boolean(errors.note)}
-                                            helperText={touched.note && errors.note}
-                                        />
-                                    </Grid>
-                                </Grid>
-                            </DialogContent>
-                            <DialogActions>
-                                <Button
-                                    onClick={() => setOpenAddCustomer(false)}
-                                    variant="outlined"
-                                    color="error"
-                                    disabled={isSubmitting}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button 
-                                    type="submit" 
-                                    variant="contained" 
-                                    color="primary"
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting ? "Adding..." : "Add Customer"}
-                                </Button>
-                            </DialogActions>
-                        </Form>
-                    )}
-                </Formik>
-            </BootstrapDialog>
-
-            {/* Add Product Dialog */}
-            <ProductFormDialog
-                open={openAddProduct}
-                onClose={() => setOpenAddProduct(false)}
-                onSuccess={handleProductSuccess}
+                title="Add Customer"
+                initialValues={getInitialCustomerValues()}
+                onSubmit={handleAddCustomer} // Add your customer submission logic here
+                states={states}
             />
 
             {/* Delete Item Confirmation Dialog */}
@@ -1257,9 +852,7 @@ const GenerateBill = () => {
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
-                    <Button
-                        onClick={() => setDeleteDialog({ open: false, itemId: null })}
-                    >
+                    <Button onClick={() => setDeleteDialog({ open: false, itemId: null })}>
                         Cancel
                     </Button>
                     <Button color="error" onClick={confirmDeleteItem} variant="contained">

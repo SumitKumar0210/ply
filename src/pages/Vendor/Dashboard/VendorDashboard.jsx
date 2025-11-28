@@ -13,6 +13,7 @@ import {
   TableRow,
   Paper,
   Avatar,
+  Skeleton
 } from "@mui/material";
 import {
   Store,
@@ -31,7 +32,17 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
+
 const VendorDashboard = () => {
+  const [loading, setLoading] = React.useState(true);
+
+  // Simulate loading state
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // --- Summary data ---
   const summaryCards = [
@@ -60,6 +71,51 @@ const VendorDashboard = () => {
     { name: "Vendor D", value: 2780 },
   ];
 
+  // Skeleton for summary cards
+  const SummaryCardSkeleton = () => (
+    <Card
+      sx={{
+        p: 1,
+        borderRadius: 2,
+        textAlign: "center",
+        boxShadow: "0px 2px 8px rgba(0,0,0,0.05)",
+      }}
+    >
+      <CardContent>
+        <Skeleton
+          variant="circular"
+          width={50}
+          height={50}
+          sx={{ margin: "0 auto", mb: 1 }}
+        />
+        <Skeleton variant="text" width="80%" height={20} sx={{ mx: 'auto' }} />
+        <Skeleton variant="text" width="60%" height={30} sx={{ mx: 'auto', mt: 0.5 }} />
+      </CardContent>
+    </Card>
+  );
+
+  // Skeleton for table rows
+  const TableRowSkeleton = () => (
+    <TableRow>
+      <TableCell>
+        <Skeleton variant="text" width="80%" height={25} />
+      </TableCell>
+      <TableCell>
+        <Skeleton variant="text" width="60%" height={25} />
+      </TableCell>
+      <TableCell>
+        <Skeleton variant="text" width="70%" height={25} />
+      </TableCell>
+    </TableRow>
+  );
+
+  // Skeleton for chart
+  const ChartSkeleton = () => (
+    <Box sx={{ width: '100%', height: 290 }}>
+      <Skeleton variant="rectangular" width="100%" height={290} sx={{ borderRadius: 1 }} />
+    </Box>
+  );
+
   return (
     <>
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
@@ -67,70 +123,74 @@ const VendorDashboard = () => {
           <Typography variant="h6">Vendor Dashboard</Typography>
         </Grid>
       </Grid>
+      
       {/* Summary Cards */}
       <Grid container spacing={2}>
-        {summaryCards.map((item, i) => (
-          <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
-            <Card
-              sx={{
-                p: 1,
-                borderRadius: 2,
-                textAlign: "center",
-                boxShadow: "0px 2px 8px rgba(0,0,0,0.05)",
-                transition: "all 0.3s ease",
-                background: `linear-gradient(145deg, ${item.color}15, ${item.color}10)`,
-                "&:hover": {
-                  transform: "translateY(-5px)",
-                  boxShadow: "0px 6px 16px rgba(0,0,0,0.1)",
-                },
-              }}
-            >
-              <CardContent>
-                <Avatar
-                  sx={{
-                    bgcolor: item.color,
-                    width: 50,
-                    height: 50,
-                    margin: "0 auto",
-                    // mb: 1,
-                  }}
-                >
-                  {item.icon}
-                </Avatar>
-                <Typography variant="subtitle2" color="text.secondary">
-                  {item.title}
-                </Typography>
-                <Typography
-                  variant="h5"
-                  fontWeight="bold"
-                  sx={{ color: item.color, mt: 0.5 }}
-                >
-                  {item.value}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+        {loading ? (
+          // Show skeletons when loading
+          Array(6).fill(0).map((_, index) => (
+            <Grid key={`skeleton-${index}`} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+              <SummaryCardSkeleton />
+            </Grid>
+          ))
+        ) : (
+          // Show actual cards when not loading
+          summaryCards.map((item, i) => (
+            <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+              <Card
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  textAlign: "center",
+                  boxShadow: "0px 2px 8px rgba(0,0,0,0.05)",
+                  transition: "all 0.3s ease",
+                  background: `linear-gradient(145deg, ${item.color}15, ${item.color}10)`,
+                  "&:hover": {
+                    transform: "translateY(-5px)",
+                    boxShadow: "0px 6px 16px rgba(0,0,0,0.1)",
+                  },
+                }}
+              >
+                <CardContent>
+                  <Avatar
+                    sx={{
+                      bgcolor: item.color,
+                      width: 50,
+                      height: 50,
+                      margin: "0 auto",
+                    }}
+                  >
+                    {item.icon}
+                  </Avatar>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    {item.title}
+                  </Typography>
+                  <Typography
+                    variant="h5"
+                    fontWeight="bold"
+                    sx={{ color: item.color, mt: 0.5 }}
+                  >
+                    {item.value}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))
+        )}
       </Grid>
-
-      {/* Create Button */}
-      {/* <Box sx={{ mt: 3 }}>
-        <Button variant="contained" color="primary" sx={{ borderRadius: 2 }}>
-          Create Purchase Order
-        </Button>
-      </Box> */}
 
       {/* Bottom Layout */}
       <Grid container spacing={3} sx={{ mt: 4 }}>
         {/* Tables */}
         <Grid size={{ xs: 12, md: 6, lg: 7 }}>
           <Grid container spacing={2}>
+            {/* First Table - Top 5 Vendors (Most Value) */}
             <Grid size={{ xs: 12, md: 6 }}>
               <Typography variant="subtitle1" fontWeight="600" mb={2}>
                 Top 5 Vendors (Most Value)
               </Typography>
               <Paper variant="outlined" sx={{ borderRadius: 2 }}>
-                <Table >
+                <Table>
                   <TableHead sx={{ bgcolor: "#f1f1f1" }}>
                     <TableRow>
                       <TableCell>Vendor Name</TableCell>
@@ -139,18 +199,25 @@ const VendorDashboard = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {vendors.map((v, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{v.name}</TableCell>
-                        <TableCell>{v.invoices}</TableCell>
-                        <TableCell>{v.total}</TableCell>
-                      </TableRow>
-                    ))}
+                    {loading ? (
+                      Array(5).fill(0).map((_, index) => (
+                        <TableRowSkeleton key={`table1-skeleton-${index}`} />
+                      ))
+                    ) : (
+                      vendors.map((v, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{v.name}</TableCell>
+                          <TableCell>{v.invoices}</TableCell>
+                          <TableCell>{v.total}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </Paper>
             </Grid>
 
+            {/* Second Table - Top 5 Vendors (Most Invoices) */}
             <Grid size={{ xs: 12, md: 6 }}>
               <Typography variant="subtitle1" fontWeight="600" mb={2}>
                 Top 5 Vendors (Most Invoices)
@@ -165,13 +232,19 @@ const VendorDashboard = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {vendors.map((v, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{v.name}</TableCell>
-                        <TableCell>{v.invoices}</TableCell>
-                        <TableCell>{v.total}</TableCell>
-                      </TableRow>
-                    ))}
+                    {loading ? (
+                      Array(5).fill(0).map((_, index) => (
+                        <TableRowSkeleton key={`table2-skeleton-${index}`} />
+                      ))
+                    ) : (
+                      vendors.map((v, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{v.name}</TableCell>
+                          <TableCell>{v.invoices}</TableCell>
+                          <TableCell>{v.total}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </Paper>
@@ -185,15 +258,25 @@ const VendorDashboard = () => {
             Vendor Performance Overview
           </Typography>
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-            <ResponsiveContainer width="100%" height={290}>
-              <BarChart data={chartData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={75} />
-                 <Tooltip cursor={{ fill: "transparent" }} />
-                <Bar dataKey="value" fill="#54aca4d5" barSize={28} activeBar={false} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <ChartSkeleton />
+            ) : (
+              <ResponsiveContainer width="100%" height={290}>
+                <BarChart data={chartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" width={75} />
+                  <Tooltip cursor={{ fill: "transparent" }} />
+                  <Bar 
+                    dataKey="value" 
+                    fill="#54aca4d5" 
+                    barSize={28} 
+                    activeBar={false} 
+                    radius={[4, 4, 0, 0]} 
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </Paper>
         </Grid>
       </Grid>

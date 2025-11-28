@@ -1,5 +1,5 @@
 // pages/ProductRequest/ProductRequest.jsx
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import {
   Button,
   Paper,
@@ -21,6 +21,7 @@ import {
   TableHead,
   TableRow,
   Avatar,
+  CircularProgress,
 } from "@mui/material";
 import { MdOutlineRemoveRedEye, MdCheckCircle } from "react-icons/md";
 import {
@@ -37,65 +38,106 @@ const ProductRequest = () => {
   const [openApprove, setOpenApprove] = useState(false);
   const [openViewModal, setOpenViewModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
+  const [isApproving, setIsApproving] = useState(false);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
 
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimeoutRef = useRef(null);
+
   const tableContainerRef = useRef(null);
   const dispatch = useDispatch();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
-  const { data: tableData = [], loading, totalRecords = 0 } = useSelector(
+  const { data: tableDatas = [], loading, totalRecords = 0 } = useSelector(
     (state) => state.materialRequest
   );
+  const tableData = tableDatas.data ?? [];
+
 
   useEffect(() => {
-    dispatch(
-      fetchAllRequestItems({
-        pageIndex: pagination.pageIndex,
-        pageLimit: pagination.pageSize,
-      })
-    );
-  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+ 
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
 
-  const handleDateFormat = (date) => {
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(globalFilter);
+    }, 500); 
+
+   
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [globalFilter]);
+
+  useEffect(() => {
+    if (debouncedSearch) {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const params = {
+      pageIndex: pagination.pageIndex,
+      pageLimit: pagination.pageSize,
+    };
+
+    if (debouncedSearch) {
+      params.search = debouncedSearch;
+    }
+
+    dispatch(fetchAllRequestItems(params));
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
+
+  const handleDateFormat = useCallback((date) => {
     if (!date) return "";
     const d = new Date(date);
     const day = String(d.getDate()).padStart(2, "0");
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
     return `${day}-${month}-${year}`;
-  };
+  }, []);
 
-  const handleView = (row) => {
+  const handleView = useCallback((row) => {
     setSelectedRow(row);
     setOpenViewModal(true);
-  };
+  }, []);
 
-  const handleApprove = (row) => {
+  const handleApprove = useCallback((row) => {
     setSelectedRow(row);
     setOpenApprove(true);
-  };
+  }, []);
 
   const handleConfirmApprove = async () => {
     if (!selectedRow) return;
     
-    const res = await dispatch(approveRequest(selectedRow.id));
-    if (!res.error) {
-      setOpenApprove(false);
-      setSelectedRow(null);
-      // Refresh data
-      dispatch(
-        fetchAllRequestItems({
-          pageIndex: pagination.pageIndex,
-          pageLimit: pagination.pageSize,
-        })
-      );
+    setIsApproving(true);
+    try {
+      const res = await dispatch(approveRequest(selectedRow.id));
+      if (!res.error) {
+        setOpenApprove(false);
+        setSelectedRow(null);
+        // Refresh data
+        dispatch(
+          fetchAllRequestItems({
+            pageIndex: pagination.pageIndex,
+            pageLimit: pagination.pageSize,
+            search: debouncedSearch || undefined,
+          })
+        );
+      }
+    } finally {
+      setIsApproving(false);
     }
   };
 
-  const getStatusChip = (status) => {
+  const getStatusChip = useCallback((status) => {
     switch (status) {
       case 0:
         return <Chip label="Pending" color="warning" size="small" />;
@@ -106,7 +148,7 @@ const ProductRequest = () => {
       default:
         return <Chip label="Unknown" color="default" size="small" />;
     }
-  };
+  }, []);
 
   const columns = useMemo(
     () => [
@@ -122,7 +164,7 @@ const ProductRequest = () => {
       },
       {
         accessorKey: "item",
-        header: "Items",
+        header: "Materials Requested",
         Cell: ({ row }) => row.original?.material_request?.length ?? 0
       },
       {
@@ -132,7 +174,7 @@ const ProductRequest = () => {
       },
       {
         id: "actions",
-        header: "Action",
+        header: "Actions",
         size: 120,
         enableSorting: false,
         enableColumnFilter: false,
@@ -140,7 +182,7 @@ const ProductRequest = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="View">
+            <Tooltip title="View Details">
               <IconButton
                 color="info"
                 onClick={() => handleView(row.original)}
@@ -149,7 +191,7 @@ const ProductRequest = () => {
               </IconButton>
             </Tooltip>
             {row.original?.material_request?.[0]?.status === 0 && (
-              <Tooltip title="Approve">
+              <Tooltip title="Approve Request">
                 <IconButton
                   color="success"
                   onClick={() => handleApprove(row.original)}
@@ -162,41 +204,48 @@ const ProductRequest = () => {
         ),
       },
     ],
-    []
+    [handleView, handleApprove, handleDateFormat, getStatusChip]
   );
 
-  const downloadCSV = () => {
+  const downloadCSV = useCallback(() => {
     const headers = columns
-      .filter((col) => col.accessorKey && col.accessorKey !== "actions")
+      .filter((col) => col.accessorKey)
       .map((col) => col.header);
+
     const rows = tableData.map((row) =>
       columns
-        .filter((col) => col.accessorKey && col.accessorKey !== "actions")
+        .filter((col) => col.accessorKey)
         .map((col) => {
           const key = col.accessorKey;
-          if (key === "material") return `"${row?.material?.name ?? ""}"`;
-          if (key === "department") return `"${row?.production_product?.department?.name ?? ""}"`;
+          if (key === "item_name") return `"${row?.item_name ?? ""}"`;
+          if (key === "Date") return `"${handleDateFormat(row?.material_request?.[0]?.created_at)}"`;
+          if (key === "item") return `"${row?.material_request?.length ?? 0}"`;
           if (key === "status") {
             const statusMap = { 0: "Pending", 1: "Approved", 2: "Rejected" };
-            return `"${statusMap[row.status] ?? "Unknown"}"`;
+            return `"${statusMap[row?.material_request?.[0]?.status] ?? "Unknown"}"`;
           }
-          if (key === "created_at") return `"${handleDateFormat(row.created_at)}"`;
           return `"${row[key] ?? ""}"`;
         })
         .join(",")
     );
+
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
+
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "ProductRequests.csv");
+    link.setAttribute(
+      "download",
+      `Material_Requests_${new Date().toISOString().split("T")[0]}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+    URL.revokeObjectURL(url);
+  }, [columns, tableData, handleDateFormat]);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
     const originalContents = document.body.innerHTML;
@@ -204,7 +253,7 @@ const ProductRequest = () => {
     window.print();
     document.body.innerHTML = originalContents;
     window.location.reload();
-  };
+  }, []);
 
   return (
     <>
@@ -217,7 +266,7 @@ const ProductRequest = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Product Requests</Typography>
+          <Typography variant="h6">Material Requests</Typography>
         </Grid>
       </Grid>
 
@@ -241,12 +290,15 @@ const ProductRequest = () => {
             rowCount={totalRecords}
             state={{
               isLoading: loading,
+              showLoadingOverlay: loading,
               pagination: pagination,
+              globalFilter,
             }}
             onPaginationChange={setPagination}
+            onGlobalFilterChange={setGlobalFilter}
             enableTopToolbar
-            enableColumnFilters
-            enableSorting
+            enableColumnFilters={false}
+            enableSorting={false}
             enablePagination
             enableBottomToolbar
             enableGlobalFilter
@@ -279,17 +331,17 @@ const ProductRequest = () => {
                 }}
               >
                 <Typography variant="h6" fontWeight={400}>
-                  Product Request List
+                  Material Request List
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <MRT_GlobalFilterTextField table={table} />
                   <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print">
+                  <Tooltip title="Print Table">
                     <IconButton onClick={handlePrint}>
                       <FiPrinter size={20} />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Download CSV">
+                  <Tooltip title="Download as CSV">
                     <IconButton onClick={downloadCSV}>
                       <BsCloudDownload size={20} />
                     </IconButton>
@@ -437,26 +489,36 @@ const ProductRequest = () => {
       </Dialog>
 
       {/* Approve Confirmation Dialog */}
-      <Dialog open={openApprove} onClose={() => setOpenApprove(false)}>
-        <DialogTitle>Approve Request</DialogTitle>
-        <DialogContent style={{ width: "350px" }}>
+      <Dialog 
+        open={openApprove} 
+        onClose={() => !isApproving && setOpenApprove(false)}
+      >
+        <DialogTitle>Approve Material Request</DialogTitle>
+        <DialogContent sx={{ minWidth: 350 }}>
           <DialogContentText>
             Are you sure you want to approve this material request?
-            <br />
+            <br /><br />
             <strong>Production Item:</strong> {selectedRow?.item_name}
             <br />
             <strong>Total Materials:</strong> {selectedRow?.material_request?.length ?? 0}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenApprove(false)}>Cancel</Button>
+          <Button 
+            onClick={() => setOpenApprove(false)}
+            disabled={isApproving}
+          >
+            Cancel
+          </Button>
           <Button
             onClick={handleConfirmApprove}
             variant="contained"
             color="success"
             autoFocus
+            disabled={isApproving}
+            startIcon={isApproving ? <CircularProgress size={16} color="inherit" /> : <MdCheckCircle />}
           >
-            Approve
+            {isApproving ? "Approving..." : "Approve"}
           </Button>
         </DialogActions>
       </Dialog>
