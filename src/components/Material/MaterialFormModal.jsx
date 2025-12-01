@@ -50,12 +50,14 @@ const validationSchema = Yup.object({
     .positive("Price must be positive")
     .required("Price is required"),
   category_id: Yup.string().required("Category is required"),
-  group_id: Yup.string().required("Group is required"),
+
+  group_id: Yup.string().nullable(),   // ✅ NOT REQUIRED NOW
+
   opening_stock: Yup.number()
     .typeError("Must be a number")
     .min(0, "Cannot be negative")
     .required("Opening stock is required"),
-  urgently_required: Yup.string().required("Urgent is required"),
+  urgently_required: Yup.string().required("Reorder needed is required"),
   minimum_qty: Yup.number()
     .transform((value, originalValue) =>
       originalValue === "" ? undefined : value
@@ -72,6 +74,7 @@ const validationSchema = Yup.object({
   remark: Yup.string().required("Remarks are required"),
   image: Yup.mixed().nullable(),
 });
+
 
 const MaterialFormModal = ({ open, onClose, editData = null }) => {
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
@@ -354,7 +357,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     select
                     fullWidth
                     name="urgently_required"
-                    label="Urgent Requirement"
+                    label="Reorder Needed"
                     size="small"
                     value={values.urgently_required}
                     onChange={handleChange}

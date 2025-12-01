@@ -39,10 +39,6 @@ const itemValidationSchema = Yup.object({
     .required("Original quantity is required")
     .positive("Quantity must be positive")
     .integer("Quantity must be a whole number"),
-  production_qty: Yup.number()
-    .required("Production quantity is required")
-    .positive("Quantity must be positive")
-    .integer("Quantity must be a whole number"),
   start_date: Yup.date().required("Start date is required"),
   end_date: Yup.date()
     .required("End date is required")
@@ -105,7 +101,7 @@ const AddOrder = () => {
   // Handle add item
   const handleAddItem = useCallback(
     async (values, { resetForm }) => {
-      const { product_id, original_qty, production_qty, group, start_date, end_date } = values;
+      const { product_id, original_qty, group, start_date, end_date } = values;
 
       if (!product_id) {
         errorMessage("Please select a product before adding.");
@@ -131,7 +127,7 @@ const AddOrder = () => {
         model: product.model,
         unique_code: generateCode(product.model),
         original_qty: parseInt(original_qty, 10),
-        production_qty: parseInt(production_qty, 10),
+        production_qty: parseInt(original_qty, 10),
         size: product.size,
         start_date: start_date,
         end_date: end_date,
@@ -184,7 +180,7 @@ const AddOrder = () => {
           model: item.model,
           unique_code: item.unique_code,
           original_qty: item.original_qty,
-          production_qty: item.production_qty,
+          production_qty: item.original_qty,
           size: item.size,
           start_date: item.start_date.toISOString(),
           end_date: item.end_date.toISOString(),
@@ -307,7 +303,6 @@ const AddOrder = () => {
                   group: "",
                   product_id: "",
                   original_qty: "",
-                  production_qty: "",
                   start_date: new Date(),
                   end_date: null,
                 }}
@@ -380,19 +375,6 @@ const AddOrder = () => {
                         inputProps={{ min: 1 }}
                       />
 
-                      <TextField
-                        label="Production Qty"
-                        variant="outlined"
-                        size="small"
-                        type="number"
-                        name="production_qty"
-                        value={values.production_qty}
-                        onChange={handleChange}
-                        error={touched.production_qty && Boolean(errors.production_qty)}
-                        helperText={touched.production_qty && errors.production_qty}
-                        sx={{ width: 120 }}
-                        inputProps={{ min: 1 }}
-                      />
 
                       <TextField
                         label="Size"
@@ -462,7 +444,6 @@ const AddOrder = () => {
                             <Th>Item Code</Th>
                             <Th>Unique Code</Th>
                             <Th> Qty</Th>
-                            <Th>Production Qty</Th>
                             <Th>Size</Th>
                             <Th>Start Date</Th>
                             <Th>End Date</Th>
@@ -478,7 +459,6 @@ const AddOrder = () => {
                                 <Td>{item.model}</Td>
                                 <Td>{item.unique_code}</Td>
                                 <Td>{item.original_qty}</Td>
-                                <Td>{item.production_qty}</Td>
                                 <Td>{item.size}</Td>
                                 <Td>{new Date(item.start_date).toLocaleDateString()}</Td>
                                 <Td>{new Date(item.end_date).toLocaleDateString()}</Td>

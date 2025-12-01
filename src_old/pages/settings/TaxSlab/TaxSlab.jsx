@@ -267,7 +267,7 @@ const TaxSlab = () => {
                             initialState={{ density: "compact" }}
                             renderTopToolbar={({ table }) => (
                                 <Box sx={{ display: "flex", justifyContent: "space-between", p: 1 }}>
-                                    <Typography variant="h6" fontWeight={400}>Tax Slab</Typography>
+                                     <Typography variant="h6" className='page-title'>Tax Slab</Typography>
 
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                         <MRT_GlobalFilterTextField

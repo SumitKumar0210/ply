@@ -418,7 +418,7 @@ const PurchaseOrder = () => {
                 p: 1,
               }}
             >
-              <Typography variant="h6" fontWeight={400}>
+               <Typography variant="h6" className='page-title'>
                 Purchase Order
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

@@ -32,7 +32,6 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   },
 }));
 
-// Validation Schema for Add (image required)
 const addValidationSchema = Yup.object({
   name: Yup.string()
     .min(2, "Name must be at least 2 characters")
@@ -40,35 +39,14 @@ const addValidationSchema = Yup.object({
   model: Yup.string().required("Model is required"),
   size: Yup.string().required("Size is required"),
   color: Yup.string().required("Color is required"),
-  hsn_code: Yup.string().required("HSN Code is required"),
+  hsn_code: Yup.string().nullable(),
   rrp: Yup.number()
     .typeError("RRP must be a number")
     .required("RRP is required"),
   product_type: Yup.string().required("Product Type is required"),
   group_id: Yup.string().required("Group is required"),
-  image: Yup.mixed()
-    .required("Image is required")
-    .test("fileType", "Only images are allowed", (value) =>
-      value
-        ? ["image/jpeg", "image/png", "image/jpg"].includes(value.type)
-        : false
-    ),
-});
 
-// Validation Schema for Edit (image optional)
-const editValidationSchema = Yup.object({
-  name: Yup.string()
-    .min(2, "Name must be at least 2 characters")
-    .required("Name is required"),
-  model: Yup.string().required("Model is required"),
-  size: Yup.string().required("Size is required"),
-  color: Yup.string().required("Color is required"),
-  hsn_code: Yup.string().required("HSN Code is required"),
-  rrp: Yup.number()
-    .typeError("RRP must be a number")
-    .required("RRP is required"),
-  product_type: Yup.string().required("Product Type is required"),
-  group_id: Yup.string().required("Group is required"),
+  // ✅ Image OPTIONAL
   image: Yup.mixed()
     .nullable()
     .test("fileType", "Only images are allowed", (value) =>
@@ -76,16 +54,39 @@ const editValidationSchema = Yup.object({
     ),
 });
 
-const ProductFormDialog = ({ 
-  open, 
-  onClose, 
-  editData = null, 
-  onSuccess 
+const editValidationSchema = Yup.object({
+  name: Yup.string()
+    .min(2, "Name must be at least 2 characters")
+    .required("Name is required"),
+  model: Yup.string().required("Model is required"),
+  size: Yup.string().required("Size is required"),
+  color: Yup.string().required("Color is required"),
+  hsn_code: Yup.string().nullable(),
+  rrp: Yup.number()
+    .typeError("RRP must be a number")
+    .required("RRP is required"),
+  product_type: Yup.string().required("Product Type is required"),
+  group_id: Yup.string().required("Group is required"),
+
+
+  image: Yup.mixed()
+    .nullable()
+    .test("fileType", "Only images are allowed", (value) =>
+      !value || ["image/jpeg", "image/png", "image/jpg"].includes(value.type)
+    ),
+});
+
+
+const ProductFormDialog = ({
+  open,
+  onClose,
+  editData = null,
+  onSuccess
 }) => {
   const dispatch = useDispatch();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const { data: groups = [] } = useSelector((state) => state.group);
-  
+
   const [compressingImage, setCompressingImage] = useState(false);
   const [submissionLoader, setSubmissionLoader] = useState(false);
 
@@ -94,29 +95,29 @@ const ProductFormDialog = ({
   // Initial values
   const initialValues = isEditMode
     ? {
-        name: editData.name || "",
-        model: editData.model || "",
-        size: editData.size || "",
-        color: editData.color || "",
-        hsn_code: editData.hsn_code || "",
-        rrp: editData.rrp || "",
-        product_type: editData.product_type || "",
-        group_id: editData.group_id || "",
-        narations: editData.narations || "",
-        image: null,
-      }
+      name: editData.name || "",
+      model: editData.model || "",
+      size: editData.size || "",
+      color: editData.color || "",
+      hsn_code: editData.hsn_code || "",
+      rrp: editData.rrp || "",
+      product_type: editData.product_type || "",
+      group_id: editData.group_id || "",
+      narations: editData.narations || "",
+      image: null,
+    }
     : {
-        name: "",
-        model: "",
-        size: "",
-        color: "",
-        hsn_code: "",
-        rrp: "",
-        product_type: "",
-        group_id: "",
-        narations: "",
-        image: null,
-      };
+      name: "",
+      model: "",
+      size: "",
+      color: "",
+      hsn_code: "",
+      rrp: "",
+      product_type: "",
+      group_id: "",
+      narations: "",
+      image: null,
+    };
 
   // Handle image compression
   const handleImageChange = async (event, setFieldValue) => {
@@ -424,8 +425,8 @@ const ProductFormDialog = ({
                 {submissionLoader
                   ? "Saving..."
                   : isEditMode
-                  ? "Save Changes"
-                  : "Submit"}
+                    ? "Save Changes"
+                    : "Submit"}
               </Button>
             </DialogActions>
           </Form>

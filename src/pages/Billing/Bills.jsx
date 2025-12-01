@@ -12,12 +12,13 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
-  MRT_GlobalFilterTextField,
 } from "material-react-table";
 import { useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
@@ -25,25 +26,23 @@ import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
 
 import { useDispatch, useSelector } from "react-redux";
-
-// You must create these slice actions (similar to productSlice)
 import { deleteBill, fetchBills } from "./slice/billsSlice";
 
 const Bills = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
+  const searchInputRef = useRef(null);
 
-  const { data: bills = [], loading, totalRecords = 0 } = useSelector((state) => state.bill);
+  const { data: bills, loading, totalRecords } = useSelector((state) => state.bill);
 
-  console.log(bills);
-
-  const [openBillDialog, setOpenBillDialog] = useState(false);
-  const [editBillData, setEditBillData] = useState(null);
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -54,6 +53,27 @@ const Bills = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchTimeoutRef = useRef(null);
 
+  // Normalize bills data to always be an array
+  const normalizedBills = Array.isArray(bills) ? bills : [];
+  const normalizedTotal = typeof totalRecords === 'number' ? totalRecords : 0;
+
+  console.log("Bills from Redux:", bills);
+  console.log("Normalized Bills:", normalizedBills);
+  console.log("Total Records:", normalizedTotal);
+  console.log("Loading:", loading);
+  console.log("Bills Count:", normalizedBills.length);
+
+  // Generate a unique key based on data to force table re-render when data changes
+  const tableKey = `${normalizedBills.length}-${normalizedTotal}-${debouncedSearch}`;
+
+  // Focus search input when shown
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
+
+  // Debounce search input
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -61,6 +81,8 @@ const Bills = () => {
 
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(globalFilter);
+      // Reset to first page when search changes
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }, 500);
 
     return () => {
@@ -70,22 +92,15 @@ const Bills = () => {
     };
   }, [globalFilter]);
 
-  useEffect(() => {
-    if (debouncedSearch) {
-      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-    }
-  }, [debouncedSearch]);
-
+  // Fetch bills when pagination or search changes
   useEffect(() => {
     const params = {
       pageIndex: pagination.pageIndex,
       pageLimit: pagination.pageSize,
+      search: debouncedSearch,
     };
 
-    if (debouncedSearch) {
-      params.search = debouncedSearch;
-    }
-
+    console.log("Fetching bills with params:", params);
     dispatch(fetchBills(params));
   }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
@@ -96,63 +111,118 @@ const Bills = () => {
   const handleEditBill = (id) => {
     navigate(`/bill/edit-bill/${id}`);
   };
+
   const handleViewBill = (id) => {
     navigate(`/bill/view/${id}`);
   };
 
-  const handleDelete = (id) => {
-    dispatch(deleteBill(id));
-    setOpenDelete(false);
-    // Refresh data after deletion
-    dispatch(fetchBills({
-      pageIndex: pagination.pageIndex,
-      pageLimit: pagination.pageSize,
-      search: debouncedSearch || undefined,
-    }));
+  const handleDelete = async (id) => {
+    try {
+      await dispatch(deleteBill(id)).unwrap();
+      setOpenDelete(false);
+      
+      // Refresh data after deletion
+      dispatch(fetchBills({
+        pageIndex: pagination.pageIndex,
+        pageLimit: pagination.pageSize,
+        search: debouncedSearch,
+      }));
+    } catch (error) {
+      console.error("Delete failed:", error);
+      setOpenDelete(false);
+    }
+  };
+
+  const handleSearchToggle = () => {
+    if (showSearch && globalFilter) {
+      // Clear search when closing
+      setGlobalFilter("");
+    }
+    setShowSearch(!showSearch);
   };
 
   const columns = useMemo(
     () => [
-      { accessorKey: "invoice_no", header: "Invoice No", size: 120 },
+      { 
+        accessorKey: "invoice_no", 
+        header: "Invoice No", 
+        size: 120 
+      },
       {
         accessorKey: "customer_name",
         header: "Customer Name",
         size: 160,
-        Cell: ({ row }) => row.original?.customer?.name ?? "",
+        Cell: ({ row }) => row.original?.customer?.name || "N/A",
       },
       {
         accessorKey: "customer_mobile",
         header: "Mobile",
         size: 120,
-        Cell: ({ row }) => row.original?.customer?.mobile ?? "",
+        Cell: ({ row }) => row.original?.customer?.mobile || "N/A",
       },
-      { accessorKey: "date", header: "Bill Date", size: 120 },
+      { 
+        accessorKey: "date", 
+        header: "Bill Date", 
+        size: 120,
+        Cell: ({ cell }) => {
+          const value = cell.getValue();
+          if (!value) return "N/A";
+          try {
+            return new Date(value).toLocaleDateString('en-IN');
+          } catch {
+            return value;
+          }
+        }
+      },
       {
         accessorKey: "grand_total",
         header: "Total",
         size: 120,
         Cell: ({ cell }) => {
-          const value = Number(cell.getValue()); // convert string → number
-          return `₹ ${value.toLocaleString("en-IN")}`;
+          const value = cell.getValue();
+          if (!value) return "₹ 0.00";
+          const numValue = Number(value);
+          return `₹ ${numValue.toLocaleString("en-IN", { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+          })}`;
         },
       },
       {
         accessorKey: "status",
         header: "Status",
         size: 100,
-        Cell: ({ row }) => (
-          <span
-            style={{
-              padding: "4px 10px",
-              borderRadius: 6,
-              background: row.original.status ? "#d4f8e8" : "#ffe2e2",
-              color: row.original.status ? "#008f5a" : "#d23434",
-              fontSize: 12,
-            }}
-          >
-            {row.original.status ? "Paid" : "Pending"}
-          </span>
-        ),
+        Cell: ({ row }) => {
+          const status = row.original.status;
+          let statusText = "Pending";
+          let bgColor = "#ffe2e2";
+          let textColor = "#d23434";
+          
+          if (status === 1) {
+            statusText = "Paid";
+            bgColor = "#d4f8e8";
+            textColor = "#008f5a";
+          } else if (status === 2) {
+            statusText = "Completed";
+            bgColor = "#e3f2fd";
+            textColor = "#1976d2";
+          }
+          
+          return (
+            <span
+              style={{
+                padding: "4px 10px",
+                borderRadius: 6,
+                background: bgColor,
+                color: textColor,
+                fontSize: 12,
+                fontWeight: 500,
+              }}
+            >
+              {statusText}
+            </span>
+          );
+        },
       },
       {
         id: "actions",
@@ -163,7 +233,7 @@ const Bills = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="view Bill">
+            <Tooltip title="View Bill">
               <IconButton
                 color="primary"
                 onClick={() => handleViewBill(row.original.id)}
@@ -181,13 +251,13 @@ const Bills = () => {
                 </IconButton>
               </Tooltip>
             )}
-
             {row.original.status !== 2 && (
               <Tooltip title="Delete">
                 <IconButton
                   color="error"
                   onClick={() => {
-                    setOpenDelete(true), setDeleteRow(row.original.id);
+                    setOpenDelete(true);
+                    setDeleteRow(row.original.id);
                   }}
                 >
                   <RiDeleteBinLine size={16} />
@@ -203,26 +273,41 @@ const Bills = () => {
 
   /** Download CSV */
   const downloadCSV = () => {
-    const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
+    if (!normalizedBills || normalizedBills.length === 0) {
+      alert("No data to export");
+      return;
+    }
 
-    const rows = bills.map((row) =>
-      columns
-        .filter((c) => c.accessorKey)
-        .map((c) => `"${row[c.accessorKey] ?? ""}"`)
-        .join(",")
-    );
+    const headers = ["Invoice No", "Customer Name", "Mobile", "Bill Date", "Total", "Status"];
+    
+    const rows = normalizedBills.map((row) => {
+      const customerName = row.customer?.name || "N/A";
+      const customerMobile = row.customer?.mobile || "N/A";
+      const date = row.date ? new Date(row.date).toLocaleDateString('en-IN') : "N/A";
+      const total = row.grand_total ? `₹ ${Number(row.grand_total).toLocaleString("en-IN")}` : "₹ 0.00";
+      const status = row.status === 1 ? "Paid" : row.status === 2 ? "Completed" : "Pending";
+      
+      return [
+        `"${row.invoice_no || ""}"`,
+        `"${customerName}"`,
+        `"${customerMobile}"`,
+        `"${date}"`,
+        `"${total}"`,
+        `"${status}"`
+      ].join(",");
+    });
 
     const csvContent = [headers.join(","), ...rows].join("\n");
-
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = "Bills.csv";
+    a.download = `Bills_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   /** Print */
@@ -249,15 +334,17 @@ const Bills = () => {
             ref={tableContainerRef}
           >
             <MaterialReactTable
+              key={tableKey}
               columns={columns}
-              data={bills}
+              data={normalizedBills}
               manualPagination
-              rowCount={totalRecords}
+              manualFiltering
+              rowCount={normalizedTotal}
               state={{
                 isLoading: loading,
                 showLoadingOverlay: loading,
                 pagination: pagination,
-                globalFilter,
+                globalFilter: globalFilter,
               }}
               onPaginationChange={setPagination}
               onGlobalFilterChange={setGlobalFilter}
@@ -266,7 +353,7 @@ const Bills = () => {
               enableSorting={false}
               enablePagination
               enableBottomToolbar
-              enableGlobalFilter
+              enableGlobalFilter={false}
               enableDensityToggle={false}
               enableColumnActions={false}
               enableColumnVisibilityToggle={false}
@@ -288,6 +375,13 @@ const Bills = () => {
               muiTableBodyRowProps={{
                 hover: false,
               }}
+              muiTableBodyProps={{
+                sx: {
+                  '& tr': {
+                    display: normalizedBills.length === 0 ? 'none' : 'table-row'
+                  }
+                }
+              }}
               renderTopToolbar={({ table }) => (
                 <Box
                   sx={{
@@ -298,12 +392,46 @@ const Bills = () => {
                     p: 1,
                   }}
                 >
-                  <Typography variant="h6" fontWeight={400}>
+                  <Typography variant="h6" className="page-title">
                     Bills
+                    {/* {debouncedSearch && (
+                      <Typography component="span" variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
+                        (Search: "{debouncedSearch}")
+                      </Typography>
+                    )} */}
                   </Typography>
 
                   <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                    <MRT_GlobalFilterTextField table={table} />
+                    {showSearch && (
+                      <TextField
+                        inputRef={searchInputRef}
+                        size="small"
+                        placeholder="Search..."
+                        value={globalFilter}
+                        onChange={(e) => setGlobalFilter(e.target.value)}
+                        InputProps={{
+                          endAdornment: globalFilter && (
+                            <InputAdornment position="end">
+                              <IconButton
+                                size="small"
+                                onClick={() => setGlobalFilter("")}
+                                edge="end"
+                              >
+                                <CloseIcon fontSize="small" />
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        }}
+                        sx={{ width: 250 }}
+                      />
+                    )}
+
+                    <Tooltip title={showSearch ? "Close Search" : "Search"}>
+                      <IconButton onClick={handleSearchToggle}>
+                        <SearchIcon size={20} />
+                      </IconButton>
+                    </Tooltip>
+
                     <MRT_ToolbarInternalButtons table={table} />
 
                     <Tooltip title="Print">
@@ -332,10 +460,11 @@ const Bills = () => {
           </Paper>
         </Grid>
       </Grid>
+
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>{"Delete this bill?"}</DialogTitle>
-        <DialogContent style={{ width: "300px" }}>
+        <DialogTitle>Delete this bill?</DialogTitle>
+        <DialogContent style={{ minWidth: "300px" }}>
           <DialogContentText>This action cannot be undone</DialogContentText>
         </DialogContent>
         <DialogActions>

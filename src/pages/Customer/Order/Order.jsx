@@ -14,6 +14,8 @@ import {
   Box,
   Tooltip,
   Chip,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Link } from "react-router-dom";
@@ -22,12 +24,12 @@ import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import AddIcon from "@mui/icons-material/Add";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
+import SearchIcon from "@mui/icons-material/Search";
 import { useNavigate } from 'react-router-dom';
 
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
-  MRT_GlobalFilterTextField,
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
@@ -94,23 +96,71 @@ const getStatusChip = (status, count = 0) => {
 const Order = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
 
   const tableContainerRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { data: tableData = [], loading, error, totalRecords = 0 } = useSelector((state) => state.order);
+  const { data: orders, loading, error, totalRecords } = useSelector((state) => state.order);
 
+  // Normalize orders data to always be an array
+  const normalizedOrders = Array.isArray(orders) ? orders : [];
+  const normalizedTotal = typeof totalRecords === 'number' ? totalRecords : 0;
+
+  console.log("Orders from Redux:", orders);
+  console.log("Normalized Orders:", normalizedOrders);
+  console.log("Total Records:", normalizedTotal);
+  console.log("Loading:", loading);
+
+  // Generate a unique key based on data to force table re-render when data changes
+  const tableKey = `${normalizedOrders.length}-${normalizedTotal}-${debouncedSearch}`;
+
+  // Focus search input when shown
   useEffect(() => {
-    dispatch(fetchOrder({
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
+
+  // Debounce search input
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(globalFilter);
+      // Reset to first page when search changes
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }, 500);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [globalFilter]);
+
+  // Fetch orders when pagination or search changes
+  useEffect(() => {
+    const params = {
       pageIndex: pagination.pageIndex,
-      pageLimit: pagination.pageSize
-    }));
-  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+      pageLimit: pagination.pageSize,
+      search: debouncedSearch,
+    };
+
+    console.log("Fetching orders with params:", params);
+    dispatch(fetchOrder(params));
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
   const handleViewClick = (id) => {
     navigate('/customer/order/view/' + id);
@@ -126,13 +176,28 @@ const Order = () => {
   };
 
   const deleteData = async (id) => {
-    await dispatch(deleteOrder(id));
-    setOpenDelete(false);
-    // Refresh data after deletion
-    dispatch(fetchOrder({
-      pageIndex: pagination.pageIndex,
-      pageLimit: pagination.pageSize
-    }));
+    try {
+      await dispatch(deleteOrder(id)).unwrap();
+      setOpenDelete(false);
+
+      // Refresh data after deletion
+      dispatch(fetchOrder({
+        pageIndex: pagination.pageIndex,
+        pageLimit: pagination.pageSize,
+        search: debouncedSearch,
+      }));
+    } catch (error) {
+      console.error("Delete failed:", error);
+      setOpenDelete(false);
+    }
+  };
+
+  const handleSearchToggle = () => {
+    if (showSearch && globalFilter) {
+      // Clear search when closing
+      setGlobalFilter("");
+    }
+    setShowSearch(!showSearch);
   };
 
   const handleDateFormate = (date) => {
@@ -148,12 +213,6 @@ const Order = () => {
     try {
       const parsed = JSON.parse(items);
       if (!Array.isArray(parsed)) return 0;
-
-      // sum up 'production_qty' (or fallback to 'original_qty' if needed)
-      // return parsed.reduce(
-      //   (total, item) => total + Number(item.production_qty || item.original_qty || 0),
-      //   0
-      // );
       return parsed.length ?? 0;
     } catch (e) {
       console.error("Invalid product_ids format:", e);
@@ -191,7 +250,6 @@ const Order = () => {
       { accessorKey: "dated", header: "Dated", Cell: ({ row }) => handleDateFormate(row.original.created_at) },
       { accessorKey: "itemOrdered", header: "Item Ordered", Cell: ({ row }) => handleIQtyCount(row.original?.product_ids) },
       { accessorKey: "commencement_date", header: "Commencement Date", Cell: ({ row }) => handleDateFormate(row.original.commencement_date) },
-      // { accessorKey: "qcPassedItem", header: "QC Passed Item", Cell: ({row}) => calculateQCPassed(row.original?.product_ids) },
       { accessorKey: "delivered_date", header: "Delivered Date", Cell: ({ row }) => handleDateFormate(row.original.delivery_date) },
       {
         accessorKey: "status",
@@ -224,15 +282,6 @@ const Order = () => {
                 <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
-            {/* <Tooltip title="Delete">
-              <IconButton
-                aria-label="delete"
-                color="error"
-                onClick={() => handleDelete(row.original)}
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip> */}
           </Box>
         ),
       },
@@ -240,26 +289,46 @@ const Order = () => {
     []
   );
 
-  //  CSV export using tableData
+  //  CSV export using normalized data
   const downloadCSV = () => {
-    const headers = columns
-      .filter((col) => col.accessorKey && col.accessorKey !== "actions")
-      .map((col) => col.header);
-    const rows = tableData.map((row) =>
-      columns
-        .filter((col) => col.accessorKey && col.accessorKey !== "actions")
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
-        .join(",")
-    );
+    if (!normalizedOrders || normalizedOrders.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    const headers = ["Order No.", "Customer Name", "Dated", "Item Ordered", "Commencement Date", "Delivered Date", "Status"];
+    
+    const rows = normalizedOrders.map((row) => {
+      const orderNo = row.batch_no || "";
+      const customerName = row.customer?.name || "N/A";
+      const dated = handleDateFormate(row.created_at);
+      const itemOrdered = handleIQtyCount(row.product_ids);
+      const commencementDate = handleDateFormate(row.commencement_date);
+      const deliveredDate = handleDateFormate(row.delivery_date);
+      const status = row.status === 0 ? "Pending" : `In Production (${row.production_product_count || 0})`;
+      
+      return [
+        `"${orderNo}"`,
+        `"${customerName}"`,
+        `"${dated}"`,
+        `"${itemOrdered}"`,
+        `"${commencementDate}"`,
+        `"${deliveredDate}"`,
+        `"${status}"`
+      ].join(",");
+    });
+
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
+    
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "Order.csv");
+    link.download = `Orders_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   //  Print handler
@@ -312,21 +381,26 @@ const Order = () => {
           }}
         >
           <MaterialReactTable
+            key={tableKey}
             columns={columns}
-            data={tableData}
+            data={normalizedOrders}
             manualPagination
-            rowCount={totalRecords}
+            manualFiltering
+            rowCount={normalizedTotal}
             state={{
               isLoading: loading,
+              showLoadingOverlay: loading,
               pagination: pagination,
+              globalFilter: globalFilter,
             }}
             onPaginationChange={setPagination}
+            onGlobalFilterChange={setGlobalFilter}
             enableTopToolbar
-            enableColumnFilters
-            enableSorting
+            enableColumnFilters={false}
+            enableSorting={false}
             enablePagination
             enableBottomToolbar
-            enableGlobalFilter
+            enableGlobalFilter={false}
             enableDensityToggle={false}
             enableColumnActions={false}
             enableColumnVisibilityToggle={false}
@@ -342,13 +416,16 @@ const Order = () => {
             muiTablePaperProps={{
               sx: { backgroundColor: "#fff", boxShadow: "none" },
             }}
-            muiTableBodyRowProps={({ row }) => ({
+            muiTableBodyRowProps={{
               hover: false,
-              sx:
-                row.original.status === "inactive"
-                  ? { "&:hover": { backgroundColor: "transparent" } }
-                  : {},
-            })}
+            }}
+            muiTableBodyProps={{
+              sx: {
+                '& tr': {
+                  display: normalizedOrders.length === 0 ? 'none' : 'table-row'
+                }
+              }
+            }}
             renderTopToolbar={({ table }) => (
               <Box
                 sx={{
@@ -359,17 +436,50 @@ const Order = () => {
                   p: 1,
                 }}
               >
-                <Typography variant="h6" fontWeight={400}>
+                <Typography variant="h6" className='page-title'>
                   Order List
+                 
                 </Typography>
+
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
+                  {showSearch && (
+                    <TextField
+                      inputRef={searchInputRef}
+                      size="small"
+                      placeholder="Search..."
+                      value={globalFilter}
+                      onChange={(e) => setGlobalFilter(e.target.value)}
+                      InputProps={{
+                        endAdornment: globalFilter && (
+                          <InputAdornment position="end">
+                            <IconButton
+                              size="small"
+                              onClick={() => setGlobalFilter("")}
+                              edge="end"
+                            >
+                              <CloseIcon fontSize="small" />
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{ width: 250 }}
+                    />
+                  )}
+
+                  <Tooltip title={showSearch ? "Close Search" : "Search"}>
+                    <IconButton onClick={handleSearchToggle}>
+                      <SearchIcon size={20} />
+                    </IconButton>
+                  </Tooltip>
+
                   <MRT_ToolbarInternalButtons table={table} />
+                  
                   <Tooltip title="Print">
                     <IconButton onClick={handlePrint}>
                       <FiPrinter size={20} />
                     </IconButton>
                   </Tooltip>
+                  
                   <Tooltip title="Download CSV">
                     <IconButton onClick={downloadCSV}>
                       <BsCloudDownload size={20} />

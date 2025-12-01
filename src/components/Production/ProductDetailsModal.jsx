@@ -34,6 +34,8 @@ import { storeAttachment } from "../../pages/Production/slice/attachmentSlice";
 import { compressImage } from "../imageCompressor/imageCompressor";
 import { markReadyForDelivey } from "../../pages/Production/slice/productionChainSlice";
 import { successMessage, errorMessage } from "../../toast";
+import { submitFailedQc } from "../../pages/Production/slice/failedQcSlice";
+import FailQcPage from "./FailedQc";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -233,6 +235,7 @@ export default function ProductDetailsModal({
   const [localMessages, setLocalMessages] = useState([]);
 
   const [openReadyDialog, setOpenReadyDialog] = useState(false);
+  const [openFailQcDialog, setOpenFailQcDialog] = useState(false);
   const [submittingReady, setSubmittingReady] = useState(false);
 
   // Initialize local state when product changes
@@ -308,8 +311,8 @@ export default function ProductDetailsModal({
 
       if (!res.error) {
         setOpenReadyDialog(false);
-        onClose(); // Close parent modal
-        onRefresh(); // Refresh data
+        onClose();
+        onRefresh();
       }
     } catch (error) {
       console.error("Error:", error);
@@ -318,6 +321,30 @@ export default function ProductDetailsModal({
       setSubmittingReady(false);
     }
   };
+
+  const handleFailQc = async (reason) => {
+    if (!product?.id) return;
+    const formData = new FormData();
+    formData.append("pp_id", product.id);
+    formData.append("reason", reason.reason);
+    formData.append("doc", reason.doc);
+    try {
+      const res = await dispatch(submitFailedQc(formData));
+
+      if (!res.error) {
+        setOpenFailQcDialog(false);
+        setOpenReadyDialog(false);
+        onClose && onClose();
+        onRefresh && onRefresh();
+      } else {
+        alert(res.error || "Failed to mark QC");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Failed to mark QC. Please try again.");
+    }
+  };
+
 
 
   const handleSendMessage = async () => {
@@ -379,17 +406,34 @@ export default function ProductDetailsModal({
                     {product.group?.trim()}
                   </Typography>
                 </Box>
+
+                {currentDepartment?.id === 5 && (
+                  <Button
+                    variant="contained"
+                    color="error"
+                    onClick={() => setOpenFailQcDialog(true)}
+                  >
+                    Fail QC
+                  </Button>
+                )}
+                <FailQcPage
+                  open={openFailQcDialog}
+                  onClose={() => setOpenFailQcDialog(false)}
+                  onSubmit={handleFailQc}
+                />
+
+
                 {currentDepartment?.id == '8' && (
                   <Button
-                  variant="outlined"
-                  startIcon={<TbTruckDelivery />}
-                  color="warning"
-                  onClick={() => setOpenReadyDialog(true)}
-                >
-                  Ready For Delivery
-                </Button>
+                    variant="outlined"
+                    startIcon={<TbTruckDelivery />}
+                    color="warning"
+                    onClick={() => setOpenReadyDialog(true)}
+                  >
+                    Ready For Delivery
+                  </Button>
                 )}
-                
+
               </Box>
 
               <Grid container spacing={2} justifyContent="space-between">
@@ -402,7 +446,7 @@ export default function ProductDetailsModal({
                         </td>
                         <td>{currentDepartment?.name || "-"}</td>
                       </tr>
-                      
+
                       <tr>
                         <td className="title">
                           <strong>Supervisor:</strong>

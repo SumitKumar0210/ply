@@ -33,6 +33,7 @@ import tentativeItemReducer from '../pages/Production/slice/tentativeItemSlice';
 import materialRequestReducer from '../pages/Production/slice/materialRequestSlice';
 import readyProductReducer from '../pages/Production/slice/readyProductSlice';
 import billsReducer from '../pages/Billing/slice/billsSlice';
+import failedQcReducer from '../pages/Production/slice/failedQcSlice';
 
 export const store = configureStore({
     reducer: {
@@ -70,5 +71,6 @@ export const store = configureStore({
         materialRequest: materialRequestReducer,
         readyProduct: readyProductReducer,
         bill: billsReducer,
+        failedQc: failedQcReducer,
     }
 })

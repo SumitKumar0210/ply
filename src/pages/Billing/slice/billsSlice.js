@@ -31,7 +31,6 @@ export const fetchBills = createAsyncThunk(
 );
 
 
-// Fetch active bills
 export const fetchActiveBills = createAsyncThunk(
   "bill/fetchActiveBills",
   async (_, { rejectWithValue }) => {

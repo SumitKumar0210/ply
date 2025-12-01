@@ -155,7 +155,7 @@ const Material = () => {
       },
       {
         accessorKey: "urgently_required",
-        header: "Urgent",
+        header: "Reorder Needed",
         size: 100,
         Cell: ({ row }) => {
           if (loading) return <Skeleton variant="text" width="50%" />;
@@ -314,7 +314,7 @@ const Material = () => {
                     p: 1,
                   }}
                 >
-                  <Typography variant="h6" fontWeight={400}>
+                   <Typography variant="h6" className='page-title'>
                     Material
                   </Typography>
 

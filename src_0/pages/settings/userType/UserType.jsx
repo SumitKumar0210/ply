@@ -255,7 +255,7 @@ const handleEditSubmit = async (values, resetForm) => {
                     p: 1,
                   }}
                 >
-                  <Typography variant="h6" fontWeight={400}>
+                   <Typography variant="h6" className='page-title'>
                     User Roles
                   </Typography>
 

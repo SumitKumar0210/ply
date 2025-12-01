@@ -5,12 +5,13 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // Fetch orders with pagination
 export const fetchOrder = createAsyncThunk(
   "order/fetchOrder",
-  async ({ pageIndex, pageLimit }, { rejectWithValue }) => {
+  async ({ pageIndex, pageLimit, search="" }, { rejectWithValue }) => {
     try {
       const res = await api.get(`admin/production-order/get-data`, {
         params: {
           page: pageIndex + 1,
           limit: pageLimit ?? 10,
+          search:search
         }
       });
       return {
