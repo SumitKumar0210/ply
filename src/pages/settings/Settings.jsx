@@ -45,6 +45,7 @@ import Product from "./Product/Product";
 import Machine from "./Machine/Machine";
 import GeneralSetting from "./GeneralSetting/GeneralSetting";
 import TaxSlab from "./TaxSlab/TaxSlab";
+import ProductType from "./ProductType/ProductType";
 
 
 const tabConfig = [
@@ -55,6 +56,7 @@ const tabConfig = [
   { value: "tab9", label: "Machines", icon: <CheckCircleOutlineIcon />, component: <Machine/> },
   { value: "tab8", label: "UOM", icon: <TbRosetteNumber1 />, component: <UOM/> },
   { value: "tab5", label: "Material", icon: <FolderOpenIcon />, component: <Material/> },
+  { value: "tab26", label: "Product Type", icon: <LayersIcon />, component: <ProductType/> },
   { value: "tab7", label: "Products", icon: <LayersIcon />, component: <Product/> },
   { value: "tab33", label: "Tax Slabs", icon: <ListAltIcon />, component: <TaxSlab/> },
   { value: "tab1", label: "User Roles", icon: <LuUserRoundCog />, component: <UserType/> },

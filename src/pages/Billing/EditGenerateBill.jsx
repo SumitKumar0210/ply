@@ -1040,6 +1040,51 @@ const EditBill = () => {
                                 ₹{totals.gstAmount.toLocaleString("en-IN")}
                               </span>
                             </Box>
+                            {selectedCustomer && (
+                              <>
+                                {selectedCustomer.state?.name?.toUpperCase() !== "BIHAR" ? (
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      pl: 2,
+                                      color: "text.secondary",
+                                      fontSize: "0.875rem"
+                                    }}
+                                  >
+                                    <span>IGST ({values.gstRate}%)</span>
+                                    <span>₹{totals.gstAmount.toLocaleString("en-IN")}</span>
+                                  </Box>
+                                ) : (
+                                  <>
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        pl: 2,
+                                        color: "text.secondary",
+                                        fontSize: "0.875rem"
+                                      }}
+                                    >
+                                      <span>CGST ({(parseFloat(values.gstRate) / 2).toFixed(2)}%)</span>
+                                      <span>₹{(totals.gstAmount / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </Box>
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        pl: 2,
+                                        color: "text.secondary",
+                                        fontSize: "0.875rem"
+                                      }}
+                                    >
+                                      <span>SGST ({(parseFloat(values.gstRate) / 2).toFixed(2)}%)</span>
+                                      <span>₹{(totals.gstAmount / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </Box>
+                                  </>
+                                )}
+                              </>
+                            )}
 
                             <Box
                               sx={{

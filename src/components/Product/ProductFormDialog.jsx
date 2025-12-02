@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Grid,
   Button,
@@ -77,6 +77,7 @@ const editValidationSchema = Yup.object({
 });
 
 
+
 const ProductFormDialog = ({
   open,
   onClose,
@@ -86,6 +87,7 @@ const ProductFormDialog = ({
   const dispatch = useDispatch();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const { data: groups = [] } = useSelector((state) => state.group);
+  const { data: productType = [] } = useSelector((state) => state.productType);
 
   const [compressingImage, setCompressingImage] = useState(false);
   const [submissionLoader, setSubmissionLoader] = useState(false);
@@ -314,9 +316,12 @@ const ProductFormDialog = ({
                     error={touched.product_type && Boolean(errors.product_type)}
                     helperText={touched.product_type && errors.product_type}
                   >
-                    <MenuItem value="Electronics">Electronics</MenuItem>
-                    <MenuItem value="Hardware">Hardware</MenuItem>
-                    <MenuItem value="Software">Software</MenuItem>
+                    {productType.map((item, index) => (
+                      <MenuItem key={index} value={item.name}>
+                        {item.name}
+                      </MenuItem>
+                    ))}
+
                   </TextField>
                 </Grid>
 

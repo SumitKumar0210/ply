@@ -177,3 +177,6 @@ textarea:focus-visible {
   font-weight: 400 !important;
   line-height: 26px !important;
 }/*# sourceMappingURL=style.css.map */
+.tdBefore{
+  display: none;
+}

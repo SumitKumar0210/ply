@@ -290,25 +290,13 @@ const ViewBill = () => {
                                                         <Td>{item.product?.name}</Td>
                                                         <Td>{item.product?.model}</Td>
                                                         <Td>
-                                                            <TextField
-                                                                type="number"
-                                                                value={item.qty}
-                                                                onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
-                                                                size="small"
-                                                                sx={{ width: 80 }}
-                                                                inputProps={{ min: 1, max: 10000 }}
-                                                            />
+                                                                {item.qty}
+                                                               
                                                         </Td>
                                                         <Td>{item.product?.size}</Td>
                                                         <Td>
-                                                            <TextField
-                                                                type="number"
-                                                                value={item.rate}
-                                                                onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)}
-                                                                size="small"
-                                                                sx={{ width: 150 }}
-                                                                inputProps={{ min: 0, max: 10000000, step: "0.01" }}
-                                                            />
+                                                            ₹{item.rate}
+                                                               
                                                         </Td>
                                                         <Td>₹{(item.amount || 0).toLocaleString("en-IN")}</Td>
                                                         <Td>

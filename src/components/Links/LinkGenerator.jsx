@@ -103,7 +103,7 @@ const LinkGenerator = ({ id, customerId }) => {
       const response = await dispatch(sendQuotationMail(formData)).unwrap();
 
       // Show success message
-      successMessage(response.successMessage || response.message || "Quotation sent successfully to customer!");
+      // successMessage(response.successMessage || response.message || "Quotation sent successfully to customer!");
       handleClose();
     } catch (error) {
       // Show error message

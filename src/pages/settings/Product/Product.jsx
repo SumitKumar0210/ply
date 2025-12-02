@@ -27,6 +27,7 @@ import { fetchActiveGroup } from "../slices/groupSlice";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 import Profile from "../../../assets/images/profile.jpg";
 import ProductFormDialog from "../../../components/Product/ProductFormDialog";
+import { fetchActiveProductTypes } from "../slices/productTypeSlice";
 
 const Product = () => {
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
@@ -45,6 +46,7 @@ const Product = () => {
   useEffect(() => {
     if (openProductDialog) {
       dispatch(fetchActiveGroup());
+      dispatch(fetchActiveProductTypes());
     }
   }, [openProductDialog, dispatch]);
 

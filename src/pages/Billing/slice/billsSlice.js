@@ -44,6 +44,20 @@ export const fetchActiveBills = createAsyncThunk(
   }
 );
 
+
+export const dispatchProduct = createAsyncThunk(
+  "bill/fetchActiveBills",
+  async (values, { rejectWithValue }) => {
+    try {
+      const res = await api.post("/admin/billing/dispatch-product",values);
+      return res.data;
+    } catch (error) {
+      errorMessage(getErrorMessage(error));
+      return rejectWithValue(error.res?.data || error.message);
+    }
+  }
+);
+
 // Fetch single bill by ID
 export const fetchBillById = createAsyncThunk(
   "bill/fetchBillById",

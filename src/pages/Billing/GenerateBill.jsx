@@ -328,7 +328,7 @@ const GenerateBill = () => {
                 errorMessage("Failed to save bill");
                 return;
             }
-            
+
             successMessage(`Bill ${isDraft ? "saved as draft" : "created"} successfully!`);
             navigate("/bills");
         } catch (error) {
@@ -341,16 +341,16 @@ const GenerateBill = () => {
     };
 
     // Handle add customer
-      const handleAddCustomer = useCallback(async (values, { resetForm }) => {
+    const handleAddCustomer = useCallback(async (values, { resetForm }) => {
         try {
-          const res = await dispatch(addCustomer(values));
-          if (res.error) return;
-          resetForm();
-          setOpen(false);
+            const res = await dispatch(addCustomer(values));
+            if (res.error) return;
+            resetForm();
+            setOpen(false);
         } catch (error) {
-          console.error("Add customer failed:", error);
+            console.error("Add customer failed:", error);
         }
-      }, [dispatch]);
+    }, [dispatch]);
 
     const isLoading = customersLoading || productsLoading || gstsLoading;
 
@@ -431,12 +431,12 @@ const GenerateBill = () => {
                                         value={deliveryDate}
                                         onChange={(newValue) => setDeliveryDate(newValue)}
                                         slotProps={{
-                                            textField: { 
-                                                size: "small", 
+                                            textField: {
+                                                size: "small",
                                                 sx: { width: 250 },
                                                 error: deliveryDate && deliveryDate < creationDate,
-                                                helperText: deliveryDate && deliveryDate < creationDate 
-                                                    ? "Delivery date cannot be before creation date" 
+                                                helperText: deliveryDate && deliveryDate < creationDate
+                                                    ? "Delivery date cannot be before creation date"
                                                     : ""
                                             },
                                         }}
@@ -702,7 +702,7 @@ const GenerateBill = () => {
                                                     }}
                                                 >
                                                     <Box sx={{ width: "48%", minWidth: "300px" }}>
-                                                       
+
                                                         <TextareaAutosize
                                                             minRows={3}
                                                             maxRows={6}
@@ -715,8 +715,8 @@ const GenerateBill = () => {
                                                                 padding: "8px",
                                                                 fontFamily: "inherit",
                                                                 borderRadius: "4px",
-                                                                border: touched.orderTerms && errors.orderTerms 
-                                                                    ? "1px solid #d32f2f" 
+                                                                border: touched.orderTerms && errors.orderTerms
+                                                                    ? "1px solid #d32f2f"
                                                                     : "1px solid #ccc",
                                                             }}
                                                         />
@@ -792,6 +792,53 @@ const GenerateBill = () => {
                                                             </TextField>
                                                             <span>₹{totals.gstAmount.toLocaleString("en-IN")}</span>
                                                         </Box>
+
+                                                        {/* GST Breakdown - Show IGST for non-Bihar states, CGST+SGST for Bihar */}
+                                                        {selectedCustomer && (
+                                                            <>
+                                                                {selectedCustomer.state?.name?.toUpperCase() !== "BIHAR" ? (
+                                                                    <Box
+                                                                        sx={{
+                                                                            display: "flex",
+                                                                            justifyContent: "space-between",
+                                                                            pl: 2,
+                                                                            color: "text.secondary",
+                                                                            fontSize: "0.875rem"
+                                                                        }}
+                                                                    >
+                                                                        <span>IGST ({values.gstRate}%)</span>
+                                                                        <span>₹{totals.gstAmount.toLocaleString("en-IN")}</span>
+                                                                    </Box>
+                                                                ) : (
+                                                                    <>
+                                                                        <Box
+                                                                            sx={{
+                                                                                display: "flex",
+                                                                                justifyContent: "space-between",
+                                                                                pl: 2,
+                                                                                color: "text.secondary",
+                                                                                fontSize: "0.875rem"
+                                                                            }}
+                                                                        >
+                                                                            <span>CGST ({(parseFloat(values.gstRate) / 2).toFixed(2)}%)</span>
+                                                                            <span>₹{(totals.gstAmount / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                                        </Box>
+                                                                        <Box
+                                                                            sx={{
+                                                                                display: "flex",
+                                                                                justifyContent: "space-between",
+                                                                                pl: 2,
+                                                                                color: "text.secondary",
+                                                                                fontSize: "0.875rem"
+                                                                            }}
+                                                                        >
+                                                                            <span>SGST ({(parseFloat(values.gstRate) / 2).toFixed(2)}%)</span>
+                                                                            <span>₹{(totals.gstAmount / 2).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                                        </Box>
+                                                                    </>
+                                                                )}
+                                                            </>
+                                                        )}
 
                                                         <Box sx={{ display: "flex", justifyContent: "space-between", borderTop: "2px solid #222", mt: 1, pt: 0.5, fontWeight: "600", fontSize: "1.1rem" }}>
                                                             <span>Grand Total</span>

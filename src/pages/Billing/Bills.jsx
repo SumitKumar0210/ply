@@ -15,7 +15,8 @@ import {
   TextField,
   InputAdornment,
 } from "@mui/material";
-import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { MdOutlineRemoveRedEye, MdDescription, MdLocalShipping, MdCheckCircle } from "react-icons/md";
+import { FaTruck } from "react-icons/fa";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -53,27 +54,17 @@ const Bills = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const searchTimeoutRef = useRef(null);
 
-  // Normalize bills data to always be an array
   const normalizedBills = Array.isArray(bills) ? bills : [];
   const normalizedTotal = typeof totalRecords === 'number' ? totalRecords : 0;
 
-  console.log("Bills from Redux:", bills);
-  console.log("Normalized Bills:", normalizedBills);
-  console.log("Total Records:", normalizedTotal);
-  console.log("Loading:", loading);
-  console.log("Bills Count:", normalizedBills.length);
-
-  // Generate a unique key based on data to force table re-render when data changes
   const tableKey = `${normalizedBills.length}-${normalizedTotal}-${debouncedSearch}`;
 
-  // Focus search input when shown
   useEffect(() => {
     if (showSearch && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [showSearch]);
 
-  // Debounce search input
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -92,7 +83,6 @@ const Bills = () => {
     };
   }, [globalFilter]);
 
-  // Fetch bills when pagination or search changes
   useEffect(() => {
     const params = {
       pageIndex: pagination.pageIndex,
@@ -120,8 +110,7 @@ const Bills = () => {
     try {
       await dispatch(deleteBill(id)).unwrap();
       setOpenDelete(false);
-      
-      // Refresh data after deletion
+
       dispatch(fetchBills({
         pageIndex: pagination.pageIndex,
         pageLimit: pagination.pageSize,
@@ -135,7 +124,6 @@ const Bills = () => {
 
   const handleSearchToggle = () => {
     if (showSearch && globalFilter) {
-      // Clear search when closing
       setGlobalFilter("");
     }
     setShowSearch(!showSearch);
@@ -143,10 +131,10 @@ const Bills = () => {
 
   const columns = useMemo(
     () => [
-      { 
-        accessorKey: "invoice_no", 
-        header: "Invoice No", 
-        size: 120 
+      {
+        accessorKey: "invoice_no",
+        header: "Invoice No",
+        size: 120
       },
       {
         accessorKey: "customer_name",
@@ -160,9 +148,9 @@ const Bills = () => {
         size: 120,
         Cell: ({ row }) => row.original?.customer?.mobile || "N/A",
       },
-      { 
-        accessorKey: "date", 
-        header: "Bill Date", 
+      {
+        accessorKey: "date",
+        header: "Bill Date",
         size: 120,
         Cell: ({ cell }) => {
           const value = cell.getValue();
@@ -182,9 +170,9 @@ const Bills = () => {
           const value = cell.getValue();
           if (!value) return "₹ 0.00";
           const numValue = Number(value);
-          return `₹ ${numValue.toLocaleString("en-IN", { 
-            minimumFractionDigits: 2, 
-            maximumFractionDigits: 2 
+          return `₹ ${numValue.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
           })}`;
         },
       },
@@ -194,20 +182,24 @@ const Bills = () => {
         size: 100,
         Cell: ({ row }) => {
           const status = row.original.status;
-          let statusText = "Pending";
-          let bgColor = "#ffe2e2";
-          let textColor = "#d23434";
-          
+          let statusText = "Draft";
+          let bgColor = "#f5f5f5";
+          let textColor = "#666666";
+
           if (status === 1) {
-            statusText = "Paid";
+            statusText = "Not Dispatch";
+            bgColor = "#ffe2e2";
+            textColor = "#d23434";
+          } else if (status === 2) {
+            statusText = "Dispatched";
+            bgColor = "#fff4e5";
+            textColor = "#ff9800";
+          } else if (status === 3) {
+            statusText = "Delivered";
             bgColor = "#d4f8e8";
             textColor = "#008f5a";
-          } else if (status === 2) {
-            statusText = "Completed";
-            bgColor = "#e3f2fd";
-            textColor = "#1976d2";
           }
-          
+
           return (
             <span
               style={{
@@ -239,6 +231,25 @@ const Bills = () => {
                 onClick={() => handleViewBill(row.original.id)}
               >
                 <MdOutlineRemoveRedEye size={16} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Create Challan">
+              <IconButton
+                color="primary"
+                onClick={() => handleChallan(row.original.id)}
+              >
+                <MdDescription size={18} />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Mark as Delivered">
+              <IconButton
+                color="success"
+                onClick={() => handleDeliveredBill(row.original.id)}
+              >
+                <MdLocalShipping size={18} />
+                {/* or <FaTruck size={18} /> */}
+                {/* or <MdCheckCircle size={18} /> */}
               </IconButton>
             </Tooltip>
             {row.original.status !== 2 && (
@@ -279,14 +290,14 @@ const Bills = () => {
     }
 
     const headers = ["Invoice No", "Customer Name", "Mobile", "Bill Date", "Total", "Status"];
-    
+
     const rows = normalizedBills.map((row) => {
       const customerName = row.customer?.name || "N/A";
       const customerMobile = row.customer?.mobile || "N/A";
       const date = row.date ? new Date(row.date).toLocaleDateString('en-IN') : "N/A";
       const total = row.grand_total ? `₹ ${Number(row.grand_total).toLocaleString("en-IN")}` : "₹ 0.00";
       const status = row.status === 1 ? "Paid" : row.status === 2 ? "Completed" : "Pending";
-      
+
       return [
         `"${row.invoice_no || ""}"`,
         `"${customerName}"`,

@@ -27,7 +27,7 @@ export const getLink = createAsyncThunk(
     try {
       const res = await api.post("admin/get-link", id);
       if(res.data.success){
-        successMessage(res.data.message || "Public link fetched successfully!");
+        // successMessage(res.data.message || "Public link fetched successfully!");
       } else {
         infoMessage(res.data.message || "No public link found for this quotation.")
       }

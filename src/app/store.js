@@ -34,6 +34,8 @@ import materialRequestReducer from '../pages/Production/slice/materialRequestSli
 import readyProductReducer from '../pages/Production/slice/readyProductSlice';
 import billsReducer from '../pages/Billing/slice/billsSlice';
 import failedQcReducer from '../pages/Production/slice/failedQcSlice';
+import productTypeReducer from '../pages/settings/slices/productTypeSlice';
+import shippingAddressReducer from '../pages/Billing/slice/shippingAddressSlice';
 
 export const store = configureStore({
     reducer: {
@@ -72,5 +74,7 @@ export const store = configureStore({
         readyProduct: readyProductReducer,
         bill: billsReducer,
         failedQc: failedQcReducer,
+        productType: productTypeReducer,
+        shippingAddress: shippingAddressReducer,
     }
 })
