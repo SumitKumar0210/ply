@@ -207,7 +207,7 @@ const Branch = () => {
         <Grid size={12}>
           <Paper
             elevation={0}
-            sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
+            sx={{ width: "100%", overflowX: "auto", backgroundColor: "#fff" }}
             ref={tableContainerRef}
           >
             <MaterialReactTable

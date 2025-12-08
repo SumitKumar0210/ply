@@ -138,7 +138,9 @@ const Ledger = () => {
             <Typography variant="body2" sx={{ lineHeight: 1.8 }}>
               <strong>{data?.name || "N/A"}</strong>
               <br />
-              {data?.address || "N/A"}
+              {data?.address || "N/A"}, {data?.city || "N/A"}
+              <br />
+              {data?.state?.name || "N/A"} {data?.zip_code || "N/A"}
               <br />
               GSTIN: {data?.gst || "N/A"}
             </Typography>

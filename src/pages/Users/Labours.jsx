@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -40,6 +40,7 @@ import {
   addLabour,
   deleteLabour,
   fetchLabours,
+  fetchAllLaboursWithSearch,
   updateLabour,
   statusUpdate,
 } from "./slices/labourSlice";
@@ -231,26 +232,76 @@ const Labours = () => {
   const [editData, setEditData] = useState(null);
   const [compressingImage, setCompressingImage] = useState(false);
   const [compressingDocument, setCompressingDocument] = useState(false);
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
   const tableContainerRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState(null);
 
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
-  const { data: tableData = [], loading } = useSelector((state) => state.labour);
+const {
+  searchResults = {},
+  loading = false,
+} = useSelector((state) => state.labour);
+
+const {
+  data: rowData = [],
+} = searchResults;
+
+const {
+  data: tableData = [],
+  total = 0,
+} = rowData;
+
+
   const { data: departments = [] } = useSelector((state) => state.department);
 
   const dispatch = useDispatch();
 
+  // Fetch labours with search and pagination
   useEffect(() => {
-    dispatch(fetchLabours());
-  }, [dispatch]);
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
 
+    // Debounce search by 500ms
+    searchTimeoutRef.current = setTimeout(() => {
+      dispatch(
+        fetchAllLaboursWithSearch({
+          page: pagination.pageIndex + 1,
+          limit: pagination.pageSize,
+          search: globalFilter || undefined,
+        })
+      );
+    }, 500);
+
+    // Cleanup
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
+
+  // Fetch active departments when modals open
   useEffect(() => {
     if (open || editOpen) {
       dispatch(fetchActiveDepartments());
     }
   }, [open, editOpen, dispatch]);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    if (globalFilter !== "") {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  }, [globalFilter]);
 
   // Cleanup preview URLs on unmount
   useEffect(() => {
@@ -264,7 +315,7 @@ const Labours = () => {
     };
   }, [previewUrl, documentPreviewUrl]);
 
-  const handleAdd = async (values, { resetForm }) => {
+  const handleAdd = useCallback(async (values, { resetForm }) => {
     try {
       const res = await dispatch(addLabour(values));
       if (res.error) return;
@@ -275,23 +326,23 @@ const Labours = () => {
       console.error("Add labour failed:", error);
       errorMessage("Failed to add labour. Please try again.");
     }
-  };
+  }, [dispatch]);
 
-  const handleDeleteClick = (row) => {
+  const handleDeleteClick = useCallback((row) => {
     setDeleteDialog({
       open: true,
       id: row.id,
       name: row.name,
       loading: false,
     });
-  };
+  }, []);
 
   const shortFileName = (name = "", limit = 20) => {
     if (!name) return "";
     return name.length > limit ? name.substring(0, limit) + "..." : name;
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (!deleteDialog.id) return;
 
     setDeleteDialog((prev) => ({ ...prev, loading: true }));
@@ -305,17 +356,17 @@ const Labours = () => {
     } finally {
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
     }
-  };
+  }, [deleteDialog.id, dispatch]);
 
-  const handleUpdate = (row) => {
+  const handleUpdate = useCallback((row) => {
     setEditData(row);
     if (row.image) {
       setPreviewUrl(mediaUrl + row.image);
     }
     setEditOpen(true);
-  };
+  }, [mediaUrl]);
 
-  const handleEditClose = () => {
+  const handleEditClose = useCallback(() => {
     setEditOpen(false);
     setEditData(null);
     if (previewUrl && previewUrl.startsWith("blob:")) {
@@ -326,9 +377,9 @@ const Labours = () => {
     }
     setPreviewUrl(null);
     setDocumentPreviewUrl(null);
-  };
+  }, [previewUrl, documentPreviewUrl]);
 
-  const handleEditSubmit = async (values, { resetForm }) => {
+  const handleEditSubmit = useCallback(async (values, { resetForm }) => {
     try {
       const res = await dispatch(
         updateLabour({ updated: { id: editData.id, ...values } })
@@ -341,7 +392,7 @@ const Labours = () => {
       console.error("Update failed:", error);
       errorMessage("Failed to update labour. Please try again.");
     }
-  };
+  }, [dispatch, editData, handleEditClose]);
 
   // Handle image compression
   const handleImageChange = async (event, setFieldValue, isEdit = false) => {
@@ -473,6 +524,11 @@ const Labours = () => {
     }
   };
 
+  const handleStatusChange = useCallback((row, checked) => {
+    const newStatus = checked ? 1 : 0;
+    dispatch(statusUpdate({ ...row, status: newStatus }));
+  }, [dispatch]);
+
   // Table columns
   const columns = useMemo(
     () => [
@@ -519,10 +575,7 @@ const Labours = () => {
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
+            onChange={(e) => handleStatusChange(row.original, e.target.checked)}
           />
         ),
         size: 100,
@@ -551,15 +604,15 @@ const Labours = () => {
         ),
       },
     ],
-    [dispatch, mediaUrl]
+    [mediaUrl, handleStatusChange, handleUpdate, handleDeleteClick]
   );
 
   // CSV export
-  const downloadCSV = () => {
+  const downloadCSV = useCallback(() => {
     const headers = ["Name", "Department", "Per Hour Cost", "Overtime Rate", "Status"];
     const rows = tableData.map((row) => [
-      `"${row.name}"`,
-      `"${row.department?.name || "N/A"}"`,
+      `"${String(row.name || "").replace(/"/g, '""')}"`,
+      `"${String(row.department?.name || "N/A").replace(/"/g, '""')}"`,
       `"${row.per_hour_cost}"`,
       `"${row.overtime_hourly_rate}"`,
       `"${row.status ? "Active" : "Inactive"}"`,
@@ -575,18 +628,50 @@ const Labours = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
+  }, [tableData]);
 
   // Print handler
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
-  };
+
+    const printWindow = window.open('', '_blank');
+    const tableHTML = tableContainerRef.current.innerHTML;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Labours List</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            @media print {
+              button, .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Labours List</h2>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  }, []);
+
+  const closeDeleteDialog = useCallback(() => {
+    setDeleteDialog({ open: false, id: null, name: "", loading: false });
+  }, []);
+
+  const handleCloseAdd = useCallback(() => setOpen(false), []);
+  const handleOpenAdd = useCallback(() => setOpen(true), []);
 
   // Initial values generator
   const getInitialValues = (isEdit = false, data = null) => {
@@ -631,166 +716,6 @@ const Labours = () => {
           margin="dense"
           value={values.name}
           onChange={handleChange}
-          error={touched.name && Boolean(errors.name)}
-          helperText={touched.name && errors.name}
-        />
-      </Grid>
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          name="per_hour_cost"
-          label="Per Hour Cost (₹)"
-          size="small"
-          fullWidth
-          type="number"
-          margin="dense"
-          value={values.per_hour_cost}
-          onChange={handleChange}
-          error={touched.per_hour_cost && Boolean(errors.per_hour_cost)}
-          helperText={touched.per_hour_cost && errors.per_hour_cost}
-        />
-      </Grid>
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          name="overtime_hourly_rate"
-          label="Overtime Hourly Rate (₹)"
-          size="small"
-          fullWidth
-          type="number"
-          margin="dense"
-          value={values.overtime_hourly_rate}
-          onChange={handleChange}
-          error={touched.overtime_hourly_rate && Boolean(errors.overtime_hourly_rate)}
-          helperText={touched.overtime_hourly_rate && errors.overtime_hourly_rate}
-        />
-      </Grid>
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          name="department_id"
-          select
-          label="Department"
-          size="small"
-          fullWidth
-          margin="dense"
-          value={values.department_id}
-          onChange={handleChange}
-          error={touched.department_id && Boolean(errors.department_id)}
-          helperText={touched.department_id && errors.department_id}
-        >
-          {departments.map((option) => (
-            <MenuItem key={option.id} value={option.id}>
-              {option.name}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          name="dob"
-          label="Date of Birth"
-          size="small"
-          fullWidth
-          margin="dense"
-          type="date"
-          InputLabelProps={{ shrink: true }}
-          value={values.dob}
-          onChange={handleChange}
-          error={touched.dob && Boolean(errors.dob)}
-          helperText={touched.dob && errors.dob}
-          inputProps={{
-            max: new Date().toISOString().split("T")[0],
-          }}
-        />
-      </Grid>
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <Grid container spacing={2} alignItems="center" mt={1}>
-          <Grid size={6}>
-            <Button
-              variant="contained"
-              color="primary"
-              component="label"
-              startIcon={<FileUploadOutlinedIcon />}
-              fullWidth
-              disabled={compressingImage}
-            >
-              {compressingImage ? "Compressing..." : "Profile Pic"}
-              <input
-                hidden
-                type="file"
-                accept="image/*"
-                onChange={(event) => handleImageChange(event, setFieldValue, isEdit)}
-              />
-            </Button>
-            {touched.image && errors.image && (
-              <Typography color="error" variant="caption" display="block" mt={0.5}>
-                {errors.image}
-              </Typography>
-            )}
-          </Grid>
-          <Grid size={6}>
-            {(values.image || (isEdit && previewUrl)) && (
-
-              <ImagePreviewDialog
-                imageUrl={values.image
-                  ? URL.createObjectURL(values.image)
-                  : previewUrl || Profile}
-                alt="Preview"
-              />
-            )}
-          </Grid>
-        </Grid>
-      </Grid>
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          name="document_type"
-          select
-          label="Document Type"
-          size="small"
-          fullWidth
-          margin="dense"
-          value={values.document_type}
-          onChange={handleChange}
-          error={touched.document_type && Boolean(errors.document_type)}
-          helperText={touched.document_type && errors.document_type}
-        >
-          {DOCUMENT_TYPES.map((option) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Grid>
-
-      {values.document_type === "other" && (
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            name="other_document_name"
-            label="Other Document Name"
-            size="small"
-            fullWidth
-            margin="dense"
-            value={values.other_document_name}
-            onChange={handleChange}
-            error={touched.other_document_name && Boolean(errors.other_document_name)}
-            helperText={touched.other_document_name && errors.other_document_name}
-          />
-        </Grid>
-      )}
-
-      <Grid size={{ xs: 12, md: 6 }}>
-        <TextField
-          name="document_number"
-          label="Document Number"
-          size="small"
-          fullWidth
-          margin="dense"
-          value={values.document_number}
-          onChange={handleChange}
           error={touched.document_number && Boolean(errors.document_number)}
           helperText={touched.document_number && errors.document_number}
           placeholder={
@@ -800,7 +725,6 @@ const Labours = () => {
           }
         />
       </Grid>
-
 
       <Grid size={{ xs: 12, md: 6 }}>
         <Grid container spacing={2} alignItems="center" mt={1}>
@@ -830,7 +754,6 @@ const Labours = () => {
             {values.document_file && (
               <Box>
                 {documentPreviewUrl ? (
-
                   <ImagePreviewDialog
                     imageUrl={documentPreviewUrl}
                     alt="Document Preview"
@@ -845,9 +768,9 @@ const Labours = () => {
           </Grid>
         </Grid>
       </Grid>
-
     </Grid>
   );
+
 
   return (
     <>
@@ -873,9 +796,20 @@ const Labours = () => {
           <MaterialReactTable
             columns={columns}
             data={tableData}
+            getRowId={(row) => row.id}
+            rowCount={total}
+            manualPagination
+            manualFiltering
+            onPaginationChange={setPagination}
+            onGlobalFilterChange={setGlobalFilter}
+            state={{
+              isLoading: loading,
+              pagination,
+              globalFilter,
+            }}
             enableTopToolbar
-            enableColumnFilters
-            enableSorting
+            enableColumnFilters={false}
+            enableSorting={false}
             enablePagination
             enableBottomToolbar
             enableGlobalFilter
@@ -883,13 +817,12 @@ const Labours = () => {
             enableColumnActions={false}
             enableFullScreenToggle={false}
             initialState={{ density: "compact" }}
-            state={{ isLoading: loading }}
             muiTableContainerProps={{
               sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto" },
             }}
             muiTableBodyCellProps={{ sx: { whiteSpace: "nowrap" } }}
             muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-            muiTableBodyRowProps={{ hover: false }}
+            muiTableBodyRowProps={{ hover: true }}
             renderTopToolbar={({ table }) => (
               <Box
                 sx={{
@@ -900,7 +833,7 @@ const Labours = () => {
                   p: 1,
                 }}
               >
-                 <Typography variant="h6" className='page-title'>
+                <Typography variant="h6" className='page-title'>
                   Labours List
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

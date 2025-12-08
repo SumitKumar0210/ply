@@ -36,7 +36,6 @@ const CreateOrder = () => {
   const [eddDate, setEddDate] = useState(null);
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedDeleteId, setSelectedDeleteId] = useState(null);
-  const [selectedSupervisor, setSelectedSupervisor] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingQuote, setIsLoadingQuote] = useState(false);
   const [previousPOData, setPreviousPOData] = useState([]);
@@ -138,10 +137,6 @@ const CreateOrder = () => {
       return false;
     }
 
-    if (!selectedSupervisor) {
-      alert("Please select a supervisor");
-      return false;
-    }
 
     if (!creationDate) {
       alert("Please select project start date");
@@ -193,7 +188,6 @@ const CreateOrder = () => {
         quotation_id: itemRowData.id,
         batch_no: itemRowData.batch_no,
         customer_id: itemRowData.customer.id,
-        supervisor_id: selectedSupervisor.id,
         project_start_date: creationDate,
         edd: eddDate,
         items: items
@@ -219,7 +213,6 @@ const CreateOrder = () => {
       setItemRowData(null);
       navigate('/customer/order');
       setItems([]);
-      setSelectedSupervisor(null);
       setCreationDate(null);
       setEddDate(null);
 
@@ -305,25 +298,6 @@ const CreateOrder = () => {
                     sx={{ width: 300 }}
                   />
 
-                  <Autocomplete
-                    options={user || []}
-                    size="small"
-                    getOptionLabel={(option) => option?.name || ""}
-                    loading={loading}
-                    value={selectedSupervisor}
-                    onChange={(event, newValue) => {
-                      setSelectedSupervisor(newValue);
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Select Supervisor"
-                        variant="outlined"
-                        sx={{ width: 300 }}
-                      />
-                    )}
-                    sx={{ width: 300 }}
-                  />
 
                   <LocalizationProvider dateAdapter={AdapterDateFns}>
                     <Box sx={{ display: 'flex', gap: 2 }}>

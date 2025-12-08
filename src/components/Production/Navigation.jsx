@@ -10,12 +10,14 @@ import {
   Skeleton,
   Box,
   TextField,
+  Typography,
+  Paper,
 } from "@mui/material";
 import { HiChevronUp, HiChevronDown } from "react-icons/hi2";
 import { MdOutlinePrecisionManufacturing } from "react-icons/md";
-import { VscGroupByRefType } from "react-icons/vsc";
-import { MdExpandLess, MdExpandMore } from "react-icons/md";
-import { FaBuilding, FaBox } from "react-icons/fa6";
+import { FaBox } from "react-icons/fa6";
+import { BiSearchAlt } from "react-icons/bi";
+import { MdInbox } from "react-icons/md";
 
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -47,7 +49,7 @@ function NavigationMenu() {
     dispatch(setActiveBatch(batch));
   };
 
-  /** 🔍 FILTER LOGIC (NOW SUPPORTS PARENT SEARCH FULLY) */
+  /** 🔍 FILTER LOGIC */
   const filteredData = useMemo(() => {
     const term = search.toLowerCase();
 
@@ -61,9 +63,7 @@ function NavigationMenu() {
       return {
         ...item,
         matched: parentMatch || batchMatches.length > 0,
-        batches: parentMatch
-          ? item.batches // If parent matches → show ALL batches
-          : batchMatches, // Otherwise show filtered
+        batches: parentMatch ? item.batches : batchMatches,
       };
     });
   }, [search, productionData]);
@@ -85,6 +85,7 @@ function NavigationMenu() {
     setOpenMenu(newOpenState);
   }, [search, filteredData]);
 
+  // Loading State
   if (productionLoading) {
     return (
       <List sx={{ p: 0 }}>
@@ -107,11 +108,32 @@ function NavigationMenu() {
     );
   }
 
+  // Error State
   if (error) {
     return (
-      <div style={{ padding: 10, color: "red" }}>Failed to load menu.</div>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 3,
+          textAlign: "center",
+        }}
+      >
+        <MdInbox size={48} color="#ccc" />
+        <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+          Failed to load production orders
+        </Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+          {error}
+        </Typography>
+      </Box>
     );
   }
+
+  // Check if there are any matched results
+  const hasMatchedResults = filteredData.some((item) => item.matched);
 
   return (
     <>
@@ -123,88 +145,148 @@ function NavigationMenu() {
           placeholder="Search customer or batch..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          InputProps={{
+            startAdornment: <BiSearchAlt size={18} style={{ marginRight: 8, color: "#666" }} />,
+          }}
         />
       </Box>
 
-      <List component="nav">
-        {filteredData.map((item) => {
-          if (!item.matched) return null;
+      {/* NO DATA STATE - When productionData is empty */}
+      {productionData.length === 0 ? (
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            p: 4,
+            textAlign: "center",
+          }}
+        >
+          <MdInbox size={64} color="#ccc" />
+          <Typography variant="body1" color="text.secondary" sx={{ mt: 2, fontWeight: 500 }}>
+            No Production Orders
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+            No production orders available at the moment
+          </Typography>
+        </Box>
+      ) : !hasMatchedResults ? (
+        /* NO SEARCH RESULTS STATE */
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            p: 4,
+            textAlign: "center",
+          }}
+        >
+          <BiSearchAlt size={64} color="#ccc" />
+          <Typography variant="body1" color="text.secondary" sx={{ mt: 2, fontWeight: 500 }}>
+            No Results Found
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+            No customers or batches match "{search}"
+          </Typography>
+        </Box>
+      ) : (
+        /* MENU LIST */
+        <List component="nav">
+          {filteredData.map((item) => {
+            if (!item.matched) return null;
 
-          const isOpen = openMenu[item.quotation_id] ?? false;
+            const isOpen = openMenu[item.quotation_id] ?? false;
 
-          return (
-            <React.Fragment key={item.quotation_id}>
-              <ListItem disablePadding sx={{ mb: 0.5 }}>
-                <ListItemButton
-                  onClick={() => toggleMenu(item.quotation_id)}
-                  sx={{
-                    py: 0.5,
-                    px: 1.5,
-                    borderRadius: 1,
-                    borderTop: "1px solid #e0e0e0",
-                    "&:hover": { backgroundColor: "action.hover" },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 32 }}>
-                    <MdOutlinePrecisionManufacturing size={16} />
-                  </ListItemIcon>
-
-                  <ListItemText
-                    primary={item.customer?.name ?? "Unknown Customer"}
-                    primaryTypographyProps={{
-                      fontSize: "14px",
-                      fontWeight: 500,
+            return (
+              <React.Fragment key={item.quotation_id}>
+                <ListItem disablePadding sx={{ mb: 0.5 }}>
+                  <ListItemButton
+                    onClick={() => toggleMenu(item.quotation_id)}
+                    sx={{
+                      py: 0.5,
+                      px: 1.5,
+                      borderRadius: 1,
+                      borderTop: "1px solid #e0e0e0",
+                      "&:hover": { backgroundColor: "action.hover" },
                     }}
-                  />
+                  >
+                    <ListItemIcon sx={{ minWidth: 32 }}>
+                      <MdOutlinePrecisionManufacturing size={16} />
+                    </ListItemIcon>
 
-                  {item.batches.length > 0 &&
-                    (isOpen ? (
-                      <HiChevronUp size={20} />
+                    <ListItemText
+                      primary={item.customer?.name ?? "Unknown Customer"}
+                      primaryTypographyProps={{
+                        fontSize: "14px",
+                        fontWeight: 500,
+                      }}
+                    />
+
+                    {item.batches.length > 0 &&
+                      (isOpen ? (
+                        <HiChevronUp size={20} />
+                      ) : (
+                        <HiChevronDown size={20} />
+                      ))}
+                  </ListItemButton>
+                </ListItem>
+
+                {/* Collapsed Batch List */}
+                <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {item.batches.length > 0 ? (
+                      item.batches.map((batch) => (
+                        <ListItem key={batch.id} disablePadding>
+                          <ListItemButton
+                            onClick={() => handleBatchClick(batch)}
+                            sx={{
+                              py: 0.75,
+                              pl: 5,
+                              borderRadius: 1,
+                              backgroundColor:
+                                activeBatch?.id === batch.id
+                                  ? "action.selected"
+                                  : "transparent",
+                              "&:hover": {
+                                backgroundColor: "action.hover",
+                              },
+                            }}
+                          >
+                            <ListItemIcon sx={{ minWidth: 28 }}>
+                              <FaBox size={14} />
+                            </ListItemIcon>
+
+                            <ListItemText
+                              primary={batch.batch_no}
+                              primaryTypographyProps={{
+                                fontSize: "13px",
+                              }}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      ))
                     ) : (
-                      <HiChevronDown size={20} />
-                    ))}
-                </ListItemButton>
-              </ListItem>
-
-              {/* Collapsed Batch List */}
-              <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding>
-                  {item.batches.map((batch) => (
-                    <ListItem key={batch.id} disablePadding>
-                      <ListItemButton
-                        onClick={() => handleBatchClick(batch)}
-                        sx={{
-                          py: 0.75,
-                          pl: 5,
-                          borderRadius: 1,
-                          backgroundColor:
-                            activeBatch?.id === batch.id
-                              ? "action.selected"
-                              : "transparent",
-                          "&:hover": {
-                            backgroundColor: "action.hover",
-                          },
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 28 }}>
-                          <FaBox size={14} />
-                        </ListItemIcon>
-
+                      <ListItem>
                         <ListItemText
-                          primary={batch.batch_no}
+                          primary="No batches available"
                           primaryTypographyProps={{
-                            fontSize: "13px",
+                            fontSize: "12px",
+                            color: "text.secondary",
+                            fontStyle: "italic",
+                            pl: 5,
                           }}
                         />
-                      </ListItemButton>
-                    </ListItem>
-                  ))}
-                </List>
-              </Collapse>
-            </React.Fragment>
-          );
-        })}
-      </List>
+                      </ListItem>
+                    )}
+                  </List>
+                </Collapse>
+              </React.Fragment>
+            );
+          })}
+        </List>
+      )}
     </>
   );
 }

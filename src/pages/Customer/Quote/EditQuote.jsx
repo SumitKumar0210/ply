@@ -171,7 +171,7 @@ const EditQuote = () => {
     orderTerms: "",
     discount: 0,
     additionalCharges: 0,
-    gstRate: 18,
+    gstRate: "18.00",
   });
 
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
@@ -289,7 +289,7 @@ const EditQuote = () => {
         orderTerms: quotationData.order_terms || "",
         discount: parseNumericValue(quotationData.discount),
         additionalCharges: parseNumericValue(quotationData.additional_charges),
-        gstRate: parseNumericValue(quotationData.gst_rate, 18),
+        gstRate: parseNumericValue(quotationData.gst_rate, "18.00"),
       });
     } catch (error) {
       console.error("Error parsing quotation data:", error);

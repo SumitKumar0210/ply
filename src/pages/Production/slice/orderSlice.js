@@ -4,9 +4,15 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 
 export const fetchOwnProductionOrder = createAsyncThunk(
   "productionOrder/fetchOwnProductionOrder",
-  async (_, { rejectWithValue }) => {
+  async ({ pageIndex, pageLimit, search="" }, { rejectWithValue }) => {
     try {
-      const res = await api.get(`admin/production-order/get-data?ownData=true`);
+      const res = await api.get(`admin/production-order/get-data?ownData=true`,{
+        params: {
+          page: pageIndex + 1,
+          limit: pageLimit ?? 10, 
+          search:search
+        }
+      });
       return {
         data: res.data.data || [],
         totalRecords: res.data.total || res.data.data?.length || 0,

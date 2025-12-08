@@ -39,6 +39,7 @@ import { BsCloudDownload } from "react-icons/bs";
 import { fetchQuotation, deleteQuotation } from "../slice/quotationSlice";
 import { useDispatch, useSelector } from "react-redux";
 import LinkGenerator from "../../../components/Links/LinkGenerator";
+import { set } from "lodash";
 
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -84,10 +85,12 @@ const getStatusChip = (status) => {
   switch (status) {
     case 0:
       return <Chip label="Draft" color="warning" size="small" />;
-    case 2:
-      return <Chip label="Production" color="success" size="small" />;
-    case 1:
-      return <Chip label="Ordered" color="info" size="small" />;
+      case 1:
+        return <Chip label="Ordered" color="info" size="small" />;
+      case 2:
+        return <Chip label="Approved" color="success" size="small" />;
+    case 3:
+      return <Chip label="Requested to edit" color="secondary" size="small" />;
     default:
       return <Chip label="Unknown" size="small" />;
   }
@@ -97,6 +100,9 @@ const Quote = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
   const [showApproved, setShowApproved] = useState(false);
+  const [remark, setRemark] = useState("");
+  const [openRemark, setOpenRemark] = useState(false);
+  const [rowData, setRowData] = useState({});
 
   const tableContainerRef = useRef(null);
   const navigate = useNavigate();
@@ -150,7 +156,7 @@ const Quote = () => {
       pageLimit: pagination.pageSize,
       approved: showApproved ? "true" : "false",
     };
-    
+
     if (globalFilter) {
       params.search = globalFilter;
     }
@@ -236,6 +242,12 @@ const Quote = () => {
     }
   };
 
+  const showEditRequest = (row) => {
+    if(row.status !== 3) return;
+    setRemark(row);
+    setOpenRemark(true);
+  };
+
   //  Table columns
   const columns = useMemo(
     () => [
@@ -270,7 +282,11 @@ const Quote = () => {
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ row }) => getStatusChip(row.original?.status),
+        Cell: ({ row }) => (
+          <div onClick={() => showEditRequest(row.original)} style={{ cursor: "pointer" }}>
+            {getStatusChip(row.original.status)}
+          </div>
+        ),
       },
       {
         id: "actions",
@@ -476,7 +492,7 @@ const Quote = () => {
                   p: 1,
                 }}
               >
-                 <Typography variant="h6" className='page-title'>
+                <Typography variant="h6" className='page-title'>
                   {showApproved ? "Approved Quote List" : "Quote List"}
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -519,6 +535,81 @@ const Quote = () => {
             autoFocus
           >
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Customer Remark Display Modal */}
+      <Dialog
+        open={openRemark}
+        onClose={() => setOpenRemark(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Customer Remark
+        </DialogTitle>
+
+        <DialogContent>
+          {/* Customer Name */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Customer: <strong>{remark?.customer?.name || "Unknown Customer"}</strong>
+            </Typography>
+          </Box>
+
+          {/* Remark Display */}
+          {remark?.remark ? (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                bgcolor: 'grey.50',
+                border: '1px solid',
+                borderColor: 'grey.200',
+                borderRadius: 1
+              }}
+            >
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                fontWeight={600}
+                gutterBottom
+              >
+                Remark:
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{ whiteSpace: 'pre-wrap' }}
+              >
+                {remark.remark}
+              </Typography>
+            </Paper>
+          ) : (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                bgcolor: 'grey.50',
+                border: '1px dashed',
+                borderColor: 'grey.300',
+                borderRadius: 1,
+                textAlign: 'center'
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                No remark provided by customer
+              </Typography>
+            </Paper>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setOpenRemark(false)}
+            variant="contained"
+          >
+            Close
           </Button>
         </DialogActions>
       </Dialog>

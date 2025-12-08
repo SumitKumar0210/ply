@@ -31,7 +31,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 
 import { useDispatch, useSelector } from "react-redux";
-import { deleteBill, fetchBills } from "./slice/billsSlice";
+import { deleteBill, fetchBills, markAsDelivered } from "./slice/billsSlice";
 
 const Bills = () => {
   const navigate = useNavigate();
@@ -44,6 +44,7 @@ const Bills = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [markingDelivered, setMarkingDelivered] = useState(null);
 
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -90,7 +91,6 @@ const Bills = () => {
       search: debouncedSearch,
     };
 
-    console.log("Fetching bills with params:", params);
     dispatch(fetchBills(params));
   }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
@@ -105,6 +105,34 @@ const Bills = () => {
   const handleViewBill = (id) => {
     navigate(`/bill/view/${id}`);
   };
+
+  const handleChallan = (id) => {
+    navigate(`/bill/challan/${id}`);
+  };
+
+  const handleMarkDeliverdBill = async (id) => {
+    setMarkingDelivered(id);
+    try {
+      await dispatch(markAsDelivered(id)).unwrap();
+
+      // Refresh the bills list
+      await dispatch(fetchBills({
+        pageIndex: pagination.pageIndex,
+        pageLimit: pagination.pageSize,
+        search: debouncedSearch,
+      }));
+
+      // Optional: Show success message
+      // successMessage("Bill marked as delivered successfully");
+    } catch (error) {
+      console.error("Mark as delivered failed:", error);
+      // errorMessage("Failed to mark bill as delivered");
+    } finally {
+      setMarkingDelivered(null);
+    }
+  };
+
+
 
   const handleDelete = async (id) => {
     try {
@@ -242,38 +270,45 @@ const Bills = () => {
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="Mark as Delivered">
-              <IconButton
-                color="success"
-                onClick={() => handleDeliveredBill(row.original.id)}
-              >
-                <MdLocalShipping size={18} />
-                {/* or <FaTruck size={18} /> */}
-                {/* or <MdCheckCircle size={18} /> */}
-              </IconButton>
-            </Tooltip>
-            {row.original.status !== 2 && (
-              <Tooltip title="Edit">
+            {(row.original.status === 2) && (
+              <Tooltip title="Mark as Delivered">
                 <IconButton
-                  color="primary"
-                  onClick={() => handleEditBill(row.original.id)}
+                  color="success"
+                  onClick={() => handleMarkDeliverdBill(row.original.id)}
+                  disabled={markingDelivered === row.original.id}
                 >
-                  <BiSolidEditAlt size={16} />
+                  {markingDelivered === row.original.id ? (
+                    <CircularProgress size={18} />
+                  ) : (
+                    <MdLocalShipping size={18} />
+                  )}
                 </IconButton>
               </Tooltip>
             )}
-            {row.original.status !== 2 && (
-              <Tooltip title="Delete">
-                <IconButton
-                  color="error"
-                  onClick={() => {
-                    setOpenDelete(true);
-                    setDeleteRow(row.original.id);
-                  }}
-                >
-                  <RiDeleteBinLine size={16} />
-                </IconButton>
-              </Tooltip>
+            {(row.original.status !== 2 && row.original.status !== 3) && (
+              <>
+                <Tooltip title="Edit">
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditBill(row.original.id)}
+                  >
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Delete">
+                  <IconButton
+                    color="error"
+                    onClick={() => {
+                      setOpenDelete(true);
+                      setDeleteRow(row.original.id);
+                    }}
+                  >
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+                
+              </>
             )}
           </Box>
         ),

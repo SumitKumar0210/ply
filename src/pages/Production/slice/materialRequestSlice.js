@@ -81,7 +81,7 @@ export const approveRequest = createAsyncThunk(
   "materialRequest/approveRequest",
   async (id, { rejectWithValue }) => {
     try {
-      const res = await api.post(`admin/production-order/approve-all-material-request`, {
+      const res = await api.post(`admin/production-order/approve-material-request`, {
         id: id,
         status: "1",
       });
@@ -144,12 +144,12 @@ const materialRequestSlice = createSlice({
       // -------------------------
       .addCase(approveRequest.fulfilled, (state, action) => {
         const updated = action.payload;
-        if (!updated) return;
+        // if (!updated) return;
 
-        // Update specific request item in Redux state
-        state.data = state.data.map((item) =>
-          item.id === updated.id ? updated : item
-        );
+        // // Update specific request item in Redux state
+        // state.data = state.data.map((item) =>
+        //   item.id === updated.id ? updated : item
+        // );
       });
   },
 });

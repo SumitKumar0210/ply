@@ -39,24 +39,24 @@ export const fetchActiveCustomers = createAsyncThunk(
 // Fetch active customers with search and pagination
 export const fetchAllCustomersWithSearch = createAsyncThunk(
   "customer/fetchAllCustomersWithSearch",
-  async (params = {}, { rejectWithValue }) => {
+  async ({ pageIndex = 1, pageLimit = 10, search = "", active="" }, { rejectWithValue }) => {
     try {
-      const {
-        page = params.pageIndex ?? 1,
-        limit = params.pageLimit ?? 10,
-        search = params.search ?? ""
-      } = params;
-
       const res = await api.post("admin/customer/search", {
-        params: { status: 1, page, limit, search }
+        page: pageIndex,
+        limit: pageLimit,
+        search: search,
+        active:active,
       });
-      console.log()
+
+      const response = res.data.data || {};
+
       return {
-        data: Array.isArray(res.data.data.data) ? res.data.data.data : [],
-        total: res.data.data.total || 0,
-        currentPage: res.data.data.current_page || page,
-        perPage: res.data.data.per_page || limit,
+        data: Array.isArray(response.data) ? response.data : [],
+        total: response.total || 0,
+        currentPage: response.current_page || pageIndex,
+        perPage: response.per_page || pageLimit,
       };
+
     } catch (error) {
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
@@ -64,6 +64,7 @@ export const fetchAllCustomersWithSearch = createAsyncThunk(
     }
   }
 );
+
 
 // Add customer
 export const addCustomer = createAsyncThunk(

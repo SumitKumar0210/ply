@@ -24,7 +24,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import api from "../../api";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
-import { useAuth } from "../../context/AuthContext"; 
+import { useAuth } from "../../context/AuthContext";
 
 const PublicQuoteDetailsView = () => {
   const { link } = useParams();
@@ -162,7 +162,7 @@ const PublicQuoteDetailsView = () => {
     }
   };
 
-  // Approve Quotation
+  // Approve Quotation 
   const approveQuotation = async () => {
     if (!quotationDetails?.id) {
       setSnackbar({
@@ -176,9 +176,16 @@ const PublicQuoteDetailsView = () => {
     try {
       setApproving(true);
 
-      const response = await api.post(`admin/quotation-order/status-update`, {
+      const response = await api.post(`by-customer-status-update`, {
         id: quotationDetails.id,
       });
+
+      // Update state immediately after successful response
+      setQuotationDetails((prev) => ({
+        ...prev,
+        status: "2", // Set to approved status
+        approved_at: new Date().toISOString(),
+      }));
 
       setSnackbar({
         open: true,
@@ -186,11 +193,8 @@ const PublicQuoteDetailsView = () => {
         severity: "success",
       });
 
-      setQuotationDetails((prev) => ({
-        ...prev,
-        status: "2",
-        approved_at: new Date().toISOString(),
-      }));
+      // Fetch updated details from server
+      await fetchQuotationDetails();
 
       return response.data;
     } catch (err) {
@@ -209,6 +213,7 @@ const PublicQuoteDetailsView = () => {
     }
   };
 
+  // Submit Edit Request 
   const submitEditRequest = async () => {
     if (!editReason.trim()) {
       setSnackbar({
@@ -227,14 +232,25 @@ const PublicQuoteDetailsView = () => {
         reason: editReason,
       });
 
+      // Update status to edit requested (status "3")
+      setQuotationDetails((prev) => ({
+        ...prev,
+        status: "3", // Set to edit requested status
+        edit_requested_at: new Date().toISOString(),
+      }));
+
       setSnackbar({
         open: true,
         message: "Edit request sent successfully!",
         severity: "success",
       });
 
-      handleCloseEditDialog(); // close modal
-      setEditReason(""); // reset
+      handleCloseEditDialog();
+      setEditReason("");
+
+      // Fetch updated details from server
+      await fetchQuotationDetails();
+
     } catch (error) {
       console.error("Edit request error:", error);
       setSnackbar({
@@ -450,25 +466,40 @@ const PublicQuoteDetailsView = () => {
             color="primary"
             startIcon={<MdEdit />}
             onClick={handleEditRequest}
-            disabled={approving || quotationDetails.status == "2" || quotationDetails.status == "3"}
+            disabled={
+              approving ||
+              submittingEditRequest ||
+              quotationDetails?.status == "2" ||
+              quotationDetails?.status == "3"
+            }
             size="small"
             sx={{ minWidth: { xs: "100px", sm: "120px" } }}
           >
-            Edit Request
+            {submittingEditRequest ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : quotationDetails?.status === "3" ? (
+              "Edit Requested"
+            ) : (
+              "Edit Request"
+            )}
           </Button>
-
 
           <Button
             variant="contained"
             color="success"
             onClick={handleApprove}
-            disabled={approving || quotationDetails.status == "2" || quotationDetails.status == "3"}
+            disabled={
+              approving ||
+              submittingEditRequest ||
+              quotationDetails?.status == "2" ||
+              quotationDetails?.status == "3"
+            }
             size="small"
             sx={{ minWidth: { xs: "100px", sm: "120px" } }}
           >
             {approving ? (
               <CircularProgress size={20} color="inherit" />
-            ) : quotationDetails.status === "2" ? (
+            ) : quotationDetails?.status === "2" ? (
               "Approved"
             ) : (
               "Approve"

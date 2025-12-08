@@ -8,6 +8,12 @@ import {
   Button,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogContentText,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
 } from "@mui/material";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import {
@@ -37,18 +43,21 @@ const Product = () => {
   const tableContainerRef = useRef(null);
   const [openProductDialog, setOpenProductDialog] = useState(false);
   const [editProductData, setEditProductData] = useState(null);
+  const [openDelete, setOpenDelete] = useState(false);
+  const [deleteRow, setDeleteRow] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     dispatch(fetchProducts());
   }, [dispatch]);
 
   // Load groups when dialog opens
-  useEffect(() => {
-    if (openProductDialog) {
-      dispatch(fetchActiveGroup());
-      dispatch(fetchActiveProductTypes());
-    }
-  }, [openProductDialog, dispatch]);
+  // useEffect(() => {
+  //   if (openProductDialog) {
+  //     dispatch(fetchActiveGroup());
+  //     dispatch(fetchActiveProductTypes());
+  //   }
+  // }, [openProductDialog, dispatch]);
 
   const handleAddProduct = () => {
     setEditProductData(null);
@@ -65,8 +74,13 @@ const Product = () => {
     setEditProductData(null);
   };
 
-  const handleDelete = (id) => {
-    dispatch(deleteProduct(id));
+  // Delete
+  const handleDelete = async (id) => {
+    setIsDeleting(true);
+    await dispatch(deleteProduct(id));
+    setIsDeleting(false);
+    setOpenDelete(false);
+    setDeleteRow(null);
   };
 
   const columns = useMemo(
@@ -130,7 +144,9 @@ const Product = () => {
             <Tooltip title="Delete">
               <IconButton
                 color="error"
-                onClick={() => handleDelete(row.original.id)}
+                onClick={() =>{
+                  setOpenDelete(true),
+                  setDeleteRow(row.original)}}
               >
                 <RiDeleteBinLine size={16} />
               </IconButton>
@@ -181,7 +197,7 @@ const Product = () => {
         <Grid size={12}>
           <Paper
             elevation={0}
-            sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff" }}
+            sx={{ width: "100%", overflowX: "auto", backgroundColor: "#fff" }}
             ref={tableContainerRef}
           >
             <MaterialReactTable
@@ -203,7 +219,6 @@ const Product = () => {
                   width: "100%",
                   backgroundColor: "#fff",
                   overflowX: "auto",
-                  minWidth: "1200px",
                 },
               }}
               muiTableBodyCellProps={{
@@ -225,7 +240,7 @@ const Product = () => {
                     p: 1,
                   }}
                 >
-                   <Typography variant="h6" className='page-title'>
+                  <Typography variant="h6" className='page-title'>
                     Products
                   </Typography>
 
@@ -263,7 +278,30 @@ const Product = () => {
         onClose={handleCloseDialog}
         editData={editProductData}
       />
-      
+
+      {/* Delete Modal */}
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+        <DialogTitle>{"Delete this Product?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleDelete(deleteRow?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </>
   );
 };

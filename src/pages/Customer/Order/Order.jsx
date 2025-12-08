@@ -116,11 +116,6 @@ const Order = () => {
   const normalizedOrders = Array.isArray(orders) ? orders : [];
   const normalizedTotal = typeof totalRecords === 'number' ? totalRecords : 0;
 
-  console.log("Orders from Redux:", orders);
-  console.log("Normalized Orders:", normalizedOrders);
-  console.log("Total Records:", normalizedTotal);
-  console.log("Loading:", loading);
-
   // Generate a unique key based on data to force table re-render when data changes
   const tableKey = `${normalizedOrders.length}-${normalizedTotal}-${debouncedSearch}`;
 
@@ -274,14 +269,18 @@ const Order = () => {
                 <MdOutlineRemoveRedEye size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleEditClick(row.original.id)}
-              >
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
+            {row.original.status === 0
+              && (
+                <Tooltip title="Edit">
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditClick(row.original.id)}
+                  >
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+
           </Box>
         ),
       },
@@ -297,7 +296,7 @@ const Order = () => {
     }
 
     const headers = ["Order No.", "Customer Name", "Dated", "Item Ordered", "Commencement Date", "Delivered Date", "Status"];
-    
+
     const rows = normalizedOrders.map((row) => {
       const orderNo = row.batch_no || "";
       const customerName = row.customer?.name || "N/A";
@@ -306,7 +305,7 @@ const Order = () => {
       const commencementDate = handleDateFormate(row.commencement_date);
       const deliveredDate = handleDateFormate(row.delivery_date);
       const status = row.status === 0 ? "Pending" : `In Production (${row.production_product_count || 0})`;
-      
+
       return [
         `"${orderNo}"`,
         `"${customerName}"`,
@@ -321,7 +320,7 @@ const Order = () => {
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement("a");
     link.href = url;
     link.download = `Orders_${new Date().toISOString().split('T')[0]}.csv`;
@@ -438,7 +437,7 @@ const Order = () => {
               >
                 <Typography variant="h6" className='page-title'>
                   Order List
-                 
+
                 </Typography>
 
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -473,13 +472,13 @@ const Order = () => {
                   </Tooltip>
 
                   <MRT_ToolbarInternalButtons table={table} />
-                  
+
                   <Tooltip title="Print">
                     <IconButton onClick={handlePrint}>
                       <FiPrinter size={20} />
                     </IconButton>
                   </Tooltip>
-                  
+
                   <Tooltip title="Download CSV">
                     <IconButton onClick={downloadCSV}>
                       <BsCloudDownload size={20} />

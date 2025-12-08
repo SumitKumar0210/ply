@@ -43,7 +43,6 @@ const EditOrder = () => {
   // Form state
   const [formData, setFormData] = useState({
     selectedQuote: null,
-    selectedSupervisor: null,
     projectStartDate: null,
     edd: null,
     items: []
@@ -130,7 +129,6 @@ const EditOrder = () => {
 
       setFormData({
         selectedQuote: matchedQuote,
-        selectedSupervisor: matchedSupervisor,
         projectStartDate: orderData.commencement_date ? new Date(orderData.commencement_date) : null,
         edd: orderData.delivery_date ? new Date(orderData.delivery_date) : null,
         items: formattedItems,
@@ -228,17 +226,13 @@ const EditOrder = () => {
 
   // Form validation
   const validateForm = () => {
-    const { selectedQuote, selectedSupervisor, projectStartDate, edd, items } = formData;
+    const { selectedQuote, projectStartDate, edd, items } = formData;
 
-    if (!selectedQuote) {
+    if (selectedQuote.id && !selectedQuote) {
       alert("Please select a quotation");
       return false;
     }
 
-    if (!selectedSupervisor) {
-      alert("Please select a supervisor");
-      return false;
-    }
 
     if (!projectStartDate) {
       alert("Please select project start date");
@@ -288,14 +282,19 @@ const EditOrder = () => {
     setLoadingState(prev => ({ ...prev, submitting: true }));
 
     try {
-      const { selectedQuote, selectedSupervisor, projectStartDate, edd, items } = formData;
+      const { selectedQuote, projectStartDate, edd, items } = formData;
 
+      const getOriginalQty = (item) => {
+        if (formData.selectedQuote?.id) {
+          return item.original_qty;
+        }
+        return item.production_qty;
+      };
       const orderPayload = {
         id: orderId,
         quotation_id: selectedQuote.id,
         batch_no: selectedQuote.batch_no,
         customer_id: selectedQuote.customer?.id ?? formData.customer?.id,
-        supervisor_id: selectedSupervisor?.id,
         commencement_date: projectStartDate, // Changed from project_start_date
         delivery_date: edd, // Changed from edd
         items: items.map(item => ({
@@ -304,7 +303,7 @@ const EditOrder = () => {
           name: item.name,
           model: item.model,
           unique_code: item.unique_code,
-          original_qty: item.original_qty,
+          original_qty: getOriginalQty(item),
           production_qty: item.production_qty,
           size: item.size,
           document: item.document,
@@ -327,7 +326,7 @@ const EditOrder = () => {
   const loadingMessage = loadingState.orderData ? "Loading order data..." :
     loadingState.quotation ? "Loading quotation..." :
       "Updating order...";
-
+  console.log(formData);
   return (
     <>
       {/* Loading Backdrop */}
@@ -352,67 +351,66 @@ const EditOrder = () => {
       <Card>
         <CardContent>
           {/* Selection Controls */}
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3, }}>
-            <Autocomplete
-              options={quoteList}
-              value={formData.selectedQuote}
-              getOptionLabel={(option) => `Quote ${option.batch_no}`}
-              loading={quoteLoading}
-              onChange={(_, newValue) => handleQuoteSelect(newValue)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Select Quote"
-                  variant="outlined"
-                  size="small"
-                  InputProps={{
-                    ...params.InputProps,
-                    endAdornment: (
-                      <>
-                        {quoteLoading && <CircularProgress size={20} />}
-                        {params.InputProps.endAdornment}
-                      </>
-                    )
-                  }}
-                />
-              )}
-              sx={{ width: 300 }}
-            />
-
-            <Autocomplete
-              options={supervisorList}
-              value={formData.selectedSupervisor}
-              getOptionLabel={(option) => option?.name || ""}
-              onChange={(_, newValue) => setFormData(prev => ({ ...prev, selectedSupervisor: newValue }))}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Select Supervisor"
-                  variant="outlined"
-                  size="small"
-                />
-              )}
-              sx={{ width: 300 }}
-            />
-
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label="Project Start Date"
-                value={formData.projectStartDate}
-                onChange={(newValue) => setFormData(prev => ({ ...prev, projectStartDate: newValue }))}
-                disablePast
-                slotProps={{ textField: { size: 'small', sx: { width: 300 } } }}
+          <Grid size={12} sx={{ pt: 2, mb: 3 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 2,
+                flexWrap: 'wrap',
+              }}
+            >
+              <Autocomplete
+                options={quoteList}
+                value={formData.selectedQuote}
+                getOptionLabel={(option) => `Quote ${option.batch_no}`}
+                disabled={formData.selectedQuote?.id == null}
+                loading={quoteLoading}
+                onChange={(_, newValue) => handleQuoteSelect(newValue)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select Quote"
+                    variant="outlined"
+                    size="small"
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {quoteLoading && <CircularProgress size={20} />}
+                          {params.InputProps.endAdornment}
+                        </>
+                      )
+                    }}
+                  />
+                )}
+                sx={{ width: 300 }}
               />
 
-              <DatePicker
-                label="EDD"
-                value={formData.edd}
-                onChange={(newValue) => setFormData(prev => ({ ...prev, edd: newValue }))}
-                disablePast
-                slotProps={{ textField: { size: 'small', sx: { width: 300 } } }}
-              />
-            </LocalizationProvider>
-          </Box>
+
+
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <DatePicker
+                    label="Project Start Date"
+                    value={formData.projectStartDate}
+                    onChange={(newValue) => setFormData(prev => ({ ...prev, projectStartDate: newValue }))}
+                    disablePast
+                    slotProps={{ textField: { size: 'small', sx: { width: 300 } } }}
+                  />
+
+                  <DatePicker
+                    label="EDD"
+                    value={formData.edd}
+                    onChange={(newValue) => setFormData(prev => ({ ...prev, edd: newValue }))}
+                    disablePast
+                    slotProps={{ textField: { size: 'small', sx: { width: 300 } } }}
+                  />
+                </Box>
+              </LocalizationProvider>
+            </Box>
+          </Grid>
 
           {/* Customer Information */}
           {(formData.selectedQuote?.customer || formData.customer) && (
@@ -437,9 +435,11 @@ const EditOrder = () => {
                     <Th>Product Name</Th>
                     <Th>Model</Th>
                     <Th>Unique Code</Th>
-                    <Th>Qty</Th>
+                    {formData.selectedQuote?.id !== null && (
+                      <Th>Qty</Th>
+                    )}
                     {previousPOData.length > 0 && <Th>Qty in Production</Th>}
-                    <Th>Production Qty</Th>
+                    <Th> {formData.selectedQuote?.id == null ? 'Qty' : 'Production Qty'}</Th>
                     <Th>Size</Th>
                     <Th>Document</Th>
                     <Th>Start Date</Th>
@@ -460,7 +460,9 @@ const EditOrder = () => {
                         <Td>{item.name}</Td>
                         <Td>{item.model}</Td>
                         <Td>{item.unique_code}</Td>
-                        <Td>{item.original_qty}</Td>
+                        {formData.selectedQuote?.id !== null && (
+                          <Td>{item.original_qty}</Td>
+                        )}
                         {previousPOData?.length > 0 && (
                           <Td style={{ textAlign: "center" }}>
                             {prevMatch ? (

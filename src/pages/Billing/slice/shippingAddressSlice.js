@@ -37,7 +37,7 @@ export const deleteShippingAddress = createAsyncThunk(
   "shippingAddress/delete",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`/admin/shipping/${id}`);
+      await api.post(`/admin/shipping/delete/${id}`);
       successMessage("Shipping address deleted!");
       return id;
     } catch (error) {

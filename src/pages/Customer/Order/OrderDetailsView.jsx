@@ -620,68 +620,81 @@ const OrderDetailsView = () => {
                             <Td>{item.start_date}</Td>
                             <Td>{item.end_date}</Td>
                             <Td>
-                              {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.NOT_STARTED && (
-                                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                  {item.length > 1 && (
-                                    <Tooltip title="Start Production">
-                                      <IconButton
-                                        color="warning"
-                                        onClick={() =>
-                                          handleApproveSingle(
-                                            matchedProduct.po_id,
-                                            matchedProduct.group,
-                                            matchedProduct.product_id
-                                          )
-                                        }
-                                      >
-                                        <AiOutlineSetting size={16} />
-                                      </IconButton>
-                                    </Tooltip>
-                                  )}
+                              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                {/* Show buttons only when PRODUCT status is 0 (NOT_STARTED) */}
+                                {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.NOT_STARTED && (
+                                  <>
+                                    {/* Start Production Button - show only when multiple items */}
+                                    {items.length > 1 && (
+                                      <Tooltip title="Start Production">
+                                        <IconButton
+                                          color="warning"
+                                          onClick={() =>
+                                            handleApproveSingle(
+                                              matchedProduct.po_id,
+                                              matchedProduct.group,
+                                              matchedProduct.product_id
+                                            )
+                                          }
+                                        >
+                                          <AiOutlineSetting size={16} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
 
+                                    {/* Edit Production Qty or Save/Cancel */}
+                                    {isEditing ? (
+                                      <>
+                                        <Button
+                                          size="small"
+                                          variant="contained"
+                                          color="success"
+                                          onClick={() => handleSaveEdit(item.id)}
+                                        >
+                                          Save
+                                        </Button>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          onClick={() => handleCancelEdit(item.id)}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <Tooltip title="Edit Production Qty">
+                                        <IconButton
+                                          color="primary"
+                                          onClick={() => handleEditClick(item.id)}
+                                        >
+                                          <BiSolidEditAlt size={16} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
+                                  </>
+                                )}
 
-                                  {isEditing ? (
-                                    <>
-                                      <Button
-                                        size="small"
-                                        variant="contained"
-                                        color="success"
-                                        onClick={() => handleSaveEdit(item.id)}
-                                      >
-                                        Save
-                                      </Button>
-                                      <Button
-                                        size="small"
-                                        variant="outlined"
-                                        onClick={() => handleCancelEdit(item.id)}
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <Tooltip title="Edit Production Qty">
-                                      <IconButton
-                                        color="primary"
-                                        onClick={() => handleEditClick(item.id)}
-                                      >
-                                        <BiSolidEditAlt size={16} />
-                                      </IconButton>
-                                    </Tooltip>
-                                  )}
-                                </Box>
-                              )}
-                              {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.IN_PROGRESS && (
-                                <Tooltip title="View Production Stages">
-                                  <IconButton
-                                    color="info"
-                                    onClick={() =>
-                                      handleViewStages(matchedProduct.product_id, matchedProduct.group)
-                                    }
-                                  >
-                                    <AiOutlineEye size={18} />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
+                                {/* Show View Stages button when production is IN_PROGRESS (status = 1) */}
+                                {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.IN_PROGRESS && (
+                                  <Tooltip title="View Production Stages">
+                                    <IconButton
+                                      color="info"
+                                      onClick={() =>
+                                        handleViewStages(matchedProduct.product_id, matchedProduct.group)
+                                      }
+                                    >
+                                      <AiOutlineEye size={18} />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+
+                                {/* Show message when no matched product */}
+                                {!matchedProduct && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    —
+                                  </Typography>
+                                )}
+                              </Box>
                             </Td>
                           </Tr>
                         );

@@ -18,7 +18,7 @@ import { BsCloudDownload } from "react-icons/bs";
 import { IoMdRefresh } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { fetchActiveCustomers } from "../../Users/slices/customerSlice";
+import { fetchAllCustomersWithSearch } from "../../Users/slices/customerSlice";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -57,11 +57,11 @@ const Customer = () => {
   // Redux State
   const {
     data: customerData = [],
-    total: totalRows = 0,
+    totalCount: totalRows = 0,
     loading = false,
   } = useSelector((state) => state.customer);
-  console.log(customerData)
-
+  
+console.log(totalRows,customerData)
   // Initialize state from URL params
   const getInitialPage = useCallback(() => {
     const page = searchParams.get("page");
@@ -103,13 +103,14 @@ const Customer = () => {
     const params = {
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
+      active: true,
     };
 
     if (globalFilter) {
       params.search = globalFilter;
     }
 
-    dispatch(fetchActiveCustomers(params));
+    dispatch(fetchAllCustomersWithSearch(params));
     updateURLParams(pagination.pageIndex, pagination.pageSize, globalFilter);
   }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter, updateURLParams]);
 

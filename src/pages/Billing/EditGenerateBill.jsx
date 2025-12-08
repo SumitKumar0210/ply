@@ -1118,7 +1118,7 @@ const EditBill = () => {
                         >
                           Cancel
                         </Button>
-                        <Button
+                        {/* <Button
                           variant="outlined"
                           color="secondary"
                           onClick={() => handleUpdateBill(values, true)}
@@ -1132,11 +1132,12 @@ const EditBill = () => {
                           }
                         >
                           {updating ? "Saving..." : "Save as Draft"}
-                        </Button>
+                        </Button> */}
                         <Button
                           type="submit"
                           variant="contained"
                           color="primary"
+                          onClick={() => handleUpdateBill(values, true)}
                           disabled={
                             updating || items.length === 0 || isSubmitting
                           }

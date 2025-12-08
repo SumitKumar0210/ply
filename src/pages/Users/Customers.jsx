@@ -24,8 +24,6 @@ import { BsCloudDownload } from "react-icons/bs";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
-
-// Import the reusable component
 import CustomerFormDialog, { getInitialCustomerValues } from "../../components/Customer/CustomerFormDialog";
 
 import { useDispatch, useSelector } from "react-redux";
@@ -52,7 +50,9 @@ const Customers = () => {
     pageIndex: 0,
     pageSize: 10,
   });
+  const [globalFilter, setGlobalFilter] = useState("");
   const tableContainerRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
   const { data: customerData = [], loading, totalCount = 0 } = useSelector(
     (state) => state.customer
@@ -61,20 +61,43 @@ const Customers = () => {
 
   const dispatch = useDispatch();
 
-  // Fetch customers with pagination
+  // Fetch customers with pagination and search
   useEffect(() => {
-    dispatch(
-      fetchAllCustomersWithSearch({
-        page: pagination.pageIndex + 1,
-        limit: pagination.pageSize,
-      })
-    );
-  }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Debounce search by 500ms
+    searchTimeoutRef.current = setTimeout(() => {
+      dispatch(
+        fetchAllCustomersWithSearch({
+          page: pagination.pageIndex + 1,
+          limit: pagination.pageSize,
+          search: globalFilter || undefined, // Only send if not empty
+        })
+      );
+    }, 500);
+
+    // Cleanup
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
 
   // Fetch states once on mount
   useEffect(() => {
     dispatch(fetchStates());
   }, [dispatch]);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    if (globalFilter !== "") {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  }, [globalFilter]);
 
   // Handle add customer
   const handleAdd = useCallback(async (values, { resetForm }) => {
@@ -127,12 +150,16 @@ const Customers = () => {
 
   // Handle edit submit
   const handleEditSubmit = useCallback(async (values, { resetForm }) => {
-    const res = await dispatch(
-      updateCustomer({ updated: { id: editData.id, ...values } })
-    );
-    if (res.error) return;
-    resetForm();
-    handleEditClose();
+    try {
+      const res = await dispatch(
+        updateCustomer({ updated: { id: editData.id, ...values } })
+      );
+      if (res.error) return;
+      resetForm();
+      handleEditClose();
+    } catch (error) {
+      console.error("Edit customer failed:", error);
+    }
   }, [dispatch, editData, handleEditClose]);
 
   // Handle status change
@@ -141,7 +168,7 @@ const Customers = () => {
     dispatch(statusUpdate({ ...row, status: newStatus }));
   }, [dispatch]);
 
-  // Table Columns
+  // Table Columns - Memoized to prevent re-renders
   const columns = useMemo(
     () => [
       { accessorKey: "name", header: "Name", size: 150 },
@@ -209,6 +236,7 @@ const Customers = () => {
     const headers = columns
       .filter((col) => col.accessorKey && col.id !== "actions")
       .map((col) => col.header);
+    
     const rows = customerData.map((row) =>
       columns
         .filter((col) => col.accessorKey && col.id !== "actions")
@@ -217,10 +245,12 @@ const Customers = () => {
           if (col.accessorKey === "state_id") {
             value = row.state?.name || "N/A";
           }
-          return `"${value ?? ""}"`;
+          // Escape quotes and wrap in quotes
+          return `"${String(value ?? "").replace(/"/g, '""')}"`;
         })
         .join(",")
     );
+    
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -236,18 +266,47 @@ const Customers = () => {
   // Print handler
   const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
+    
+    const printWindow = window.open('', '_blank');
+    const tableHTML = tableContainerRef.current.innerHTML;
+    
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Customers List</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            @media print {
+              button, .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Customers List</h2>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
   }, []);
 
   // Close delete dialog
   const closeDeleteDialog = useCallback(() => {
     setDeleteDialog({ open: false, id: null, name: "", loading: false });
   }, []);
+
+  // Close modals handlers
+  const handleCloseAdd = useCallback(() => setOpen(false), []);
+  const handleOpenAdd = useCallback(() => setOpen(true), []);
 
   return (
     <>
@@ -262,7 +321,7 @@ const Customers = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={() => setOpen(true)}
+          onClick={handleOpenAdd}
         >
           Add Customer
         </Button>
@@ -287,14 +346,17 @@ const Customers = () => {
             getRowId={(row) => row.id}
             rowCount={totalCount}
             manualPagination
+            manualFiltering
             onPaginationChange={setPagination}
+            onGlobalFilterChange={setGlobalFilter}
             state={{
               isLoading: loading,
               pagination,
+              globalFilter,
             }}
             enableTopToolbar
-            enableColumnFilters
-            enableSorting
+            enableColumnFilters={false}
+            enableSorting={false}
             enablePagination
             enableBottomToolbar
             enableGlobalFilter
@@ -324,7 +386,7 @@ const Customers = () => {
                   p: 1,
                 }}
               >
-                 <Typography variant="h6" className='page-title'>
+                <Typography variant="h6" className='page-title'>
                   Customers
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -350,7 +412,7 @@ const Customers = () => {
       {/* Add Customer Modal */}
       <CustomerFormDialog
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={handleCloseAdd}
         title="Add Customer"
         initialValues={getInitialCustomerValues()}
         onSubmit={handleAdd}

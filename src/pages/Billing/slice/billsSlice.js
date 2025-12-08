@@ -7,18 +7,17 @@ import { successMessage, errorMessage, getErrorMessage } from "../../../toast";
 // Fetch all bills
 export const fetchBills = createAsyncThunk(
   "bill/fetchBills",
-  async ({ pageIndex = 0, pageLimit = 10, search = "" }, { rejectWithValue }) => {
+  async ({ pageIndex = 0, pageLimit = 10, search = "", dispatch = false }, { rejectWithValue }) => {
     try {
       const res = await api.get("/admin/billing/get-data", {
         params: {
           page: pageIndex + 1,
           limit: pageLimit,
           search: search,
+          dispatch:dispatch,
         }
       });
-      console.log(res.data.data);
-      console.log(res.data);
-
+      
       return {
         data: res.data.data ?? [],
         totalRecords: res.data.total ?? 0,
@@ -46,14 +45,15 @@ export const fetchActiveBills = createAsyncThunk(
 
 
 export const dispatchProduct = createAsyncThunk(
-  "bill/fetchActiveBills",
+  "bill/dispatchProduct",
   async (values, { rejectWithValue }) => {
     try {
       const res = await api.post("/admin/billing/dispatch-product",values);
       return res.data;
     } catch (error) {
+      console.log(error.response.data.errors);
       errorMessage(getErrorMessage(error));
-      return rejectWithValue(error.res?.data || error.message);
+      return rejectWithValue(error.response.data.errors || error.message);
     }
   }
 );
@@ -109,7 +109,7 @@ export const deleteBill = createAsyncThunk(
   "bill/deleteBill",
   async (id, { rejectWithValue }) => {
     try {
-      await api.delete(`/admin/billing/${id}`);
+      await api.post(`/admin/billing/delete/${id}`);
       successMessage("Bill deleted successfully!");
       return id;
     } catch (error) {
@@ -148,6 +148,19 @@ export const fetchBillsByCustomer = createAsyncThunk(
   }
 );
 
+export const markAsDelivered = createAsyncThunk(
+  "bill/markAsDelivered",
+  async (id, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`/admin/billing/mark-as-delivered`,{id:id});
+      return res.data;
+    } catch (error) {
+      errorMessage(getErrorMessage(error));
+      return rejectWithValue(error.res?.data || error.message);
+    }
+  }
+);
+
 const billsSlice = createSlice({
   name: "bill",
   initialState: {
@@ -157,6 +170,7 @@ const billsSlice = createSlice({
     totalRecords: 0,
     loading: false,
     error: null,
+    errors: [],
   },
   reducers: {
     clearCurrentBill: (state) => {
@@ -164,6 +178,9 @@ const billsSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
+    },
+    clearErrors: (state) => {
+      state.errors = [];
     },
   },
   extraReducers: (builder) => {
@@ -223,6 +240,13 @@ const billsSlice = createSlice({
       .addCase(addBill.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+
+      // dispatchProduct bill
+      
+      .addCase(dispatchProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.errors = action.payload;
       })
 
       // Update bill
@@ -302,6 +326,6 @@ const billsSlice = createSlice({
   },
 });
 
-export const { clearCurrentBill, clearError } = billsSlice.actions;
+export const { clearCurrentBill, clearError, clearErrors } = billsSlice.actions;
 
 export default billsSlice.reducer;

@@ -31,6 +31,8 @@ import { IoConstructOutline } from "react-icons/io5";
 import { TbUsersPlus } from "react-icons/tb";
 import { useAuth } from "../../context/AuthContext";
 import { RiFlowChart } from "react-icons/ri";
+import { BsBoxSeam } from "react-icons/bs";
+
 
 import Logo from "../../assets/images/logo.svg";
 
@@ -56,6 +58,7 @@ const menuSections = [
           { text: "Material Requests", to: "/production/product-request", icon: <MdOutlineDashboard /> },
           { text: "Vendor Invoice", to: "/vendor/invoice", icon: <LiaFileInvoiceSolid /> },
           { text: "Vendor list", to: "/vendor/list", icon: <LuTable /> },
+          { text: "Stock", to: "/stocks", icon: <BsBoxSeam /> },
         ],
       },
       {
@@ -82,6 +85,7 @@ const menuSections = [
         icon: <FiUsers />,
         children: [
           { text: "Bills", to: "/bills", icon: <RiFlowChart /> },
+          { text: "Dispatched Product", to: "/bill/dispatched-product", icon: <RiFlowChart /> },
           
         ],
       },

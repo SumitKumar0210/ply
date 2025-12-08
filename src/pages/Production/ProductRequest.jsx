@@ -59,16 +59,16 @@ const ProductRequest = () => {
 
 
   useEffect(() => {
- 
+
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(globalFilter);
-    }, 500); 
+    }, 500);
 
-   
+
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -116,22 +116,30 @@ const ProductRequest = () => {
 
   const handleConfirmApprove = async () => {
     if (!selectedRow) return;
-    
+
     setIsApproving(true);
     try {
-      const res = await dispatch(approveRequest(selectedRow.id));
-      if (!res.error) {
-        setOpenApprove(false);
-        setSelectedRow(null);
-        // Refresh data
-        dispatch(
-          fetchAllRequestItems({
-            pageIndex: pagination.pageIndex,
-            pageLimit: pagination.pageSize,
-            search: debouncedSearch || undefined,
-          })
-        );
+      const res = await dispatch(approveRequest(selectedRow.uuid));
+
+
+      if (res.error) {
+        console.error("Approval failed:", res.error);
+        return;
       }
+
+      setOpenApprove(false);
+      setSelectedRow(null);
+                                 
+      await dispatch(
+        fetchAllRequestItems({
+          pageIndex: pagination.pageIndex,
+          pageLimit: pagination.pageSize,
+          ...(debouncedSearch && { search: debouncedSearch }),
+        })
+      );
+
+    } catch (error) {
+      console.error("Error approving request:", error);
     } finally {
       setIsApproving(false);
     }
@@ -330,7 +338,7 @@ const ProductRequest = () => {
                   p: 1,
                 }}
               >
-                 <Typography variant="h6" className='page-title'>
+                <Typography variant="h6" className='page-title'>
                   Material Request List
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -363,7 +371,7 @@ const ProductRequest = () => {
         <DialogTitle>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Typography variant="h6">Material Request Details</Typography>
-            {selectedRow?.material_request?.[0]?.status !== undefined && 
+            {selectedRow?.material_request?.[0]?.status !== undefined &&
               getStatusChip(selectedRow.material_request[0].status)}
           </Box>
         </DialogTitle>
@@ -489,8 +497,8 @@ const ProductRequest = () => {
       </Dialog>
 
       {/* Approve Confirmation Dialog */}
-      <Dialog 
-        open={openApprove} 
+      <Dialog
+        open={openApprove}
         onClose={() => !isApproving && setOpenApprove(false)}
       >
         <DialogTitle>Approve Material Request</DialogTitle>
@@ -504,7 +512,7 @@ const ProductRequest = () => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button 
+          <Button
             onClick={() => setOpenApprove(false)}
             disabled={isApproving}
           >

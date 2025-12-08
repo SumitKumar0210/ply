@@ -76,6 +76,7 @@ export const getErrorMessage  = (error) => {
    return (
     error.response?.data?.[0] ||
     error.response?.data?.error ||
+    error.response?.data?.errors ||
     error.response?.data?.message ||
     error.message ||
     "Something went wrong"

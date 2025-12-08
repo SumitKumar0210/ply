@@ -293,6 +293,10 @@ const GenerateBill = () => {
             const totals = calculateTotals(values);
 
             const formData = new FormData();
+            if(!deliveryDate){
+                errorMessage('The delivery date is required.')
+                return
+            }
 
             formData.append("customer_id", selectedCustomer.id);
             if (deliveryDate) {
@@ -849,7 +853,7 @@ const GenerateBill = () => {
                                             </Grid>
 
                                             <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 4 }}>
-                                                <Button
+                                                {/* <Button
                                                     variant="outlined"
                                                     color="secondary"
                                                     onClick={() => handleSubmitQuote(values, true)}
@@ -857,7 +861,7 @@ const GenerateBill = () => {
                                                     startIcon={savingDraft ? <CircularProgress size={20} color="inherit" /> : null}
                                                 >
                                                     {savingDraft ? "Saving..." : "Save as Draft"}
-                                                </Button>
+                                                </Button> */}
                                                 <Button
                                                     type="submit"
                                                     variant="contained"

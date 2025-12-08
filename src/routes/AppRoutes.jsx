@@ -56,6 +56,8 @@ import GenerateBill from "../pages/Billing/GenerateBill";
 import EditBill from "../pages/Billing/EditGenerateBill";
 import ViewBill from "../pages/Billing/ViewBill";
 import Challan from "../pages/Billing/Challan";
+import DispatchProduct from "../pages/Billing/DispatchProduct";
+import StockInOut from "../pages/Billing/Stocks";
 
 import Error404 from "../pages/error/404";
 
@@ -124,6 +126,10 @@ const AppRoutes = () => {
       <Route path="/bill/edit-bill/:id" element={<ProtectedRoute><MainLayout><EditBill /></MainLayout></ProtectedRoute>} />
       <Route path="/bill/view/:id" element={<ProtectedRoute><MainLayout><ViewBill /></MainLayout></ProtectedRoute>} />
       <Route path="/bill/challan/:id" element={<ProtectedRoute><MainLayout><Challan /></MainLayout></ProtectedRoute>} />
+      <Route path="/bill/dispatched-product" element={<ProtectedRoute><MainLayout><DispatchProduct /></MainLayout></ProtectedRoute>} />
+
+      {/* stock */}
+      <Route path="/stocks" element={<ProtectedRoute><MainLayout><StockInOut /></MainLayout></ProtectedRoute>} />
 
 
 

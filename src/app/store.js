@@ -36,6 +36,10 @@ import billsReducer from '../pages/Billing/slice/billsSlice';
 import failedQcReducer from '../pages/Production/slice/failedQcSlice';
 import productTypeReducer from '../pages/settings/slices/productTypeSlice';
 import shippingAddressReducer from '../pages/Billing/slice/shippingAddressSlice';
+import paymentReducer from '../pages/Billing/slice/paymentSlice';
+import customerLedgerReducer from '../pages/Customer/slice/customerLedgerSlice';
+import stockReducer from '../pages/Billing/slice/stockSlice';
+
 
 export const store = configureStore({
     reducer: {
@@ -76,5 +80,8 @@ export const store = configureStore({
         failedQc: failedQcReducer,
         productType: productTypeReducer,
         shippingAddress: shippingAddressReducer,
+        payment: paymentReducer,
+        customerLedger: customerLedgerReducer,
+        stock: stockReducer,
     }
 })

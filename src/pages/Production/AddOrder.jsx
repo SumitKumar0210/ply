@@ -48,7 +48,6 @@ const itemValidationSchema = Yup.object({
 const AddOrder = () => {
   const { quotationId } = useParams();
   const [batchNo, setBatchNo] = useState("");
-  const [selectedSupervisor, setSelectedSupervisor] = useState(null);
   const [projectStartDate, setProjectStartDate] = useState(new Date());
   const [edd, setEdd] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -148,11 +147,7 @@ const AddOrder = () => {
 
   // Handle final submission
   const handleSubmit = useCallback(async () => {
-    if (!selectedSupervisor) {
-      errorMessage("Please select a supervisor");
-      return;
-    }
-
+    
     if (!edd) {
       errorMessage("Please select EDD (Expected Delivery Date)");
       return;
@@ -170,7 +165,6 @@ const AddOrder = () => {
         quotation_id: quotationId || null,
         batch_no: batchNo.trim() || null,
         customer_id: null,
-        supervisor_id: selectedSupervisor?.id || null,
         project_start_date: projectStartDate.toISOString(),
         edd: edd.toISOString(),
         items: items.map((item) => ({
@@ -198,7 +192,7 @@ const AddOrder = () => {
     } finally {
       setSaving(false);
     }
-  }, [quotationId, batchNo, selectedSupervisor, projectStartDate, edd, items, dispatch, navigate]);
+  }, [quotationId, batchNo,  projectStartDate, edd, items, dispatch, navigate]);
 
   if (productsLoading || supervisorLoading) {
     return (
@@ -248,37 +242,13 @@ const AddOrder = () => {
                   sx={{ width: 200 }}
                 />
 
-                <Autocomplete
-                  options={user || []}
-                  size="small"
-                  getOptionLabel={(option) => option?.name || ""}
-                  loading={supervisorLoading}
-                  value={selectedSupervisor}
-                  onChange={(event, newValue) => {
-                    setSelectedSupervisor(newValue);
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Select Supervisor"
-                      variant="outlined"
-                      required
-                      InputProps={{
-                        ...params.InputProps,
-                        endAdornment: (
-                          <>
-                            {supervisorLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                            {params.InputProps.endAdornment}
-                          </>
-                        ),
-                      }}
-                    />
-                  )}
-                  sx={{ width: 300 }}
-                />
+                
 
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
-                  <DatePicker
+                  <Box
+                  sx={{ display: 'flex', gap: 2 }}
+                  >
+                    <DatePicker
                     label="Project Start Date"
                     value={projectStartDate}
                     onChange={(newValue) => setProjectStartDate(newValue)}
@@ -294,6 +264,7 @@ const AddOrder = () => {
                       textField: { size: "small", sx: { width: 250 }, required: true },
                     }}
                   />
+                  </Box>
                 </LocalizationProvider>
               </Box>
 

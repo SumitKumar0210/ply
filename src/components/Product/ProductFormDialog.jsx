@@ -19,9 +19,11 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { useDispatch, useSelector } from "react-redux";
 import { addProduct, updateProduct, fetchProducts } from "../../pages/settings/slices/productSlice";
+import { fetchActiveProductTypes } from "../../pages/settings/slices/productTypeSlice";
 import { compressImage } from "../imageCompressor/imageCompressor";
 import { successMessage, errorMessage } from "../../toast";
 import Profile from "../../assets/images/profile.jpg";
+import { fetchActiveGroup } from "../../pages/settings/slices/groupSlice";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -120,6 +122,11 @@ const ProductFormDialog = ({
       narations: "",
       image: null,
     };
+
+    useEffect( ()=>{
+      dispatch(fetchActiveGroup());
+      dispatch(fetchActiveProductTypes());
+    },[])
 
   // Handle image compression
   const handleImageChange = async (event, setFieldValue) => {
