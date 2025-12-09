@@ -58,6 +58,8 @@ import ViewBill from "../pages/Billing/ViewBill";
 import Challan from "../pages/Billing/Challan";
 import DispatchProduct from "../pages/Billing/DispatchProduct";
 import StockInOut from "../pages/Billing/Stocks";
+import Permissions from "../pages/Users/Permissions";
+import PermissionGroupManager from "../pages/Users/userPermission";
 
 import Error404 from "../pages/error/404";
 
@@ -130,6 +132,10 @@ const AppRoutes = () => {
 
       {/* stock */}
       <Route path="/stocks" element={<ProtectedRoute><MainLayout><StockInOut /></MainLayout></ProtectedRoute>} />
+
+      {/* Permission */}
+      <Route path="/permissions" element={<ProtectedRoute><MainLayout><Permissions /></MainLayout></ProtectedRoute>} />
+      <Route path="/fetch-permissions" element={<ProtectedRoute><MainLayout><PermissionGroupManager /></MainLayout></ProtectedRoute>} />
 
 
 

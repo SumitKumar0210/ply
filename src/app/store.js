@@ -39,6 +39,7 @@ import shippingAddressReducer from '../pages/Billing/slice/shippingAddressSlice'
 import paymentReducer from '../pages/Billing/slice/paymentSlice';
 import customerLedgerReducer from '../pages/Customer/slice/customerLedgerSlice';
 import stockReducer from '../pages/Billing/slice/stockSlice';
+import userPermissionsReducer from '../pages/Users/slices/userPermissionsSlice';
 
 
 export const store = configureStore({
@@ -83,5 +84,6 @@ export const store = configureStore({
         payment: paymentReducer,
         customerLedger: customerLedgerReducer,
         stock: stockReducer,
+        userPermissions: userPermissionsReducer,
     }
 })
