@@ -40,6 +40,7 @@ import paymentReducer from '../pages/Billing/slice/paymentSlice';
 import customerLedgerReducer from '../pages/Customer/slice/customerLedgerSlice';
 import stockReducer from '../pages/Billing/slice/stockSlice';
 import userPermissionsReducer from '../pages/Users/slices/userPermissionsSlice';
+import roleReducer from '../pages/settings/slices/roleSlice';
 
 
 export const store = configureStore({
@@ -85,5 +86,6 @@ export const store = configureStore({
         customerLedger: customerLedgerReducer,
         stock: stockReducer,
         userPermissions: userPermissionsReducer,
+        role: roleReducer,
     }
 })

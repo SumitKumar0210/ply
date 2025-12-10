@@ -34,8 +34,10 @@ import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePrev
 import Profile from "../../../assets/images/profile.jpg";
 import ProductFormDialog from "../../../components/Product/ProductFormDialog";
 import { fetchActiveProductTypes } from "../slices/productTypeSlice";
+import { useAuth } from "../../../context/AuthContext";
 
 const Product = () => {
+  const { hasPermission } = useAuth();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
   const { data: data = [], loading } = useSelector((state) => state.product);
@@ -133,7 +135,9 @@ const Product = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
+
+            {hasPermission('product.update') &&(
+              <Tooltip title="Edit">
               <IconButton
                 color="primary"
                 onClick={() => handleEditProduct(row.original)}
@@ -141,7 +145,10 @@ const Product = () => {
                 <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Delete">
+            )}
+            
+            {hasPermission('product.delete') &&(
+              <Tooltip title="Delete">
               <IconButton
                 color="error"
                 onClick={() =>{
@@ -151,6 +158,7 @@ const Product = () => {
                 <RiDeleteBinLine size={16} />
               </IconButton>
             </Tooltip>
+            )}
           </Box>
         ),
       },

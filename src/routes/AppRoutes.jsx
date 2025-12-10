@@ -135,7 +135,7 @@ const AppRoutes = () => {
 
       {/* Permission */}
       <Route path="/permissions" element={<ProtectedRoute><MainLayout><Permissions /></MainLayout></ProtectedRoute>} />
-      <Route path="/fetch-permissions" element={<ProtectedRoute><MainLayout><PermissionGroupManager /></MainLayout></ProtectedRoute>} />
+      <Route path="/settings/:id/fetch-permissions" element={<ProtectedRoute><MainLayout><PermissionGroupManager /></MainLayout></ProtectedRoute>} />
 
 
 

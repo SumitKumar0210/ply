@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout as reduxLogout, setUser as reduxSetUser } from "../pages/auth/authSlice";
+import { capitalize } from "lodash";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const mediaUrl = import.meta.env.VITE_MEDIA_URL;
@@ -50,11 +51,12 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState({
     name: "",
     profileImage: "",
-    type: ""
+    type: "",
+    roles: [],
+    permissions: []
   });
 
   const [appDetails, setAppDetails] = useState(() => {
-    // Initialize from localStorage immediately to avoid flash
     return {
       favicon: localStorage.getItem("favicon") || "",
       logo: localStorage.getItem("logo") || "",
@@ -69,6 +71,30 @@ export const AuthProvider = ({ children }) => {
   const isPublicRoute = useCallback((pathname) => {
     return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
   }, []);
+
+  // Permission check helper
+  const hasPermission = useCallback((permission) => {
+    if (!user.permissions || user.permissions.length === 0) return false;
+    return user.permissions.includes(permission);
+  }, [user.permissions]);
+
+  // Check multiple permissions (OR logic - user has any of the permissions)
+  const hasAnyPermission = useCallback((permissions) => {
+    if (!user.permissions || user.permissions.length === 0) return false;
+    return permissions.some(permission => user.permissions.includes(permission));
+  }, [user.permissions]);
+
+  // Check multiple permissions (AND logic - user has all permissions)
+  const hasAllPermissions = useCallback((permissions) => {
+    if (!user.permissions || user.permissions.length === 0) return false;
+    return permissions.every(permission => user.permissions.includes(permission));
+  }, [user.permissions]);
+
+  // Check if user has a specific role
+  const hasRole = useCallback((role) => {
+    if (!user.roles || user.roles.length === 0) return false;
+    return user.roles.includes(role);
+  }, [user.roles]);
 
   // Fetch app details - runs only once on mount
   useEffect(() => {
@@ -129,7 +155,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("token");
     sessionStorage.removeItem("redirectAfterLogin");
     dispatch(reduxLogout());
-    setUser({ name: "", profileImage: "", type: "" });
+    setUser({ name: "", profileImage: "", type: "", roles: [], permissions: [] });
     
     if (!isPublicRoute(location.pathname)) {
       navigate("/login", { replace: true });
@@ -146,7 +172,6 @@ export const AuthProvider = ({ children }) => {
     const handleAuthLogin = (event) => {
       const { token } = event.detail;
       if (token) {
-        // Trigger auth check to get user data
         checkAuthUser(token);
       }
     };
@@ -177,11 +202,13 @@ export const AuthProvider = ({ children }) => {
         }
       );
 
-      if (res.data.access_token) {
+      if (res.data.user.access_token) {
         const userData = {
-          name: res.data.name ?? "",
-          profileImage: res.data.image ? mediaUrl + res.data.image : "",
-          type: res.data.user_type?.name ?? "",
+          name: res.data.user.name ?? "",
+          profileImage: res.data.user.image ? mediaUrl + res.data.user.image : "",
+          type: capitalize(res.data.roles[0]) ?? "",
+          roles: res.data.roles || [],
+          permissions: res.data.permissions || []
         };
         
         setUser(userData);
@@ -219,11 +246,13 @@ export const AuthProvider = ({ children }) => {
           }
         );
 
-        if (res.data.access_token) {
+        if (res.data.user.access_token) {
           const userData = {
-            name: res.data.name ?? "",
-            profileImage: res.data.image ? mediaUrl + res.data.image : "",
-            type: res.data.user_type?.name ?? "",
+            name: res.data.user.name ?? "",
+            profileImage: res.data.user.image ? mediaUrl + res.data.user.image : "",
+            type: capitalize(res.data.roles[0]) ?? "",
+            roles: res.data.roles || [],
+            permissions: res.data.permissions || []
           };
           
           setUser(userData);
@@ -252,7 +281,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkToken();
-  }, []); // Empty dependency - runs ONLY ONCE
+  }, []);
 
   // Handle route protection without API calls
   useEffect(() => {
@@ -376,8 +405,24 @@ export const AuthProvider = ({ children }) => {
     setUser,
     loading,
     appDetails,
-    refreshAppDetails
-  }), [reduxAuth.isAuthenticated, login, logout, user, loading, appDetails, refreshAppDetails]);
+    refreshAppDetails,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    hasRole
+  }), [
+    reduxAuth.isAuthenticated, 
+    login, 
+    logout, 
+    user, 
+    loading, 
+    appDetails, 
+    refreshAppDetails,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    hasRole
+  ]);
 
   if (initialCheck && loading) {
     return (

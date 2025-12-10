@@ -27,6 +27,19 @@ export const getDataByModule = createAsyncThunk(
   }
 );
 
+export const getModulePermission = createAsyncThunk(
+  "userPermissions/getModulePermission",
+  async (values, { rejectWithValue }) => {
+    console.log(values);
+    try {
+      const response = await api.post("/admin/user-permissions/get-module-permission", {id:values});
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
+
 export const fetchUserPermissionById = createAsyncThunk(
   "userPermissions/fetchById",
   async (id, { rejectWithValue }) => {
@@ -87,6 +100,7 @@ export const deleteUserPermission = createAsyncThunk(
 // Initial State
 const initialState = {
   permissions: [],
+  rolePermissions: [],
   selectedPermission: null,
   loading: false,
   error: null,
@@ -131,6 +145,20 @@ const userPermissionSlice = createSlice({
         state.permissions = action.payload;
       })
       .addCase(getDataByModule.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Fetch getDataByModule
+      .addCase(getModulePermission.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getModulePermission.fulfilled, (state, action) => {
+        state.loading = false;
+        state.rolePermissions = action.payload;
+      })
+      .addCase(getModulePermission.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

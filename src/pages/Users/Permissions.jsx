@@ -229,6 +229,8 @@ const Permissions = () => {
 
         const res = await dispatch(createUserPermission(payload));
         if (res.error) return;
+        console.log(res);
+        dispatch(fetchUserPermissions());
         resetForm();
         setOpen(false);
         successMessage("Permission added successfully!");
