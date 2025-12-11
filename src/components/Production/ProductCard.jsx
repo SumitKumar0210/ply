@@ -14,6 +14,7 @@ import { useSelector } from "react-redux";
 import Profile from "../../assets/images/profile.jpg";
 import { fetchActiveMaterials } from "../../pages/settings/slices/materialSlice";
 import { useDispatch } from "react-redux";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ProductCard({ product, onOpen, onMenuOpen, menuOpen }) {
   const dispatch = useDispatch();
@@ -24,6 +25,7 @@ export default function ProductCard({ product, onOpen, onMenuOpen, menuOpen }) {
   const { supervisor: supervisorData = [] } = useSelector(
     (state) => state.user
   );
+  const { hasAnyPermission } = useAuth();
 
   const supervisors = product.supervisor_id
     ? supervisorData.filter((s) =>
@@ -75,7 +77,13 @@ export default function ProductCard({ product, onOpen, onMenuOpen, menuOpen }) {
             >
               {product.group?.trim()}
             </Box>
-            <Tooltip title="Actions" arrow>
+            {hasAnyPermission(["productions.change_priority",
+              "productions.change_supervisor",
+              "productions.log_time",
+              "productions.request_stock",
+              "productions.switch_to"
+            ]) && (
+              <Tooltip title="Actions" arrow>
               <IconButton
                 color="primary"
                 onClick={onMenuOpen}
@@ -87,6 +95,7 @@ export default function ProductCard({ product, onOpen, onMenuOpen, menuOpen }) {
                 <FiMoreVertical size={16} />
               </IconButton>
             </Tooltip>
+            )}
           </Box>
         </Box>
         <Box

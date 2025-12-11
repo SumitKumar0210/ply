@@ -31,14 +31,15 @@ import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 
-import { 
-  addProductType, 
-  fetchProductTypes, 
+import {
+  addProductType,
+  fetchProductTypes,
   statusUpdate,
-  deleteProductType, 
+  deleteProductType,
   updateProductType
-} from "../slices/productTypeSlice"; 
+} from "../slices/productTypeSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { useAuth } from "../../../context/AuthContext";
 
 // Error Boundary
 class ErrorBoundary extends React.Component {
@@ -71,6 +72,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 const ProductType = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const dispatch = useDispatch();
 
   // Validation Schema
@@ -83,8 +85,8 @@ const ProductType = () => {
   const tableContainerRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
-    const [deleteRow, setDeleteRow] = useState(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteRow, setDeleteRow] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -110,12 +112,12 @@ const ProductType = () => {
 
   // Delete
   const handleDelete = async (id) => {
-      setIsDeleting(true);
-      await dispatch(deleteProductType(id));
-      setIsDeleting(false);
-      setOpenDelete(false);
-      setDeleteRow(null);
-    };
+    setIsDeleting(true);
+    await dispatch(deleteProductType(id));
+    setIsDeleting(false);
+    setOpenDelete(false);
+    setDeleteRow(null);
+  };
 
   const { data: productTypeData = [], loading, error } = useSelector(
     (state) => state.productType
@@ -136,7 +138,7 @@ const ProductType = () => {
 
   // Close modal
   const handleEditClose = () => {
-    if (isUpdating) return; 
+    if (isUpdating) return;
     setEditOpen(false);
     setEditData(null);
   };
@@ -159,9 +161,10 @@ const ProductType = () => {
       setIsUpdating(false);
     }
   };
+  const canUpdate = useMemo(() => hasPermission("product_types.update"), [hasPermission]);
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       { accessorKey: "name", header: "Product Type" },
       {
         accessorKey: "status",
@@ -171,38 +174,57 @@ const ProductType = () => {
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
+            disabled={!canUpdate}
             onChange={(e) => {
+              if(!canUpdate) return;
               const newStatus = e.target.checked ? 1 : 0;
               dispatch(statusUpdate({ ...row.original, status: newStatus }));
             }}
           />
         ),
       },
-      {
-        id: "actions",
-        header: "Actions",
-        enableSorting: false,
-        enableColumnFilter: false,
-        muiTableHeadCellProps: { align: "right" },
-        muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+    ];
+
+   
+   
+    if (hasAnyPermission?.(["product_types.update", "product_types.delete"])) {
+      baseColumns.push({
+      id: "actions_product_type",
+      header: "Actions",
+      enableSorting: false,
+      enableColumnFilter: false,
+      muiTableHeadCellProps: { align: "right" },
+      muiTableBodyCellProps: { align: "right" },
+      Cell: ({ row }) => (
+        <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+          {canUpdate && (
             <Tooltip title="Edit">
               <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
                 <BiSolidEditAlt size={16} />
               </IconButton>
             </Tooltip>
+          )}
+          { hasPermission('product_types.delete') && (
             <Tooltip title="Delete">
-              <IconButton color="error" onClick={() => {setDeleteRow(row.original), setOpenDelete(true)}}>
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
-      },
-    ],
-    [dispatch]
-  );
+            <IconButton
+              color="error"
+              onClick={() => {
+                setDeleteRow(row.original);
+                setOpenDelete(true);
+              }}
+            >
+              <RiDeleteBinLine size={16} />
+            </IconButton>
+          </Tooltip>
+          )}
+        </Box>
+      ),
+    });
+    }
+
+    return baseColumns;
+  }, [dispatch, hasPermission, hasAnyPermission, loading, canUpdate]);
+
 
   // Function to download CSV from data
   const downloadCSV = () => {
@@ -264,8 +286,8 @@ const ProductType = () => {
               initialState={{ density: "compact" }}
               state={{ isLoading: loading }}
               muiTableContainerProps={{
-                sx: { 
-                  width: "100%", 
+                sx: {
+                  width: "100%",
                   backgroundColor: "#fff",
                   overflowX: "auto"
                 },
@@ -306,13 +328,16 @@ const ProductType = () => {
                       </IconButton>
                     </Tooltip>
 
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleClickOpen}
-                    >
-                      Add Product Type
-                    </Button>
+                    {hasPermission('product_types.create') && (
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleClickOpen}
+                      >
+                        Add Product Type
+                      </Button>
+                    )}
+
                   </Box>
                 </Box>
               )}
@@ -322,10 +347,10 @@ const ProductType = () => {
       </Grid>
 
       {/* Add Modal */}
-      <BootstrapDialog 
-        onClose={handleClose} 
-        open={open} 
-        fullWidth 
+      <BootstrapDialog
+        onClose={handleClose}
+        open={open}
+        fullWidth
         maxWidth="xs"
         disableEscapeKeyDown={isSubmitting}
       >
@@ -371,17 +396,17 @@ const ProductType = () => {
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button 
-                  variant="outlined" 
-                  color="error" 
+                <Button
+                  variant="outlined"
+                  color="error"
                   onClick={handleClose}
                   disabled={isSubmitting}
                 >
                   Close
                 </Button>
-                <Button 
-                  type="submit" 
-                  variant="contained" 
+                <Button
+                  type="submit"
+                  variant="contained"
                   color="primary"
                   disabled={isSubmitting}
                   startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : null}
@@ -395,10 +420,10 @@ const ProductType = () => {
       </BootstrapDialog>
 
       {/* Edit Modal */}
-      <BootstrapDialog 
-        onClose={handleEditClose} 
-        open={editOpen} 
-        fullWidth 
+      <BootstrapDialog
+        onClose={handleEditClose}
+        open={editOpen}
+        fullWidth
         maxWidth="xs"
         disableEscapeKeyDown={isUpdating}
       >
@@ -443,16 +468,16 @@ const ProductType = () => {
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button 
-                  variant="outlined" 
-                  color="error" 
+                <Button
+                  variant="outlined"
+                  color="error"
                   onClick={handleEditClose}
                   disabled={isUpdating}
                 >
                   Close
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   variant="contained"
                   disabled={isUpdating}
                   startIcon={isUpdating ? <CircularProgress size={20} color="inherit" /> : null}
@@ -465,27 +490,27 @@ const ProductType = () => {
         </Formik>
       </BootstrapDialog>
       {/* Delete Modal */}
-            <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
-              <DialogTitle>{"Delete this product type?"}</DialogTitle>
-              <DialogContent style={{ width: "300px" }}>
-                <DialogContentText>This action cannot be undone</DialogContentText>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => handleDelete(deleteRow?.id)}
-                  variant="contained"
-                  color="error"
-                  autoFocus
-                  disabled={isDeleting}
-                  startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
-              </DialogActions>
-            </Dialog>
+      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+        <DialogTitle>{"Delete this product type?"}</DialogTitle>
+        <DialogContent style={{ width: "300px" }}>
+          <DialogContentText>This action cannot be undone</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDelete(false)} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => handleDelete(deleteRow?.id)}
+            variant="contained"
+            color="error"
+            autoFocus
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ErrorBoundary>
   );
 };

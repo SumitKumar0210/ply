@@ -15,7 +15,7 @@ import {
   MRT_GlobalFilterTextField,
 } from "material-react-table";
 import AddIcon from "@mui/icons-material/Add";
-import { BiSolidEditAlt } from "react-icons/bi";
+import { BiSolidEditAlt, BiUserCheck } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
@@ -25,6 +25,7 @@ import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchRoles, addRole, updateRole, deleteRole, statusUpdate } from "../slices/roleSlice";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../context/AuthContext";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": { padding: theme.spacing(2) },
@@ -32,12 +33,14 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 const RolesPage = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
   const validationSchema = Yup.object({
     roleName: Yup.string()
       .min(2, "Role must be at least 2 characters")
       .required("Role is required"),
   });
+
+  const { hasPermission, hasAnyPermission } = useAuth();
 
   const tableContainerRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -139,13 +142,15 @@ const RolesPage = () => {
   const handleRolePermission = (id) => {
     navigate(`/settings/${id}/fetch-permissions`);
   }
+  const canUpdate = useMemo(() => hasPermission("roles.update"), [hasPermission]);
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "name",
         header: "Role Name",
-        Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="80%" /> : cell.getValue()),
+        Cell: ({ cell }) =>
+          loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
       },
       {
         accessorKey: "status",
@@ -153,20 +158,28 @@ const RolesPage = () => {
         enableSorting: false,
         enableColumnFilter: false,
         Cell: ({ row }) => {
-          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+          if (loading)
+            return <Skeleton variant="circular" width={40} height={20} />;
 
           return (
             <CustomSwitch
               checked={!!row.original.status}
+              disabled={!canUpdate}
               onChange={(e) => {
+                if (!canUpdate) return;
                 const newStatus = e.target.checked ? 1 : 0;
-                dispatch(statusUpdate({ id: row.original.id, status: newStatus }));
+                dispatch(
+                  statusUpdate({ id: row.original.id, status: newStatus })
+                );
               }}
             />
           );
         },
       },
-      {
+    ];
+
+    if (hasAnyPermission(["roles.delete", "roles.update", "roles.assign"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         enableSorting: false,
@@ -178,28 +191,51 @@ const RolesPage = () => {
 
           return (
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              <Tooltip title="Update Role Permission">
-                <IconButton color="primary" onClick={() => handleRolePermission(row.original.id)}>
-                  <BiSolidEditAlt size={16} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Edit">
-                <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
-                  <BiSolidEditAlt size={16} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
-                  <RiDeleteBinLine size={16} />
-                </IconButton>
-              </Tooltip>
+              {/* Assign Permission */}
+              {hasPermission("roles.assign") && (
+                <Tooltip title="Update Role Permission">
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleRolePermission(row.original.id)}
+                  >
+                    <BiUserCheck size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+
+              {/* Edit Role */}
+              {hasPermission("roles.update") && (
+                <Tooltip title="Edit">
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleUpdate(row.original)}
+                  >
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+
+              {/* Delete Role */}
+              {hasPermission("roles.delete") && (
+                <Tooltip title="Delete">
+                  <IconButton
+                    color="error"
+                    onClick={() => handleDeleteClick(row.original)}
+                  >
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           );
         },
-      },
-    ],
-    [dispatch, loading]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [loading, dispatch, canUpdate, hasPermission, hasAnyPermission, handleUpdate, handleDeleteClick, handleRolePermission,
+  ]);
+
 
   //  Tell MRT which field is the unique row id
   const getRowId = (originalRow) => originalRow.id;
@@ -289,9 +325,11 @@ const RolesPage = () => {
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={handleClickOpen}>
-                      Add Role
-                    </Button>
+                    {hasPermission("roles.create") && (
+                      <Button variant="contained" startIcon={<AddIcon />} onClick={handleClickOpen}>
+                        Add Role
+                      </Button>
+                    )}
                   </Box>
                 </Box>
               )}

@@ -15,6 +15,7 @@ import {
   setNewSupervisor,
   setNewPriority,
 } from "../../pages/Production/slice/productionChainSlice";
+import { useAuth } from "../../context/AuthContext";
 
 function useSubmenu() {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -154,6 +155,7 @@ export default function ActionMenu({
   onOpenLogTime,
   onRefresh,
 }) {
+  const { hasPermission } = useAuth();
   const dispatch = useDispatch();
   const { data: departments = [] } = useSelector((state) => state.department);
   const { supervisor: supervisorData = [] } = useSelector((state) => state.user);
@@ -184,7 +186,6 @@ export default function ActionMenu({
     async (dept) => {
       if (!product) return;
 
-      // 🟩 FIX 1: missing space "await dispatch"
       const res = await dispatch(
         changeProductDepartment({
           pp_id: product.id,
@@ -192,7 +193,7 @@ export default function ActionMenu({
         })
       );
 
-      // 🟩 FIX 2: use the correct thunk matcher
+     
       if (changeProductDepartment.fulfilled.match(res)) {
         if (onRefresh) await onRefresh();
         onClose();
@@ -203,7 +204,6 @@ export default function ActionMenu({
     },
     [dispatch, product, onRefresh, onClose, closeAllSubmenus]
   );
-
 
   const handleSupervisorChange = useCallback(
     async (id) => {
@@ -226,7 +226,6 @@ export default function ActionMenu({
     },
     [dispatch, product, onRefresh, onClose, closeAllSubmenus]
   );
-
 
   const handlePriorityChange = useCallback(
     async (lvl) => {
@@ -253,7 +252,6 @@ export default function ActionMenu({
     },
     [dispatch, product, onRefresh, onClose, closeAllSubmenus]
   );
-
 
   const handleClose = useCallback(() => {
     onClose();
@@ -287,113 +285,131 @@ export default function ActionMenu({
         transformOrigin={{ horizontal: "right", vertical: "top" }}
         anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
       >
-        {/* Switch Department */}
-        <MenuItem
-          onClick={(e) => {
-            e.stopPropagation();
-            closeAllSubmenus();
-            switchSub.openAt(e.currentTarget);
-          }}
-        >
-          <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
-            <Typography minWidth={90}>Switch To:</Typography>
-            <Typography fontWeight={600} fontSize={14}>
-              {currentDeptName}
-            </Typography>
-          </Box>
-        </MenuItem>
+        {/* Switch Department (only show if user has permission) */}
+        {hasPermission("productions.switch_to") && (
+          <MenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              closeAllSubmenus();
+              switchSub.openAt(e.currentTarget);
+            }}
+          >
+            <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
+              <Typography minWidth={90}>Switch To:</Typography>
+              <Typography fontWeight={600} fontSize={14}>
+                {currentDeptName}
+              </Typography>
+            </Box>
+          </MenuItem>
+        )}
 
-        {/* Supervisor */}
-        <MenuItem
-          onClick={(e) => {
-            e.stopPropagation();
-            closeAllSubmenus();
-            supSub.openAt(e.currentTarget);
-          }}
-        >
-          <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
-            <Typography minWidth={90}>Supervisor:</Typography>
-            <Typography fontWeight={500} noWrap sx={{ maxWidth: 180, fontSize: 14 }}>
-              {currentSupervisorName}
-            </Typography>
-          </Box>
-        </MenuItem>
+        {/* Supervisor (only show if user has permission) */}
+        {hasPermission("productions.change_supervisor") && (
+          <MenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              closeAllSubmenus();
+              supSub.openAt(e.currentTarget);
+            }}
+          >
+            <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
+              <Typography minWidth={90}>Supervisor:</Typography>
+              <Typography fontWeight={500} noWrap sx={{ maxWidth: 180, fontSize: 14 }}>
+                {currentSupervisorName}
+              </Typography>
+            </Box>
+          </MenuItem>
+        )}
 
-        {/* Priority */}
-        <MenuItem
-          onClick={(e) => {
-            e.stopPropagation();
-            closeAllSubmenus();
-            prioSub.openAt(e.currentTarget);
-          }}
-        >
-          <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
-            <Typography minWidth={90}>Priority:</Typography>
-            <Chip
-              label={priority}
-              size="small"
-              color={
-                priority === "High"
-                  ? "error"
-                  : priority === "Medium"
-                    ? "warning"
-                    : "success"
-              }
-              sx={{ height: 24, fontSize: 12 }}
-            />
-          </Box>
-        </MenuItem>
+        {/* Priority (only show if user has permission) */}
+        {hasPermission("productions.change_priority") && (
+          <MenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              closeAllSubmenus();
+              prioSub.openAt(e.currentTarget);
+            }}
+          >
+            <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
+              <Typography minWidth={90}>Priority:</Typography>
+              <Chip
+                label={priority}
+                size="small"
+                color={
+                  priority === "High"
+                    ? "error"
+                    : priority === "Medium"
+                      ? "warning"
+                      : "success"
+                }
+                sx={{ height: 24, fontSize: 12 }}
+              />
+            </Box>
+          </MenuItem>
+        )}
 
         {/* Log Time */}
-        <MenuItem onClick={onOpenLogTime}>
-          <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
-            <Typography minWidth={90}>Log Time:</Typography>
-            <Typography fontWeight={500} color="primary" fontSize={14}>
-              Manage
-            </Typography>
-          </Box>
-        </MenuItem>
+        {hasPermission("productions.log_time") && (
+          <MenuItem onClick={onOpenLogTime}>
+            <Box display="flex" width="100%" justifyContent="space-between" alignItems="center">
+              <Typography minWidth={90}>Log Time:</Typography>
+              <Typography fontWeight={500} color="primary" fontSize={14}>
+                Manage
+              </Typography>
+            </Box>
+          </MenuItem>
+        )}
 
-        <Divider sx={{ my: 1 }} />
+        {hasPermission("productions.request_stock") && (
+          <>
+            <Divider sx={{ my: 1 }} />
 
-        {/* Request Stock */}
-        <MenuItem onClick={onOpenRequestStock}>
-          <Box display="flex" width="100%" justifyContent="center" alignItems="center">
-            <Typography fontWeight={500} color="primary">
-              Request Stock
-            </Typography>
-            {product?.material_request?.length > 0 && (
-              <Chip
-                label={product.material_request.length}
-                size="small"
-                color="info"
-                sx={{ ml: 1, height: 20, fontSize: 11 }}
-              />
-            )}
-          </Box>
-        </MenuItem>
+            {/* Request Stock */}
+            <MenuItem onClick={onOpenRequestStock}>
+              <Box display="flex" width="100%" justifyContent="center" alignItems="center">
+                <Typography fontWeight={500} color="primary">
+                  Request Stock
+                </Typography>
+                {product?.material_request?.length > 0 && (
+                  <Chip
+                    label={product.material_request.length}
+                    size="small"
+                    color="info"
+                    sx={{ ml: 1, height: 20, fontSize: 11 }}
+                  />
+                )}
+              </Box>
+            </MenuItem>
+          </>
+        )}
       </Menu>
 
       {/* Submenus */}
-      <SwitchSubmenu
-        submenu={switchSub}
-        onSelect={handleSwitchDepartment}
-        departments={departments}
-        currentDepartment={product?.department_id}
-      />
+      {hasPermission("productions.switch_to") && (
+        <SwitchSubmenu
+          submenu={switchSub}
+          onSelect={handleSwitchDepartment}
+          departments={departments}
+          currentDepartment={product?.department_id}
+        />
+      )}
 
-      <SupervisorSubmenu
-        submenu={supSub}
-        supervisors={supervisorData}
-        selected={selectedSupervisor}
-        onSelect={handleSupervisorChange}
-      />
+      {hasPermission("productions.change_supervisor") && (
+        <SupervisorSubmenu
+          submenu={supSub}
+          supervisors={supervisorData}
+          selected={selectedSupervisor}
+          onSelect={handleSupervisorChange}
+        />
+      )}
 
-      <PrioritySubmenu
-        submenu={prioSub}
-        value={priority}
-        onChange={handlePriorityChange}
-      />
+      {hasPermission("productions.change_priority") && (
+        <PrioritySubmenu
+          submenu={prioSub}
+          value={priority}
+          onChange={handlePriorityChange}
+        />
+      )}
     </>
   );
 }

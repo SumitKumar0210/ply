@@ -35,6 +35,7 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { fetchOrder, deleteOrder } from "../slice/orderSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { useAuth } from "../../../context/AuthContext";
 
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -94,6 +95,7 @@ const getStatusChip = (status, count = 0) => {
 
 
 const Order = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
@@ -238,8 +240,8 @@ const Order = () => {
   };
 
   //  Table columns
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       { accessorKey: "orderNumber", header: "Order No.", Cell: ({ row }) => row.original?.batch_no ?? '' },
       { accessorKey: "customerName", header: "Customer Name", Cell: ({ row }) => row.original?.customer?.name ?? '' },
       { accessorKey: "dated", header: "Dated", Cell: ({ row }) => handleDateFormate(row.original.created_at) },
@@ -251,7 +253,10 @@ const Order = () => {
         header: "Status",
         Cell: ({ row }) => getStatusChip(row.original?.status, row.original?.production_product_count),
       },
-      {
+    ];
+
+    if (hasAnyPermission(["company_orders.read", "company_orders.update"])) {
+      baseColumns.push({
         id: "actions",
         header: "Action",
         size: 80,
@@ -261,15 +266,17 @@ const Order = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="View">
-              <IconButton
-                color="warning"
-                onClick={() => handleViewClick(row.original.id)}
-              >
-                <MdOutlineRemoveRedEye size={16} />
-              </IconButton>
-            </Tooltip>
-            {row.original.status === 0
+            {hasPermission("company_orders.read") && (
+              <Tooltip title="View">
+                <IconButton
+                  color="warning"
+                  onClick={() => handleViewClick(row.original.id)}
+                >
+                  <MdOutlineRemoveRedEye size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {(hasPermission("company_orders.update") && row.original.status === 0)
               && (
                 <Tooltip title="Edit">
                   <IconButton
@@ -283,9 +290,11 @@ const Order = () => {
 
           </Box>
         ),
-      },
-    ],
+      })
+    }
+    return baseColumns;
     []
+  }
   );
 
   //  CSV export using normalized data
@@ -355,14 +364,17 @@ const Order = () => {
           <Typography variant="h6">Order</Typography>
         </Grid>
         <Grid>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            component={Link}
-            to="/customer/order/create"
-          >
-            Create Order
-          </Button>
+          {hasPermission("company_orders.create") && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              component={Link}
+              to="/customer/order/create"
+            >
+              Create Order
+            </Button>
+          )}
+
         </Grid>
       </Grid>
 

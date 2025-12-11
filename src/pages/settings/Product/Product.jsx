@@ -37,7 +37,7 @@ import { fetchActiveProductTypes } from "../slices/productTypeSlice";
 import { useAuth } from "../../../context/AuthContext";
 
 const Product = () => {
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasAnyPermission } = useAuth();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
   const { data: data = [], loading } = useSelector((state) => state.product);
@@ -84,9 +84,10 @@ const Product = () => {
     setOpenDelete(false);
     setDeleteRow(null);
   };
+  const canUpdate = useMemo(() => hasPermission("product.update"), [hasPermission]);
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "image",
         header: "Image",
@@ -119,14 +120,19 @@ const Product = () => {
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
+            disabled={!canUpdate}
             onChange={(e) => {
+              if (!canUpdate) return;
               const newStatus = e.target.checked ? 1 : 0;
               dispatch(statusUpdate({ ...row.original, status: newStatus }));
             }}
           />
         ),
       },
-      {
+    ];
+
+    if (hasAnyPermission?.(["product.update", "materials.delete"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         enableSorting: false,
@@ -135,36 +141,46 @@ const Product = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-
-            {hasPermission('product.update') &&(
+            {hasPermission("product.update") && (
               <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleEditProduct(row.original)}
-              >
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
+                <IconButton color="primary" onClick={() => handleEditProduct(row.original)}>
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
             )}
-            
-            {hasPermission('product.delete') &&(
+
+            {hasPermission("product.delete") && (
               <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() =>{
-                  setOpenDelete(true),
-                  setDeleteRow(row.original)}}
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  color="error"
+                  onClick={() => {
+                    setOpenDelete(true);
+                    setDeleteRow(row.original);
+                  }}
+                >
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
             )}
           </Box>
         ),
-      },
-    ],
-    [dispatch, mediaUrl]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [
+    dispatch,
+    mediaUrl,
+    hasPermission,
+    hasAnyPermission,
+    canUpdate,
+    handleEditProduct,
+    setOpenDelete,
+    setDeleteRow,
+    statusUpdate,
+    Profile,
+  ]);
+
 
   // Function to download CSV from data
   const downloadCSV = () => {
@@ -265,13 +281,15 @@ const Product = () => {
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddProduct}
-                    >
-                      Add Product
-                    </Button>
+                    {hasPermission('product.create') && (
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddProduct}
+                      >
+                        Add Product
+                      </Button>
+                    )}
                   </Box>
                 </Box>
               )}

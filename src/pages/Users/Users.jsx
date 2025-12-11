@@ -40,6 +40,7 @@ import { fetchStates } from "../settings/slices/stateSlice";
 import { fetchActiveUserTypes } from "../settings/slices/userTypeSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { compressImage } from "../../components/imageCompressor/imageCompressor";
+import { useAuth } from "../../context/AuthContext";
 
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -163,6 +164,7 @@ const editValidationSchema = Yup.object({
 });
 
 const Users = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const [open, setOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -343,9 +345,10 @@ const Users = () => {
     }
   };
 
-  //  Table columns
-  const columns = useMemo(
-    () => [
+  const canUpdate = useMemo(() => hasPermission("users.update"), [hasPermission]);
+
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "profilePic",
         header: "Image",
@@ -376,14 +379,19 @@ const Users = () => {
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
+            disabled={!canUpdate}
             onChange={(e) => {
+              if (!canUpdate) return;
               const newStatus = e.target.checked ? 1 : 0;
               dispatch(statusUpdate({ ...row.original, status: newStatus }));
             }}
           />
         ),
       },
-      {
+    ];
+
+    if (hasAnyPermission?.(["users.update", "users.delete"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         size: 120,
@@ -393,28 +401,39 @@ const Users = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleUpdate(row.original)}
-              >
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() => handleDeleteClick(row.original)}
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
+            {canUpdate && (
+              <Tooltip title="Edit">
+                <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                  <BiSolidEditAlt size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {hasPermission("users.delete") && (
+              <Tooltip title="Delete">
+                <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         ),
-      },
-    ],
-    [dispatch, mediaUrl]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [
+    dispatch,
+    mediaUrl,
+    Profile,
+    hasPermission,
+    hasAnyPermission,
+    canUpdate,
+    handleUpdate,
+    handleDeleteClick,
+    statusUpdate,
+  ]);
+
 
   //  CSV export
   const downloadCSV = () => {
@@ -502,7 +521,7 @@ const Users = () => {
                   p: 1,
                 }}
               >
-                 <Typography variant="h6" className='page-title'>
+                <Typography variant="h6" className='page-title'>
                   Users
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -518,13 +537,15 @@ const Users = () => {
                       <BsCloudDownload size={20} />
                     </IconButton>
                   </Tooltip>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setOpen(true)}
-                  >
-                    Add User
-                  </Button>
+                  {hasPermission("users.create") && (
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={() => setOpen(true)}
+                    >
+                      Add User
+                    </Button>
+                  )}
                 </Box>
               </Box>
             )}

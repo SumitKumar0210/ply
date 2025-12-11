@@ -39,6 +39,7 @@ import {
   updateUnitOfMeasurement,
 } from "../slices/unitOfMeasurementsSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { useAuth } from "../../../context/AuthContext";
 
 //  Error Boundary
 class ErrorBoundary extends React.Component {
@@ -71,13 +72,14 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 const UOM = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const dispatch = useDispatch();
 
   //  Validation Schema
   const validationSchema = Yup.object({
     name: Yup.string()
-    .min(2, "UOM must be at least 2 characters")
-    .required("UOM is required"),
+      .min(2, "UOM must be at least 2 characters")
+      .required("UOM is required"),
   });
 
   const tableContainerRef = useRef(null);
@@ -94,7 +96,7 @@ const UOM = () => {
     setIsSaving(true);
     const res = await dispatch(addUnitOfMeasurement(value));
     setIsSaving(false);
-    if(res.error) return ; 
+    if (res.error) return;
     resetForm();
     handleClose();
   };
@@ -156,13 +158,14 @@ const UOM = () => {
     }
   };
 
-  //  Columns
-  const columns = useMemo(
-    () => [
+  const canUpdate = useMemo(() => hasPermission("uom.update"), [hasPermission]);
+
+  const columns = useMemo(() => {
+    return [
       {
         accessorKey: "name",
         header: "UOM",
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
+        Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="80%" /> : cell.getValue()),
       },
       {
         accessorKey: "status",
@@ -175,7 +178,11 @@ const UOM = () => {
           return (
             <CustomSwitch
               checked={!!row.original.status}
+              // disable when user cannot update
+              disabled={!canUpdate}
               onChange={(e) => {
+                // double-guard: do nothing if user lacks permission
+                if (!canUpdate) return;
                 const newStatus = e.target.checked ? 1 : 0;
                 dispatch(statusUpdate({ ...row.original, status: newStatus }));
               }}
@@ -195,29 +202,27 @@ const UOM = () => {
 
           return (
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              <Tooltip title="Edit">
-                <IconButton
-                  color="primary"
-                  onClick={() => handleUpdate(row.original)}
-                >
-                  <BiSolidEditAlt size={16} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton
-                  color="error"
-                  onClick={() => handleDeleteClick(row.original)}
-                >
-                  <RiDeleteBinLine size={16} />
-                </IconButton>
-              </Tooltip>
+              {hasPermission("uom.update") && (
+                <Tooltip title="Edit">
+                  <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {hasPermission("uom.delete") && (
+                <Tooltip title="Delete">
+                  <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           );
         },
       },
-    ],
-    [dispatch, loading]
-  );
+    ];
+  }, [dispatch, loading, canUpdate, hasPermission, statusUpdate, handleUpdate, handleDeleteClick]);
+
 
   const getRowId = (originalRow) => originalRow.id;
 
@@ -297,7 +302,7 @@ const UOM = () => {
                     p: 1,
                   }}
                 >
-                   <Typography variant="h6" className='page-title'>
+                  <Typography variant="h6" className='page-title'>
                     Unit Of Measurement
                   </Typography>
 
@@ -317,13 +322,16 @@ const UOM = () => {
                       </IconButton>
                     </Tooltip>
 
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleClickOpen}
-                    >
-                      Add UOM
-                    </Button>
+                    {hasPermission('uom.create') && (
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleClickOpen}
+                      >
+                        Add UOM
+                      </Button>
+                    )}
+
                   </Box>
                 </Box>
               )}

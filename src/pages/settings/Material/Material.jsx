@@ -35,8 +35,10 @@ import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePrev
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import MaterialFormModal from "../../../components/Material/MaterialFormModal";
 import Profile from "../../../assets/images/profile.jpg";
+import { useAuth } from "../../../context/AuthContext";
 
 const Material = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
 
@@ -83,152 +85,159 @@ const Material = () => {
     setDeleteData(null);
   };
 
-  const columns = useMemo(
-    () => [
-      {
-        accessorKey: "image",
-        header: "Image",
-        size: 80,
-        Cell: ({ row }) => {
-          if (loading) return <Skeleton variant="rectangular" width={40} height={40} />;
+  const canUpdate = useMemo(() => hasPermission("materials.update"), [hasPermission]);
 
-          return (
-            <ImagePreviewDialog
-              imageUrl={
-                row.original.image ? mediaUrl + row.original.image : Profile
-              }
-              alt={row.original.name}
-            />
-          );
-        },
-      },
-      {
-        accessorKey: "name",
-        header: "Name",
-        size: 200,
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
-      },
-      {
-        accessorKey: "unit_of_measurement_id",
-        header: "UOM",
-        size: 50,
-        Cell: ({ row }) => {
-          if (loading) return <Skeleton variant="text" width="60%" />;
-          return row.original.unit_of_measurement?.name || "—";
-        },
-      },
-      {
-        accessorKey: "size",
-        header: "Size",
-        size: 50,
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="50%" /> : cell.getValue(),
-      },
-      {
-        accessorKey: "price",
-        header: "Price",
-        size: 75,
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
-      },
-      {
-        accessorKey: "category_id",
-        header: "Category",
-        size: 100,
-        Cell: ({ row }) => {
-          if (loading) return <Skeleton variant="text" width="70%" />;
-          return row.original.category?.name || "—";
-        },
-      },
-      {
-        accessorKey: "group_id",
-        header: "Group",
-        size: 100,
-        Cell: ({ row }) => {
-          if (loading) return <Skeleton variant="text" width="70%" />;
-          return row.original.group?.name || "—";
-        },
-      },
-      {
-        accessorKey: "opening_stock",
-        header: "Opening Stock",
-        size: 50,
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="50%" /> : cell.getValue(),
-      },
-      {
-        accessorKey: "urgently_required",
-        header: "Reorder Needed",
-        size: 100,
-        Cell: ({ row }) => {
-          if (loading) return <Skeleton variant="text" width="50%" />;
-          const value = row.original.urgently_required;
-          return value == "1" ? "Yes" : value == "0" ? "No" : "—";
-        },
-      },
-      {
-        accessorKey: "tag",
-        header: "Tag",
-        size: 50,
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
-      },
-      {
-        accessorKey: "remark",
-        header: "Remarks",
-        size: 100,
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="70%" /> : cell.getValue(),
-      },
-      {
-        accessorKey: "status",
-        header: "Status",
-        enableSorting: false,
-        enableColumnFilter: false,
-        Cell: ({ row }) => {
-          if (loading) return <Skeleton variant="circular" width={40} height={20} />;
+const columns = useMemo(() => {
+  const baseColumns = [
+    {
+      accessorKey: "image",
+      header: "Image",
+      size: 80,
+      Cell: ({ row }) => {
+        if (loading) return <Skeleton variant="rectangular" width={40} height={40} />;
 
-          return (
-            <CustomSwitch
-              checked={!!row.original.status}
-              onChange={(e) => {
-                const newStatus = e.target.checked ? 1 : 0;
-                dispatch(statusUpdate({ ...row.original, status: newStatus }));
-              }}
-            />
-          );
-        },
+        return (
+          <ImagePreviewDialog
+            imageUrl={row.original.image ? mediaUrl + row.original.image : Profile}
+            alt={row.original.name}
+          />
+        );
       },
-      {
-        id: "actions",
-        header: "Actions",
-        enableSorting: false,
-        enableColumnFilter: false,
-        muiTableHeadCellProps: { align: "right" },
-        muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => {
-          if (loading) return <Skeleton variant="text" width={80} />;
+    },
+    {
+      accessorKey: "name",
+      header: "Name",
+      size: 200,
+      Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="80%" /> : cell.getValue()),
+    },
+    {
+      accessorKey: "unit_of_measurement_id",
+      header: "UOM",
+      size: 50,
+      Cell: ({ row }) => {
+        if (loading) return <Skeleton variant="text" width="60%" />;
+        return row.original.unit_of_measurement?.name || "—";
+      },
+    },
+    {
+      accessorKey: "size",
+      header: "Size",
+      size: 50,
+      Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="50%" /> : cell.getValue()),
+    },
+    {
+      accessorKey: "price",
+      header: "Price",
+      size: 75,
+      Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="60%" /> : cell.getValue()),
+    },
+    {
+      accessorKey: "category_id",
+      header: "Category",
+      size: 100,
+      Cell: ({ row }) => {
+        if (loading) return <Skeleton variant="text" width="70%" />;
+        return row.original.category?.name || "—";
+      },
+    },
+    {
+      accessorKey: "group_id",
+      header: "Group",
+      size: 100,
+      Cell: ({ row }) => {
+        if (loading) return <Skeleton variant="text" width="70%" />;
+        return row.original.group?.name || "—";
+      },
+    },
+    {
+      accessorKey: "opening_stock",
+      header: "Opening Stock",
+      size: 50,
+      Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="50%" /> : cell.getValue()),
+    },
+    {
+      accessorKey: "urgently_required",
+      header: "Reorder Needed",
+      size: 100,
+      Cell: ({ row }) => {
+        if (loading) return <Skeleton variant="text" width="50%" />;
+        const value = row.original.urgently_required;
+        return value == "1" ? "Yes" : value == "0" ? "No" : "—";
+      },
+    },
+    {
+      accessorKey: "tag",
+      header: "Tag",
+      size: 50,
+      Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="60%" /> : cell.getValue()),
+    },
+    {
+      accessorKey: "remark",
+      header: "Remarks",
+      size: 100,
+      Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="70%" /> : cell.getValue()),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      enableSorting: false,
+      enableColumnFilter: false,
+      Cell: ({ row }) => {
+        if (loading) return <Skeleton variant="circular" width={40} height={20} />;
 
-          return (
-            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+        return (
+          <CustomSwitch
+            checked={!!row.original.status}
+            disabled={!canUpdate}
+            onChange={(e) => {
+              
+              if (!canUpdate) return;
+              const newStatus = e.target.checked ? 1 : 0;
+              dispatch(statusUpdate({ ...row.original, status: newStatus }));
+            }}
+          />
+        );
+      },
+    },
+  ];
+
+
+  if ( hasAnyPermission?.(["materials.update", "materials.delete"])) {
+    baseColumns.push({
+      id: "actions",
+      header: "Actions",
+      enableSorting: false,
+      enableColumnFilter: false,
+      muiTableHeadCellProps: { align: "right" },
+      muiTableBodyCellProps: { align: "right" },
+      Cell: ({ row }) => {
+        if (loading) return <Skeleton variant="text" width={80} />;
+
+        return (
+          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            {hasPermission("materials.update") && (
               <Tooltip title="Edit">
-                <IconButton
-                  color="primary"
-                  onClick={() => handleEditMaterial(row.original)}
-                >
+                <IconButton color="primary" onClick={() => handleEditMaterial(row.original)}>
                   <BiSolidEditAlt size={16} />
                 </IconButton>
               </Tooltip>
+            )}
+            {hasPermission("materials.delete") && (
               <Tooltip title="Delete">
-                <IconButton
-                  color="error"
-                  onClick={() => handleDeleteClick(row.original)}
-                >
+                <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
                   <RiDeleteBinLine size={16} />
                 </IconButton>
               </Tooltip>
-            </Box>
-          );
-        },
+            )}
+          </Box>
+        );
       },
-    ],
-    [dispatch, mediaUrl, loading]
-  );
+    });
+  }
+
+  return baseColumns;
+}, [dispatch, mediaUrl, loading, canUpdate, hasPermission, hasAnyPermission, handleEditMaterial, handleDeleteClick, statusUpdate]);
+
 
   const downloadCSV = () => {
     const headers = columns
@@ -314,7 +323,7 @@ const Material = () => {
                     p: 1,
                   }}
                 >
-                   <Typography variant="h6" className='page-title'>
+                  <Typography variant="h6" className='page-title'>
                     Material
                   </Typography>
 
@@ -331,13 +340,16 @@ const Material = () => {
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddMaterial}
-                    >
-                      Add Material
-                    </Button>
+                    {hasPermission('materials.create') && (
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddMaterial}
+                      >
+                        Add Material
+                      </Button>
+                    )}
+
                   </Box>
                 </Box>
               )}

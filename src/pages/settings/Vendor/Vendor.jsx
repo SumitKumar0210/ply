@@ -35,8 +35,10 @@ import {
   statusUpdate,
 } from "../slices/vendorSlice";
 import VendorFormModal from "../../../components/Vendor/VendorFormModal";
+import { useAuth } from "../../../context/AuthContext";
 
 const Vendor = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
 
@@ -48,7 +50,7 @@ const Vendor = () => {
 
   const { data: vendorDatas = [], loading } = useSelector((state) => state.vendor);
   const vendorData = vendorDatas?.data ?? [];
-console.log(vendorData);
+  console.log(vendorData);
   useEffect(() => {
     dispatch(fetchVendors());
   }, [dispatch]);
@@ -85,8 +87,9 @@ console.log(vendorData);
     dispatch(statusUpdate({ ...row, status: newStatus }));
   };
 
-  const columns = useMemo(
-    () => [
+  const canUpdate = useMemo(() => hasPermission("vendors.update"), [hasPermission]);
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "name",
         header: "Vendor Name",
@@ -147,6 +150,7 @@ console.log(vendorData);
           return (
             <CustomSwitch
               checked={!!row.original.status}
+              disabled={!canUpdate}
               onChange={(e) =>
                 handleStatusToggle(row.original, e.target.checked ? 1 : 0)
               }
@@ -154,7 +158,10 @@ console.log(vendorData);
           );
         },
       },
-      {
+    ];
+
+    if (hasAnyPermission?.(["vendors.delete", "vendors.update"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         size: 100,
@@ -167,28 +174,35 @@ console.log(vendorData);
 
           return (
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              <Tooltip title="Edit">
-                <IconButton
-                  color="primary"
-                  onClick={() => handleEditVendor(row.original)}
-                >
-                  <BiSolidEditAlt size={16} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton
-                  color="error"
-                  onClick={() => handleDeleteClick(row.original)}
-                >
-                  <RiDeleteBinLine size={16} />
-                </IconButton>
-              </Tooltip>
+              {hasPermission('vendors.update') && (
+                <Tooltip title="Edit">
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditVendor(row.original)}
+                  >
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {hasPermission('vendors.delete') && (
+                <Tooltip title="Delete">
+                  <IconButton
+                    color="error"
+                    onClick={() => handleDeleteClick(row.original)}
+                  >
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           );
         },
-      },
-    ],
-    [dispatch, loading]
+      });
+    }
+
+    return baseColumns;
+    [dispatch, loading, canUpdate]
+  }
   );
 
   // Download CSV
@@ -295,7 +309,7 @@ console.log(vendorData);
                     p: 1,
                   }}
                 >
-                   <Typography variant="h6" className='page-title'>
+                  <Typography variant="h6" className='page-title'>
                     Vendors
                   </Typography>
 
@@ -312,13 +326,15 @@ console.log(vendorData);
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-                    <Button
+                    {hasPermission("vendors.create") && (
+                      <Button
                       variant="contained"
                       startIcon={<AddIcon />}
                       onClick={handleAddVendor}
                     >
                       Add Vendor
                     </Button>
+                    )}
                   </Box>
                 </Box>
               )}

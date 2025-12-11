@@ -44,6 +44,7 @@ import {
   updateCategory,
 } from "../slices/categorySlice";
 import { useDispatch, useSelector } from "react-redux";
+import { useAuth } from "../../../context/AuthContext";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": { padding: theme.spacing(2) },
@@ -51,6 +52,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 const Category = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
 
@@ -135,29 +137,33 @@ const Category = () => {
     setDeleteRow(null);
   };
 
-  // columns
-  const columns = useMemo(
-    () => [
+  const canUpdate = useMemo(() => hasPermission("categories.update"), [hasPermission]);
+
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "name",
         header: "Category Name",
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
+        Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="80%" /> : cell.getValue()),
       },
       {
         accessorKey: "group",
         header: "Group",
-        Cell: ({ row }) => loading ? <Skeleton variant="text" width="60%" /> : (row.original.group?.name || "—"),
+        Cell: ({ row }) => (loading ? <Skeleton variant="text" width="60%" /> : (row.original.group?.name || "—")),
       },
       {
         accessorKey: "status",
         header: "Status",
         Cell: ({ row }) => {
           if (loading) return <Skeleton variant="circular" width={40} height={20} />;
-          
+
           return (
             <CustomSwitch
               checked={!!row.original.status}
+              disabled={!canUpdate}
               onChange={(e) => {
+                
+                if (!canUpdate) return;
                 const newStatus = e.target.checked ? 1 : 0;
                 dispatch(statusUpdate({ ...row.original, status: newStatus }));
               }}
@@ -165,7 +171,11 @@ const Category = () => {
           );
         },
       },
-      {
+    ];
+
+
+    if (hasAnyPermission?.(["categories.delete", "categories.update"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         enableSorting: false,
@@ -174,29 +184,39 @@ const Category = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => {
           if (loading) return <Skeleton variant="text" width={80} />;
-          
+
           return (
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              <Tooltip title="Edit">
-                <IconButton onClick={() => handleOpenEdit(row.original)}>
-                  <BiSolidEditAlt size={16} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton color="error" onClick={() => {
-                  setOpenDelete(true);
-                  setDeleteRow(row.original);
-                }}>
-                  <RiDeleteBinLine size={16} />
-                </IconButton>
-              </Tooltip>
+              {hasPermission("categories.update") && (
+                <Tooltip title="Edit">
+                  <IconButton onClick={() => handleOpenEdit(row.original)}>
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {hasPermission("categories.delete") && (
+                <Tooltip title="Delete">
+                  <IconButton
+                    color="error"
+                    onClick={() => {
+                      setOpenDelete(true);
+                      setDeleteRow(row.original);
+                    }}
+                  >
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           );
         },
-      },
-    ],
-    [dispatch, loading]
-  );
+      });
+    }
+
+    return baseColumns;
+    
+  }, [dispatch, loading, canUpdate, hasPermission, hasAnyPermission]);
+
 
   // CSV export
   const downloadCSV = () => {
@@ -229,7 +249,7 @@ const Category = () => {
       <Grid size={12}>
         <Paper
           elevation={0}
-sx={{ width: "100%", overflowX: "auto", backgroundColor: "#fff" }}
+          sx={{ width: "100%", overflowX: "auto", backgroundColor: "#fff" }}
           ref={tableContainerRef}
         >
           <MaterialReactTable
@@ -269,13 +289,16 @@ sx={{ width: "100%", overflowX: "auto", backgroundColor: "#fff" }}
                       <BsCloudDownload size={20} />
                     </IconButton>
                   </Tooltip>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={handleOpenAdd}
-                  >
-                    Add Category
-                  </Button>
+                  {hasPermission('categories.create') && (
+                    <Button
+                      variant="contained"
+                      startIcon={<AddIcon />}
+                      onClick={handleOpenAdd}
+                    >
+                      Add Category
+                    </Button>
+                  )}
+
                 </Box>
               </Box>
             )}

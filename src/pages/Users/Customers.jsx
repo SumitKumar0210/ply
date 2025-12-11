@@ -35,8 +35,10 @@ import {
   deleteCustomer,
 } from "../Users/slices/customerSlice";
 import { fetchStates } from "../settings/slices/stateSlice";
+import { useAuth } from "../../context/AuthContext";
 
 const Customers = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const [open, setOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -168,9 +170,10 @@ const Customers = () => {
     dispatch(statusUpdate({ ...row, status: newStatus }));
   }, [dispatch]);
 
-  // Table Columns - Memoized to prevent re-renders
-  const columns = useMemo(
-    () => [
+  const canUpdate = useMemo(() => hasPermission("customers.update"), [hasPermission]);
+
+  const columns = useMemo(() => {
+    const baseColumns = [
       { accessorKey: "name", header: "Name", size: 150 },
       { accessorKey: "mobile", header: "Mobile", size: 120 },
       { accessorKey: "email", header: "E-mail", size: 180 },
@@ -194,11 +197,15 @@ const Customers = () => {
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
+            disabled={!canUpdate}
             onChange={(e) => handleStatusChange(row.original, e.target.checked)}
           />
         ),
       },
-      {
+    ];
+
+    if (hasAnyPermission?.(["customers.update", "customers.delete"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         size: 100,
@@ -206,37 +213,51 @@ const Customers = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleUpdate(row.original)}
-                size="small"
-              >
-                <BiSolidEditAlt size={18} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() => handleDeleteClick(row.original)}
-                size="small"
-              >
-                <RiDeleteBinLine size={18} />
-              </IconButton>
-            </Tooltip>
+            {hasPermission("customers.update") && (
+              <Tooltip title="Edit">
+                <IconButton
+                  color="primary"
+                  onClick={() => handleUpdate(row.original)}
+                  size="small"
+                >
+                  <BiSolidEditAlt size={18} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {hasPermission("customers.delete") && (
+              <Tooltip title="Delete">
+                <IconButton
+                  color="error"
+                  onClick={() => handleDeleteClick(row.original)}
+                  size="small"
+                >
+                  <RiDeleteBinLine size={18} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         ),
-      },
-    ],
-    [handleStatusChange, handleUpdate, handleDeleteClick]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [
+    handleStatusChange,
+    handleUpdate,
+    handleDeleteClick,
+    hasPermission,
+    hasAnyPermission,
+    canUpdate,
+  ]);
+
 
   // CSV export
   const downloadCSV = useCallback(() => {
     const headers = columns
       .filter((col) => col.accessorKey && col.id !== "actions")
       .map((col) => col.header);
-    
+
     const rows = customerData.map((row) =>
       columns
         .filter((col) => col.accessorKey && col.id !== "actions")
@@ -250,7 +271,7 @@ const Customers = () => {
         })
         .join(",")
     );
-    
+
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -266,10 +287,10 @@ const Customers = () => {
   // Print handler
   const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
-    
+
     const printWindow = window.open('', '_blank');
     const tableHTML = tableContainerRef.current.innerHTML;
-    
+
     printWindow.document.write(`
       <html>
         <head>
@@ -290,7 +311,7 @@ const Customers = () => {
         </body>
       </html>
     `);
-    
+
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => {
@@ -318,13 +339,15 @@ const Customers = () => {
         sx={{ mb: 2 }}
       >
         <Typography variant="h6">Customers</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenAdd}
-        >
-          Add Customer
-        </Button>
+        {hasPermission("customers.create") && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAdd}
+          >
+            Add Customer
+          </Button>
+        )}
       </Grid>
 
       {/* Table */}

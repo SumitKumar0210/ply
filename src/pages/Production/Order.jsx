@@ -36,6 +36,7 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { fetchOwnProductionOrder } from "./slice/orderSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { useAuth } from "../../context/AuthContext";
 
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -89,6 +90,7 @@ const getStatusChip = (status) => {
 };
 
 const Order = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
   const [showSearch, setShowSearch] = useState(false);
@@ -130,7 +132,7 @@ const Order = () => {
 
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(globalFilter);
-      // Reset to first page when search changes
+      
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }, 500);
 
@@ -141,7 +143,7 @@ const Order = () => {
     };
   }, [globalFilter]);
 
-  // Fetch orders when pagination or search changes
+
   useEffect(() => {
     const params = {
       pageIndex: pagination.pageIndex,
@@ -149,7 +151,7 @@ const Order = () => {
       search: debouncedSearch,
     };
 
-    console.log("Fetching orders with params:", params);
+    // console.log("Fetching orders with params:", params);
     dispatch(fetchOwnProductionOrder(params));
   }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
@@ -234,20 +236,54 @@ const Order = () => {
   };
 
   //  Table columns
-  const columns = useMemo(
-    () => [
-      { accessorKey: "orderNumber", header: "Order No.", Cell: ({ row }) => row.original?.batch_no ?? '' },
-      { accessorKey: "customerName", header: "Customer Name", Cell: ({ row }) => row.original?.customer?.name ?? '' },
-      { accessorKey: "dated", header: "Dated", Cell: ({ row }) => handleDateFormate(row.original.created_at) },
-      { accessorKey: "itemOrdered", header: "Item Ordered", Cell: ({ row }) => handleIQtyCount(row.original?.product_ids) },
-      { accessorKey: "commencement_date", header: "Commencement Date", Cell: ({ row }) => handleDateFormate(row.original.commencement_date) },
-      { accessorKey: "delivered_date", header: "Delivered Date", Cell: ({ row }) => handleDateFormate(row.original.delivery_date) },
+  const columns = useMemo(() => {
+    const baseColumns = [
+      {
+        accessorKey: "orderNumber",
+        header: "Order No.",
+        Cell: ({ row }) => row.original?.batch_no ?? "",
+      },
+      {
+        accessorKey: "customerName",
+        header: "Customer Name",
+        Cell: ({ row }) => row.original?.customer?.name ?? "",
+      },
+      {
+        accessorKey: "dated",
+        header: "Dated",
+        Cell: ({ row }) => handleDateFormate(row.original.created_at),
+      },
+      {
+        accessorKey: "itemOrdered",
+        header: "Item Ordered",
+        Cell: ({ row }) => handleIQtyCount(row.original?.product_ids),
+      },
+      {
+        accessorKey: "commencement_date",
+        header: "Commencement Date",
+        Cell: ({ row }) =>
+          handleDateFormate(row.original.commencement_date),
+      },
+      {
+        accessorKey: "delivered_date",
+        header: "Delivered Date",
+        Cell: ({ row }) =>
+          handleDateFormate(row.original.delivery_date),
+      },
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ row }) => getStatusChip(row.original?.status, row.original?.production_product_count),
+        Cell: ({ row }) =>
+          getStatusChip(
+            row.original?.status,
+            row.original?.production_product_count
+          ),
       },
-      {
+    ];
+
+    // ---- ACTIONS COLUMN ----
+    if (hasAnyPermission?.(["company_orders.read", "company_orders.update"])) {
+      baseColumns.push({
         id: "actions",
         header: "Action",
         size: 80,
@@ -257,32 +293,46 @@ const Order = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="View">
-              <IconButton
-                color="warning"
-                onClick={() => handleViewClick(row.original.id)}
-              >
-                <MdOutlineRemoveRedEye size={16} />
-              </IconButton>
-            </Tooltip>
-            {row.original.status === 0
-              && (
+            {/* VIEW */}
+            {hasPermission("company_orders.read") && (
+              <Tooltip title="View">
+                <IconButton
+                  color="warning"
+                  onClick={() => handleViewClick(row.original.id)}
+                >
+                  <MdOutlineRemoveRedEye size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {/* EDIT – only when status === 0 */}
+            {hasPermission("company_orders.update") &&
+              row.original.status === 0 && (
                 <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleEditClick(row.original.id)}
-              >
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-              )
-            }
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditClick(row.original.id)}
+                  >
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
           </Box>
         ),
-      },
-    ],
-    []
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [
+    hasAnyPermission,
+    hasPermission,
+    handleViewClick,
+    handleEditClick,
+    handleDateFormate,
+    handleIQtyCount,
+    getStatusChip,
+  ]);
+
 
   //  CSV export using normalized data
   const downloadCSV = () => {
@@ -292,7 +342,7 @@ const Order = () => {
     }
 
     const headers = ["Order No.", "Customer Name", "Dated", "Item Ordered", "Commencement Date", "Delivered Date", "Status"];
-    
+
     const rows = normalizedOrders.map((row) => {
       const orderNo = row.batch_no || "";
       const customerName = row.customer?.name || "N/A";
@@ -301,7 +351,7 @@ const Order = () => {
       const commencementDate = handleDateFormate(row.commencement_date);
       const deliveredDate = handleDateFormate(row.delivery_date);
       const status = row.status === 0 ? "Pending" : `In Production (${row.production_product_count || 0})`;
-      
+
       return [
         `"${orderNo}"`,
         `"${customerName}"`,
@@ -316,7 +366,7 @@ const Order = () => {
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement("a");
     link.href = url;
     link.download = `Orders_${new Date().toISOString().split('T')[0]}.csv`;
@@ -351,14 +401,16 @@ const Order = () => {
           <Typography variant="h6">Order</Typography>
         </Grid>
         <Grid>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            component={Link}
-            to="/production/create-order"
-          >
-            Create Order
-          </Button>
+          {hasPermission("company_orders.create") && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              component={Link}
+              to="/production/create-order"
+            >
+              Create Order
+            </Button>
+          )}
         </Grid>
       </Grid>
 
@@ -433,7 +485,7 @@ const Order = () => {
               >
                 <Typography variant="h6" className='page-title'>
                   Order List
-                 
+
                 </Typography>
 
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -468,13 +520,13 @@ const Order = () => {
                   </Tooltip>
 
                   <MRT_ToolbarInternalButtons table={table} />
-                  
+
                   <Tooltip title="Print">
                     <IconButton onClick={handlePrint}>
                       <FiPrinter size={20} />
                     </IconButton>
                   </Tooltip>
-                  
+
                   <Tooltip title="Download CSV">
                     <IconButton onClick={downloadCSV}>
                       <BsCloudDownload size={20} />

@@ -32,8 +32,10 @@ import CloseIcon from "@mui/icons-material/Close";
 
 import { useDispatch, useSelector } from "react-redux";
 import { deleteBill, fetchBills, markAsDelivered } from "./slice/billsSlice";
+import { useAuth } from "../../context/AuthContext";
 
 const Bills = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
@@ -157,8 +159,8 @@ const Bills = () => {
     setShowSearch(!showSearch);
   };
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "invoice_no",
         header: "Invoice No",
@@ -244,77 +246,94 @@ const Bills = () => {
           );
         },
       },
-      {
-        id: "actions",
-        header: "Actions",
-        enableSorting: false,
-        enableColumnFilter: false,
-        muiTableHeadCellProps: { align: "right" },
-        muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="View Bill">
-              <IconButton
-                color="primary"
-                onClick={() => handleViewBill(row.original.id)}
-              >
-                <MdOutlineRemoveRedEye size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Create Challan">
-              <IconButton
-                color="primary"
-                onClick={() => handleChallan(row.original.id)}
-              >
-                <MdDescription size={18} />
-              </IconButton>
-            </Tooltip>
+    ];
 
-            {(row.original.status === 2) && (
-              <Tooltip title="Mark as Delivered">
-                <IconButton
-                  color="success"
-                  onClick={() => handleMarkDeliverdBill(row.original.id)}
-                  disabled={markingDelivered === row.original.id}
-                >
-                  {markingDelivered === row.original.id ? (
-                    <CircularProgress size={18} />
-                  ) : (
-                    <MdLocalShipping size={18} />
-                  )}
-                </IconButton>
-              </Tooltip>
-            )}
-            {(row.original.status !== 2 && row.original.status !== 3) && (
-              <>
-                <Tooltip title="Edit">
+    if (hasAnyPermission(["bills.update", "bills.delete", "bills.create_challan"])) {
+      baseColumns.push(
+        {
+          id: "actions",
+          header: "Actions",
+          enableSorting: false,
+          enableColumnFilter: false,
+          muiTableHeadCellProps: { align: "right" },
+          muiTableBodyCellProps: { align: "right" },
+          Cell: ({ row }) => (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              {hasPermission("bills.read") && (
+                <Tooltip title="View Bill">
                   <IconButton
                     color="primary"
-                    onClick={() => handleEditBill(row.original.id)}
+                    onClick={() => handleViewBill(row.original.id)}
                   >
-                    <BiSolidEditAlt size={16} />
+                    <MdOutlineRemoveRedEye size={16} />
                   </IconButton>
                 </Tooltip>
-
-                <Tooltip title="Delete">
+              )}
+              {hasPermission("bills.create_challan") && (
+                <Tooltip title="Create Challan">
                   <IconButton
-                    color="error"
-                    onClick={() => {
-                      setOpenDelete(true);
-                      setDeleteRow(row.original.id);
-                    }}
+                    color="primary"
+                    onClick={() => handleChallan(row.original.id)}
                   >
-                    <RiDeleteBinLine size={16} />
+                    <MdDescription size={18} />
                   </IconButton>
                 </Tooltip>
-                
-              </>
-            )}
-          </Box>
-        ),
-      },
-    ],
+              )}
+              {hasPermission("bills.mark_delivered") && row.original.status === 2 && (
+                <Tooltip title="Mark as Delivered">
+                  <IconButton
+                    color="success"
+                    onClick={() => handleMarkDeliverdBill(row.original.id)}
+                    disabled={markingDelivered === row.original.id}
+                  >
+                    {markingDelivered === row.original.id ? (
+                      <CircularProgress size={18} />
+                    ) : (
+                      <MdLocalShipping size={18} />
+                    )}
+                  </IconButton>
+                </Tooltip>
+              )}
+
+
+              {(row.original.status !== 2 && row.original.status !== 3) && (
+                <>
+                  {hasPermission("bills.update") && (
+                    <Tooltip title="Edit">
+                      <IconButton
+                        color="primary"
+                        onClick={() => handleEditBill(row.original.id)}
+                      >
+                        <BiSolidEditAlt size={16} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+
+                  {hasPermission("bills.delete") && (
+                    <Tooltip title="Delete">
+                      <IconButton
+                        color="error"
+                        onClick={() => {
+                          setOpenDelete(true);
+                          setDeleteRow(row.original.id);
+                        }}
+                      >
+                        <RiDeleteBinLine size={16} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+
+                </>
+              )}
+            </Box>
+          ),
+        }
+      )
+    }
+
+    return baseColumns;
     []
+  }
   );
 
   /** Download CSV */
@@ -492,13 +511,15 @@ const Bills = () => {
                       </IconButton>
                     </Tooltip>
 
-                    <Button
+                    {hasPermission("bills.create") && (
+                      <Button
                       variant="contained"
                       startIcon={<AddIcon />}
                       onClick={handleAddBill}
                     >
                       Add Bill
                     </Button>
+                    )}
                   </Box>
                 </Box>
               )}

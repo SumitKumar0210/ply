@@ -33,8 +33,10 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAllRequestItems, approveRequest } from "./slice/materialRequestSlice";
+import { useAuth } from "../../context/AuthContext";
 
 const ProductRequest = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const [openApprove, setOpenApprove] = useState(false);
   const [openViewModal, setOpenViewModal] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -158,8 +160,8 @@ const ProductRequest = () => {
     }
   }, []);
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "item_name",
         header: "Production Item",
@@ -180,7 +182,11 @@ const ProductRequest = () => {
         header: "Status",
         Cell: ({ row }) => getStatusChip(row.original?.material_request?.[0]?.status),
       },
-      {
+    ];
+
+    if(hasAnyPermission(["material_request.approve","material_request.read"]))
+    {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         size: 120,
@@ -190,7 +196,8 @@ const ProductRequest = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="View Details">
+            {hasPermission("material_request.read") && (
+              <Tooltip title="View Details">
               <IconButton
                 color="info"
                 onClick={() => handleView(row.original)}
@@ -198,7 +205,9 @@ const ProductRequest = () => {
                 <MdOutlineRemoveRedEye size={18} />
               </IconButton>
             </Tooltip>
-            {row.original?.material_request?.[0]?.status === 0 && (
+            )}
+            
+            {(hasPermission("material_request.approve") && row.original?.material_request?.[0]?.status === 0) && (
               <Tooltip title="Approve Request">
                 <IconButton
                   color="success"
@@ -210,9 +219,12 @@ const ProductRequest = () => {
             )}
           </Box>
         ),
-      },
-    ],
+      })
+    }
+
+    return baseColumns ;
     [handleView, handleApprove, handleDateFormat, getStatusChip]
+  }
   );
 
   const downloadCSV = useCallback(() => {
@@ -480,7 +492,7 @@ const ProductRequest = () => {
           <Button onClick={() => setOpenViewModal(false)} variant="outlined">
             Close
           </Button>
-          {selectedRow?.material_request?.[0]?.status === 0 && (
+          {(hasPermission("material_request.approve")  && selectedRow?.material_request?.[0]?.status === 0) && (
             <Button
               onClick={() => {
                 setOpenViewModal(false);

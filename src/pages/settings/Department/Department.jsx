@@ -42,6 +42,7 @@ import {
 } from "../slices/departmentSlice";
 import { useDispatch, useSelector } from "react-redux";
 import DepartmentFormDialog from "../../../components/Department/DepartmentFormDialog";
+import { useAuth } from "../../../context/AuthContext";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -68,6 +69,7 @@ class ErrorBoundary extends React.Component {
 }
 
 const Department = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -160,13 +162,15 @@ const Department = () => {
     setDeleteData(null);
     setOpenDelete(false);
   };
+  const canUpdate = useMemo(() => hasPermission("departments.update"), [hasPermission]);
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "name",
         header: "Department",
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue()
+        Cell: ({ cell }) =>
+          loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
       },
       {
         accessorKey: "color",
@@ -182,7 +186,7 @@ const Department = () => {
                   height: 20,
                   backgroundColor: cell.getValue() || "#ccc",
                   borderRadius: 1,
-                  border: "1px solid #ddd"
+                  border: "1px solid #ddd",
                 }}
               />
               <Typography variant="body2">{cell.getValue()}</Typography>
@@ -200,8 +204,15 @@ const Department = () => {
             <TextField
               type="number"
               size="small"
-              value={sequenceValues[row.original.id] ?? row.original.sequence ?? ""}
-              onChange={(e) => handleSequenceChange(row.original.id, e.target.value)}
+              disabled={!canUpdate}
+              value={
+                sequenceValues[row.original.id] ??
+                row.original.sequence ??
+                ""
+              }
+              onChange={(e) =>
+                handleSequenceChange(row.original.id, e.target.value)
+              }
               inputProps={{ min: 0 }}
               sx={{ width: 80 }}
             />
@@ -219,6 +230,7 @@ const Department = () => {
           return (
             <CustomSwitch
               checked={!!row.original.status}
+              disabled={!canUpdate}
               onChange={(e) =>
                 dispatch(
                   statusUpdate({
@@ -231,7 +243,10 @@ const Department = () => {
           );
         },
       },
-      {
+    ];
+
+    if (hasAnyPermission?.(["departments.update", "departments.delete"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         enableSorting: false,
@@ -241,14 +256,23 @@ const Department = () => {
         Cell: ({ row }) => {
           if (loading) return <Skeleton variant="text" width={80} />;
 
+          const isProtectedSequence =
+            row.original.sequence === 1 ||
+            row.original.sequence === 2 ||
+            row.original.sequence === 3 ||
+            row.original.sequence === 4;
+
           return (
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              <Tooltip title="Edit">
-                <IconButton onClick={() => handleEditOpen(row.original)}>
-                  <BiSolidEditAlt size={16} />
-                </IconButton>
-              </Tooltip>
-              {!(row.original.sequence == 1 || row.original.sequence == 2 || row.original.sequence == 3 || row.original.sequence == 4) && (
+              {hasPermission("departments.update") && (
+                <Tooltip title="Edit">
+                  <IconButton onClick={() => handleEditOpen(row.original)}>
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+
+              {hasPermission("departments.delete") && !isProtectedSequence && (
                 <Tooltip title="Delete">
                   <IconButton color="error" onClick={() => handleDelete(row.original)}>
                     <RiDeleteBinLine size={16} />
@@ -258,10 +282,23 @@ const Department = () => {
             </Box>
           );
         },
-      },
-    ],
-    [dispatch, handleSequenceChange, sequenceValues, loading]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [
+    loading,
+    dispatch,
+    sequenceValues,
+    handleSequenceChange,
+    hasPermission,
+    hasAnyPermission,
+    handleEditOpen,
+    handleDelete,
+    canUpdate,
+    statusUpdate,
+  ]);
+
 
   const getRowId = (row) => row.id;
 
@@ -311,7 +348,7 @@ const Department = () => {
               columns={columns}
               data={tableData}
               getRowId={getRowId}
-              state={{ 
+              state={{
                 isLoading: loading,
                 showLoadingOverlay: loading,
               }}
@@ -351,9 +388,11 @@ const Department = () => {
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
-                      Add Department
-                    </Button>
+                    {hasPermission("departments.create") && (
+                      <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
+                        Add Department
+                      </Button>
+                    )}
                   </Box>
                 </Box>
               )}

@@ -39,6 +39,7 @@ import {
   updateMachine,
   statusUpdate
 } from "../slices/machineSlice";
+import { useAuth } from "../../../context/AuthContext";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": { padding: theme.spacing(2) },
@@ -89,6 +90,7 @@ const INITIAL_VALUES = {
 };
 
 const Machine = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -131,7 +133,7 @@ const Machine = () => {
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteData?.id) return;
-    
+
     setIsDeleting(true);
     try {
       await dispatch(deleteMachine(deleteData.id));
@@ -149,7 +151,7 @@ const Machine = () => {
 
   const handleEditSubmit = useCallback(async (values, { resetForm }) => {
     if (!editData?.id) return;
-    
+
     setIsSaving(true);
     try {
       const res = await dispatch(updateMachine({ id: editData.id, ...values }));
@@ -167,32 +169,34 @@ const Machine = () => {
     dispatch(statusUpdate({ ...row, status: newStatus }));
   }, [dispatch]);
 
-  const columns = useMemo(
-    () => [
+  const canUpdate = useMemo(() => hasPermission("machines.update"), [hasPermission]);
+
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "name",
         header: "Machine Name",
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
+        Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="80%" /> : cell.getValue()),
       },
       {
         accessorKey: "run_hours_at_service",
         header: "Run Hours at Service",
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+        Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="60%" /> : cell.getValue()),
       },
       {
         accessorKey: "service_interval_days",
         header: "Service Interval (Days)",
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+        Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="60%" /> : cell.getValue()),
       },
       {
         accessorKey: "service_cycle_months",
         header: "Service Cycle (Months)",
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+        Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="60%" /> : cell.getValue()),
       },
       {
         accessorKey: "message",
         header: "Service Message",
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="70%" /> : cell.getValue(),
+        Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="70%" /> : cell.getValue()),
       },
       {
         accessorKey: "status",
@@ -203,12 +207,22 @@ const Machine = () => {
           return (
             <CustomSwitch
               checked={!!row.original.status}
-              onChange={(e) => handleStatusToggle(row.original, e.target.checked)}
+           
+              disabled={!canUpdate}
+              onChange={(e) => {
+               
+                if (!canUpdate) return;
+                handleStatusToggle(row.original, e.target.checked);
+              }}
             />
           );
         },
       },
-      {
+    ];
+
+  
+    if (hasAnyPermission?.(["machines.update", "machines.delete"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         enableSorting: false,
@@ -220,23 +234,29 @@ const Machine = () => {
 
           return (
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              <Tooltip title="Edit Machine">
-                <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
-                  <BiSolidEditAlt size={16} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete Machine">
-                <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
-                  <RiDeleteBinLine size={16} />
-                </IconButton>
-              </Tooltip>
+              {hasPermission("machines.update") && (
+                <Tooltip title="Edit Machine">
+                  <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {hasPermission("machines.delete") && (
+                <Tooltip title="Delete Machine">
+                  <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           );
         },
-      },
-    ],
-    [loading, handleStatusToggle, handleUpdate, handleDeleteClick]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [loading, handleStatusToggle, handleUpdate, handleDeleteClick, canUpdate, hasPermission, hasAnyPermission]);
+
 
   const downloadCSV = useCallback(() => {
     const headers = columns
@@ -397,7 +417,7 @@ const Machine = () => {
                     p: 1,
                   }}
                 >
-                   <Typography variant="h6" className='page-title'>
+                  <Typography variant="h6" className='page-title'>
                     Machine Management
                   </Typography>
 
@@ -414,13 +434,15 @@ const Machine = () => {
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-                    <Button
+                    {hasPermission('machines.create') && (
+                      <Button
                       variant="contained"
                       startIcon={<AddIcon />}
                       onClick={() => setOpen(true)}
                     >
                       Add Machine
                     </Button>
+                    )}
                   </Box>
                 </Box>
               )}
@@ -459,10 +481,10 @@ const Machine = () => {
                 <Button variant="outlined" color="error" onClick={handleClose} disabled={isSaving}>
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
-                  variant="contained" 
-                  color="primary" 
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
                   disabled={isSaving || !formikProps.isValid}
                   startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}
                 >
@@ -511,9 +533,9 @@ const Machine = () => {
                   <Button variant="outlined" color="error" onClick={handleEditClose} disabled={isSaving}>
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
-                    variant="contained" 
+                  <Button
+                    type="submit"
+                    variant="contained"
                     color="primary"
                     disabled={isSaving || !formikProps.isValid}
                     startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : null}

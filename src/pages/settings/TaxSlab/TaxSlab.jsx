@@ -40,6 +40,7 @@ import {
     statusUpdate
 } from "../slices/taxSlabSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { useAuth } from "../../../context/AuthContext";
 
 // Error Boundary
 class ErrorBoundary extends React.Component {
@@ -72,8 +73,9 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 const TaxSlab = () => {
+    const { hasPermission, hasAnyPermission } = useAuth();
     const dispatch = useDispatch();
-    
+
     const { data: tableData, total: totalRows, loading } = useSelector((state) => state.taxSlab);
 
     // Validation Schema
@@ -195,12 +197,14 @@ const TaxSlab = () => {
         }));
     };
 
-    const columns = useMemo(
-        () => [
+    const canUpdate = useMemo(() => hasPermission("tax_slabs.update"), [hasPermission]);
+    const columns = useMemo(() => {
+        const baseColumns = [
             {
                 accessorKey: "percentage",
                 header: "Percentage (%)",
-                Cell: ({ cell }) => loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
+                Cell: ({ cell }) =>
+                    loading ? <Skeleton variant="text" width="60%" /> : cell.getValue(),
             },
             {
                 accessorKey: "status",
@@ -211,7 +215,9 @@ const TaxSlab = () => {
                     return (
                         <CustomSwitch
                             checked={!!row.original.status}
+                            disabled={!canUpdate}
                             onChange={(e) => {
+                                if (!canUpdate) return;
                                 const newStatus = e.target.checked ? 1 : 0;
                                 handleStatusChange(row.original, newStatus);
                             }}
@@ -219,7 +225,10 @@ const TaxSlab = () => {
                     );
                 },
             },
-            {
+        ];
+
+        if (hasAnyPermission?.(["tax_slabs.update", "tax_slabs.delete"])) {
+            baseColumns.push({
                 id: "actions",
                 header: "Actions",
                 muiTableHeadCellProps: { align: "right" },
@@ -229,23 +238,38 @@ const TaxSlab = () => {
 
                     return (
                         <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                            <Tooltip title="Edit">
-                                <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
-                                    <BiSolidEditAlt size={16} />
-                                </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Delete">
-                                <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
-                                    <RiDeleteBinLine size={16} />
-                                </IconButton>
-                            </Tooltip>
+                            {hasPermission("tax_slabs.update") && (
+                                <Tooltip title="Edit">
+                                    <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                                        <BiSolidEditAlt size={16} />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
+
+                            {hasPermission("tax_slabs.delete") && (
+                                <Tooltip title="Delete">
+                                    <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
+                                        <RiDeleteBinLine size={16} />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
                         </Box>
                     );
                 },
-            },
-        ],
-        [loading]
-    );
+            });
+        }
+
+        return baseColumns;
+    }, [
+        loading,
+        hasPermission,
+        hasAnyPermission,
+        handleUpdate,
+        handleDeleteClick,
+        handleStatusChange,
+        canUpdate,
+    ]);
+
 
     const getRowId = (originalRow) => originalRow.id;
 
@@ -308,7 +332,7 @@ const TaxSlab = () => {
                             initialState={{ density: "compact" }}
                             renderTopToolbar={({ table }) => (
                                 <Box sx={{ display: "flex", justifyContent: "space-between", p: 1 }}>
-                                     <Typography variant="h6" className='page-title'>Tax Slab</Typography>
+                                    <Typography variant="h6" className='page-title'>Tax Slab</Typography>
 
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                         <MRT_GlobalFilterTextField
@@ -327,10 +351,12 @@ const TaxSlab = () => {
                                         <Tooltip title="Download CSV">
                                             <IconButton onClick={downloadCSV}><BsCloudDownload size={20} /></IconButton>
                                         </Tooltip>
+                                        {hasPermission('tax_slabs.create') && (
+                                            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
+                                                Add Tax Slab
+                                            </Button>
+                                        )}
 
-                                        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
-                                            Add Tax Slab
-                                        </Button>
                                     </Box>
                                 </Box>
                             )}

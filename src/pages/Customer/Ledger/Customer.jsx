@@ -19,6 +19,7 @@ import { IoMdRefresh } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchAllCustomersWithSearch } from "../../Users/slices/customerSlice";
+import { useAuth } from "../../../context/AuthContext";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -49,6 +50,7 @@ class ErrorBoundary extends React.Component {
 }
 
 const Customer = () => {
+  const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
@@ -60,8 +62,8 @@ const Customer = () => {
     totalCount: totalRows = 0,
     loading = false,
   } = useSelector((state) => state.customer);
-  
-console.log(totalRows,customerData)
+
+  console.log(totalRows, customerData)
   // Initialize state from URL params
   const getInitialPage = useCallback(() => {
     const page = searchParams.get("page");
@@ -145,14 +147,17 @@ console.log(totalRows,customerData)
   );
 
   // Table columns
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       { accessorKey: "name", header: "Customer Name" },
       { accessorKey: "mobile", header: "Mobile" },
       { accessorKey: "email", header: "Email" },
       { accessorKey: "city", header: "City" },
       { accessorKey: "gst_no", header: "GST" },
-      {
+    ];
+
+    if (hasPermission("customer_lists.view_ledger")) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         size: 80,
@@ -160,7 +165,7 @@ console.log(totalRows,customerData)
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
+        Cell: ({ row }) => (                            
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Ledger">
               <IconButton color="primary" onClick={() => handleLedger(row.original.id)}>
@@ -169,10 +174,12 @@ console.log(totalRows,customerData)
             </Tooltip>
           </Box>
         ),
-      },
-    ],
+      })
+    }
+
+    return baseColumns;
     [handleLedger]
-  );
+  });
 
   // CSV Export
   const downloadCSV = useCallback(() => {

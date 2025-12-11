@@ -40,6 +40,7 @@ import { fetchQuotation, deleteQuotation } from "../slice/quotationSlice";
 import { useDispatch, useSelector } from "react-redux";
 import LinkGenerator from "../../../components/Links/LinkGenerator";
 import { set } from "lodash";
+import { useAuth } from "../../../context/AuthContext";
 
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -85,10 +86,10 @@ const getStatusChip = (status) => {
   switch (status) {
     case 0:
       return <Chip label="Draft" color="warning" size="small" />;
-      case 1:
-        return <Chip label="Ordered" color="info" size="small" />;
-      case 2:
-        return <Chip label="Approved" color="success" size="small" />;
+    case 1:
+      return <Chip label="Ordered" color="info" size="small" />;
+    case 2:
+      return <Chip label="Approved" color="success" size="small" />;
     case 3:
       return <Chip label="Requested to edit" color="secondary" size="small" />;
     default:
@@ -97,6 +98,7 @@ const getStatusChip = (status) => {
 };
 
 const Quote = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
   const [showApproved, setShowApproved] = useState(false);
@@ -243,97 +245,113 @@ const Quote = () => {
   };
 
   const showEditRequest = (row) => {
-    if(row.status !== 3) return;
+    if (row.status !== 3) return;
     setRemark(row);
     setOpenRemark(true);
   };
 
   //  Table columns
   const columns = useMemo(
-    () => [
-      {
-        accessorKey: "quoteNumber",
-        header: "Quote No.",
-        Cell: ({ row }) => row.original?.batch_no ?? "",
-      },
-      {
-        accessorKey: "customerName",
-        header: "Customer Name",
-        Cell: ({ row }) => row.original?.customer?.name ?? "",
-      },
-      {
-        accessorKey: "date",
-        header: "Date",
-        Cell: ({ row }) => handleDateFormate(row.original.created_at),
-      },
-      {
-        accessorKey: "quoteTotal",
-        header: "Quote Total",
-        Cell: ({ row }) =>
-          row.original?.grand_total
-            ? "₹ " + parseInt(row.original?.grand_total)
-            : "",
-      },
-      {
-        accessorKey: "totalItems",
-        header: "Total Items",
-        Cell: ({ row }) => handleItemCount(row.original?.product_ids),
-      },
-      {
-        accessorKey: "status",
-        header: "Status",
-        Cell: ({ row }) => (
-          <div onClick={() => showEditRequest(row.original)} style={{ cursor: "pointer" }}>
-            {getStatusChip(row.original.status)}
-          </div>
-        ),
-      },
-      {
-        id: "actions",
-        header: "Action",
-        size: 80,
-        enableSorting: false,
-        enableColumnFilter: false,
-        muiTableHeadCellProps: { align: "right" },
-        muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <LinkGenerator
-              id={row.original.id}
-              customerId={row.original.customer?.id}
-              quotationData={row.original}
-            />
-            <Tooltip title="View">
-              <IconButton
-                color="warning"
-                onClick={() => handleViewClick(row.original.id)}
-              >
-                <MdOutlineRemoveRedEye size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Edit">
-              <IconButton
-                color="primary"
-                onClick={() => handleEditClick(row.original.id)}
-              >
-                <BiSolidEditAlt size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton
-                aria-label="delete"
-                color="error"
-                onClick={() => handlDelete(row.original)}
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        ),
-      },
-    ],
-    []
-  );
+    () => {
+      const baseColumns = [
+        {
+          accessorKey: "quoteNumber",
+          header: "Quote No.",
+          Cell: ({ row }) => row.original?.batch_no ?? "",
+        },
+        {
+          accessorKey: "customerName",
+          header: "Customer Name",
+          Cell: ({ row }) => row.original?.customer?.name ?? "",
+        },
+        {
+          accessorKey: "date",
+          header: "Date",
+          Cell: ({ row }) => handleDateFormate(row.original.created_at),
+        },
+        {
+          accessorKey: "quoteTotal",
+          header: "Quote Total",
+          Cell: ({ row }) =>
+            row.original?.grand_total
+              ? "₹ " + parseInt(row.original?.grand_total)
+              : "",
+        },
+        {
+          accessorKey: "totalItems",
+          header: "Total Items",
+          Cell: ({ row }) => handleItemCount(row.original?.product_ids),
+        },
+        {
+          accessorKey: "status",
+          header: "Status",
+          Cell: ({ row }) => (
+            <div onClick={() => showEditRequest(row.original)} style={{ cursor: "pointer" }}>
+              {getStatusChip(row.original.status)}
+            </div>
+          ),
+        },
+      ];
+
+      if (hasAnyPermission(["quotations.update", "quotations.generate_public_link", "quotations.delete", "quotations.read"])) {
+        baseColumns.push(
+          {
+            id: "actions",
+            header: "Action",
+            size: 80,
+            enableSorting: false,
+            enableColumnFilter: false,
+            muiTableHeadCellProps: { align: "right" },
+            muiTableBodyCellProps: { align: "right" },
+            Cell: ({ row }) => (
+              <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+                {hasPermission("quotations.generate_public_link") && (
+                  <LinkGenerator
+                  id={row.original.id}
+                  customerId={row.original.customer?.id}
+                  quotationData={row.original}
+                />
+                )}
+                {hasPermission("quotations.read") && (
+                <Tooltip title="View">
+                  <IconButton
+                    color="warning"
+                    onClick={() => handleViewClick(row.original.id)}
+                  >
+                    <MdOutlineRemoveRedEye size={16} />
+                  </IconButton>
+                </Tooltip>
+                )}
+                {hasPermission("quotations.update") && (
+                <Tooltip title="Edit">
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleEditClick(row.original.id)}
+                  >
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+                )}
+                {hasPermission("quotations.delete") && (
+                <Tooltip title="Delete">
+                  <IconButton
+                    aria-label="delete"
+                    color="error"
+                    onClick={() => handlDelete(row.original)}
+                  >
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+                )}
+              </Box>
+            ),
+          }
+        )
+      }
+
+      return baseColumns;
+      []
+    });
 
   //  CSV export
   const downloadCSV = useCallback(() => {
@@ -408,6 +426,7 @@ const Quote = () => {
         </Grid>
         <Grid>
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            {hasPermission("quotations.approved_data") && (
             <Button
               variant={showApproved ? "contained" : "outlined"}
               startIcon={<CheckCircleIcon />}
@@ -416,6 +435,8 @@ const Quote = () => {
             >
               {showApproved ? "Showing Approved" : "Approved Data"}
             </Button>
+            )}
+            {hasPermission("quotations.create") && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -424,6 +445,7 @@ const Quote = () => {
             >
               Create Quote
             </Button>
+            )}
           </Box>
         </Grid>
       </Grid>

@@ -32,6 +32,7 @@ import { BsCloudDownload } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import { getApprovePOData, deletePO } from "../slice/purchaseOrderSlice";
 import UploadInvoiceButton from "../../../components/UploadInvoiceButton/UploadInvoiceButton";
+import { useAuth } from "../../../context/AuthContext";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -86,6 +87,7 @@ const getStatusChip = (status) => {
 };
 
 const ApprovePurchaseOrder = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -203,8 +205,8 @@ const ApprovePurchaseOrder = () => {
     }
   };
 
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "poNumber",
         header: "PO Number",
@@ -235,7 +237,10 @@ const ApprovePurchaseOrder = () => {
         header: "Status",
         Cell: ({ cell }) => getStatusChip(cell.getValue()),
       },
-      {
+    ];
+
+    if(hasAnyPermission(["qc_po.delete","qc_po.read","qc_po.approve_qc","qc_po.upload_bill","qc_po.update","qc_po.upload_invoice"])){
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         size: 80,
@@ -245,11 +250,12 @@ const ApprovePurchaseOrder = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            {row.original?.qcData && (
+            {(hasPermission("qc_po.upload_invoice") && row.original?.qcData) && (
               <UploadInvoiceButton row={row.original?.qcData} />
             )}
 
-            <Tooltip title="Quality Check">
+            {hasPermission("qc_po.approve_qc") && (
+              <Tooltip title="Quality Check">
               <IconButton
                 color="primary"
                 onClick={() => handleQualitycheckClick(row.original.id)}
@@ -257,7 +263,10 @@ const ApprovePurchaseOrder = () => {
                 <IoMdCheckmarkCircleOutline size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Print PO">
+            )}
+            
+            {hasPermission("qc_po.read") && (
+              <Tooltip title="Print PO">
               <IconButton
                 color="warning"
                 onClick={() => handlePrintClick(row.original.id)}
@@ -265,7 +274,9 @@ const ApprovePurchaseOrder = () => {
                 <FiPrinter size={16} />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Delete PO">
+            )}
+            {hasPermission("qc_po.delete") && (
+              <Tooltip title="Delete PO">
               <IconButton
                 aria-label="delete"
                 color="error"
@@ -274,12 +285,15 @@ const ApprovePurchaseOrder = () => {
                 <RiDeleteBinLine size={16} />
               </IconButton>
             </Tooltip>
+            )}
           </Box>
         ),
-      },
-    ],
+      })
+    }
+
+    return baseColumns ; 
     [handlePrintClick, handleQualitycheckClick, handleDeleteClick]
-  );
+  });
 
   const downloadCSV = useCallback(() => {
     const headers = columns
@@ -336,7 +350,8 @@ const ApprovePurchaseOrder = () => {
           <Typography variant="h6">Quality Checks Order</Typography>
         </Grid>
         <Grid>
-          <Button
+          {hasPermission("purchase_order.create") && (
+            <Button
             variant="contained"
             startIcon={<AddIcon />}
             component={Link}
@@ -344,6 +359,7 @@ const ApprovePurchaseOrder = () => {
           >
             Create PO
           </Button>
+          )}
         </Grid>
       </Grid>
 

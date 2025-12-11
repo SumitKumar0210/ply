@@ -36,6 +36,7 @@ import { markReadyForDelivey } from "../../pages/Production/slice/productionChai
 import { successMessage, errorMessage } from "../../toast";
 import { submitFailedQc } from "../../pages/Production/slice/failedQcSlice";
 import FailQcPage from "./FailedQc";
+import { useAuth } from "../../context/AuthContext";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -220,6 +221,7 @@ export default function ProductDetailsModal({
 }) {
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
+  const { hasPermission, hasAnyPermission } = useAuth();
 
   const { data: departments = [] } = useSelector((state) => state.department);
   const { supervisor: supervisorData = [] } = useSelector(
@@ -570,7 +572,8 @@ export default function ProductDetailsModal({
                               </Typography>
                             )}
                           </Box>
-                          <IconButton
+                          {hasPermission("productions.add_tentative") && (
+                            <IconButton
                             aria-label="edit"
                             color="info"
                             onClick={() => {
@@ -580,6 +583,7 @@ export default function ProductDetailsModal({
                           >
                             <FiEdit size={16} />
                           </IconButton>
+                          )}
                         </td>
                       </tr>
                       <tr>
@@ -669,7 +673,8 @@ export default function ProductDetailsModal({
                                   {att.file_name || "Attachment"}
                                 </Typography>
                               ))}
-                            <Button
+                            {hasPermission("productions.upload_file") && (
+                              <Button
                               component="label"
                               variant="outlined"
                               tabIndex={-1}
@@ -694,10 +699,12 @@ export default function ProductDetailsModal({
                                 accept="image/*,.pdf"
                               />
                             </Button>
+                            )}
                           </Box>
                         </td>
                       </tr>
-                      <tr>
+                      {hasPermission("productions.send_message") && (
+                        <tr>
                         <td className="title">
                           <strong>Message:</strong>
                         </td>
@@ -738,6 +745,7 @@ export default function ProductDetailsModal({
                           </Grid>
                         </td>
                       </tr>
+                      )}
                     </tbody>
                   </table>
                 </Grid>

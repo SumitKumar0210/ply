@@ -29,6 +29,7 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import { deletePO, fetchPurchaseOrders } from "../slice/purchaseOrderSlice";
+import { useAuth } from "../../../context/AuthContext";
 
 // Status mapping: 0-draft, 1-save, 2-reject, 3-approve
 const STATUS_CONFIG = {
@@ -56,6 +57,7 @@ const getItemCount = (materialItems) => {
 };
 
 const PurchaseOrder = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const navigate = useNavigate();
   const tableContainerRef = useRef(null);
   const dispatch = useDispatch();
@@ -181,8 +183,8 @@ const PurchaseOrder = () => {
   }, [deleteId, dispatch, showAlert, fetchData, globalFilter]);
 
   // Table columns
-  const columns = useMemo(
-    () => [
+  const columns = useMemo( () => {
+    const baseColumns = [
       { accessorKey: "purchase_no", header: "Po No." },
       {
         accessorKey: "vendor_id",
@@ -211,7 +213,10 @@ const PurchaseOrder = () => {
         header: "Status",
         Cell: ({ cell }) => getStatusChip(cell.getValue()),
       },
-      {
+    ];
+
+    if(hasAnyPermission(["purchase_order.delete","purchase_order.update","purchase_order.read"])){
+      baseColumns.push({
         id: "actions",
         header: "Action",
         size: 80,
@@ -221,7 +226,8 @@ const PurchaseOrder = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="View">
+            {hasPermission("purchase_order.read") && (
+              <Tooltip title="View">
               <IconButton
                 color="warning"
                 onClick={() => handleViewClick(row.original.id)}
@@ -230,7 +236,8 @@ const PurchaseOrder = () => {
                 <MdOutlineRemoveRedEye size={16} />
               </IconButton>
             </Tooltip>
-            {(row.original.status === 0 || row.original.status === 1) && (
+            )}
+            {(hasPermission("purchase_order.update") && row.original.status === 0 || row.original.status === 1) && (
               <Tooltip title="Edit">
                 <IconButton
                   color="primary"
@@ -241,6 +248,7 @@ const PurchaseOrder = () => {
                 </IconButton>
               </Tooltip>
             )}
+            {hasPermission("purchase_order.delete") && (
             <Tooltip title="Delete">
               <IconButton
                 color="error"
@@ -250,12 +258,14 @@ const PurchaseOrder = () => {
                 <RiDeleteBinLine size={16} />
               </IconButton>
             </Tooltip>
+            )}
           </Box>
         ),
-      },
-    ],
+      })
+    }
+    return baseColumns ;
     [handleViewClick, handleEditClick, handleDeleteClick]
-  );
+  });
 
   // CSV export
   const downloadCSV = useCallback(() => {
@@ -352,7 +362,8 @@ const PurchaseOrder = () => {
           <Typography variant="h6">Purchase Order</Typography>
         </Grid>
         <Grid item>
-          <Button
+          {hasPermission("purchase_order.create") && (
+            <Button
             variant="contained"
             startIcon={<AddIcon />}
             component={Link}
@@ -360,6 +371,7 @@ const PurchaseOrder = () => {
           >
             Create PO
           </Button>
+          )}
         </Grid>
       </Grid>
 

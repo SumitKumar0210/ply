@@ -37,6 +37,7 @@ import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 
 import { addGroup, fetchGroups, statusUpdate, deleteGroup, updateGroup } from "../slices/groupSlice";
 import { useDispatch, useSelector } from "react-redux";
+import { useAuth } from "../../../context/AuthContext";
 
 //  Error Boundary
 class ErrorBoundary extends React.Component {
@@ -69,6 +70,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 const Group = () => {
+  const { hasPermission, hasAnyPermission } = useAuth()
   const dispatch = useDispatch();
 
   //  Validation Schema
@@ -149,12 +151,14 @@ const Group = () => {
     }
   };
 
-  const columns = useMemo(
-    () => [
+  const canUpdate = useMemo(() => hasPermission("groups.update"), [hasPermission]);
+
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "name",
         header: "Group",
-        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : cell.getValue(),
+        Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="80%" /> : cell.getValue()),
       },
       {
         accessorKey: "status",
@@ -167,7 +171,10 @@ const Group = () => {
           return (
             <CustomSwitch
               checked={!!row.original.status}
+              disabled={!canUpdate}
               onChange={(e) => {
+                
+                if (!canUpdate) return;
                 const newStatus = e.target.checked ? 1 : 0;
                 dispatch(statusUpdate({ ...row.original, status: newStatus }));
               }}
@@ -175,7 +182,10 @@ const Group = () => {
           );
         },
       },
-      {
+    ];
+
+    if (hasAnyPermission?.(["groups.delete", "groups.update"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         enableSorting: false,
@@ -187,28 +197,35 @@ const Group = () => {
 
           return (
             <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              <Tooltip title="Edit">
-                <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
-                  <BiSolidEditAlt size={16} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete">
-                <IconButton color="error"
-                  onClick={() => {
-                    setOpenDelete(true);
-                    setDeleteRow(row.original);
-                  }}
-                >
-                  <RiDeleteBinLine size={16} />
-                </IconButton>
-              </Tooltip>
+              {hasPermission("groups.update") && (
+                <Tooltip title="Edit">
+                  <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {hasPermission("groups.delete") && (
+                <Tooltip title="Delete">
+                  <IconButton
+                    color="error"
+                    onClick={() => {
+                      setOpenDelete(true);
+                      setDeleteRow(row.original);
+                    }}
+                  >
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           );
         },
-      },
-    ],
-    [dispatch, loading]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [dispatch, loading, canUpdate, hasPermission, hasAnyPermission]);
+
 
   //  Tell MRT which field is the unique row id
   const getRowId = (originalRow) => originalRow.id;
@@ -294,7 +311,7 @@ const Group = () => {
                     p: 1,
                   }}
                 >
-                   <Typography variant="h6" className='page-title'>
+                  <Typography variant="h6" className='page-title'>
                     Group
                   </Typography>
 
@@ -314,13 +331,15 @@ const Group = () => {
                       </IconButton>
                     </Tooltip>
 
-                    <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleClickOpen}
-                    >
-                      Add Group
-                    </Button>
+                    {hasPermission('groups.create') && (
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleClickOpen}
+                      >
+                        Add Group
+                      </Button>
+                    )}
                   </Box>
                 </Box>
               )}

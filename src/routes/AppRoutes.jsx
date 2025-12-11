@@ -62,6 +62,7 @@ import Permissions from "../pages/Users/Permissions";
 import PermissionGroupManager from "../pages/Users/userPermission";
 
 import Error404 from "../pages/error/404";
+import Error403 from "../pages/error/403";
 
 const AppRoutes = () => {
   return (

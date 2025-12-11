@@ -47,6 +47,7 @@ import {
 import { fetchActiveDepartments } from "../settings/slices/departmentSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { compressImage } from "../../components/imageCompressor/imageCompressor";
+import { useAuth } from "../../context/AuthContext";
 
 // Constants
 const DOCUMENT_TYPES = [
@@ -221,6 +222,7 @@ const createValidationSchema = (isEdit = false) => {
 };
 
 const Labours = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const [open, setOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -244,19 +246,19 @@ const Labours = () => {
 
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
-const {
-  searchResults = {},
-  loading = false,
-} = useSelector((state) => state.labour);
+  const {
+    searchResults = {},
+    loading = false,
+  } = useSelector((state) => state.labour);
 
-const {
-  data: rowData = [],
-} = searchResults;
+  const {
+    data: rowData = [],
+  } = searchResults;
 
-const {
-  data: tableData = [],
-  total = 0,
-} = rowData;
+  const {
+    data: tableData = [],
+    total = 0,
+  } = rowData;
 
 
   const { data: departments = [] } = useSelector((state) => state.department);
@@ -529,9 +531,10 @@ const {
     dispatch(statusUpdate({ ...row, status: newStatus }));
   }, [dispatch]);
 
-  // Table columns
-  const columns = useMemo(
-    () => [
+  const canUpdate = useMemo(() => hasPermission("labours.update"), [hasPermission]);
+
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "profilePic",
         header: "Image",
@@ -575,12 +578,16 @@ const {
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
+            disabled={!canUpdate}
             onChange={(e) => handleStatusChange(row.original, e.target.checked)}
           />
         ),
         size: 100,
       },
-      {
+    ];
+
+    if (hasAnyPermission?.(["labours.update", "labours.delete"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         size: 120,
@@ -590,22 +597,38 @@ const {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="Edit">
-              <IconButton color="primary" onClick={() => handleUpdate(row.original)}>
-                <BiSolidEditAlt size={18} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete">
-              <IconButton color="error" onClick={() => handleDeleteClick(row.original)}>
-                <RiDeleteBinLine size={18} />
-              </IconButton>
-            </Tooltip>
+            {canUpdate && (
+              <Tooltip title="Edit">
+                <IconButton color="primary" onClick={() => handleUpdate(row.original)} size="small">
+                  <BiSolidEditAlt size={18} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {hasPermission("labours.delete") && (
+              <Tooltip title="Delete">
+                <IconButton color="error" onClick={() => handleDeleteClick(row.original)} size="small">
+                  <RiDeleteBinLine size={18} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         ),
-      },
-    ],
-    [mediaUrl, handleStatusChange, handleUpdate, handleDeleteClick]
-  );
+      });
+    }
+
+    return baseColumns;
+  }, [
+    mediaUrl,
+    Profile,
+    hasPermission,
+    hasAnyPermission,
+    canUpdate,
+    handleStatusChange,
+    handleUpdate,
+    handleDeleteClick,
+  ]);
+
 
   // CSV export
   const downloadCSV = useCallback(() => {
@@ -780,9 +803,11 @@ const {
           <Typography variant="h6">Labours</Typography>
         </Grid>
         <Grid>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
-            Add Labour
-          </Button>
+          {hasPermission("labours.create") && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
+              Add Labour
+            </Button>
+          )}
         </Grid>
       </Grid>
 
