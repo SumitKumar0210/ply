@@ -50,6 +50,7 @@ import {
   fetchPaymentRecord,
   clearPayments,
 } from "../slice/vendorInvoiceSlice";
+import { useAuth } from "../../../context/AuthContext";
 
 // Validation Schema
 const validationSchema = Yup.object().shape({
@@ -101,6 +102,7 @@ const formatDate = (dateString) => {
 };
 
 const VendorInvoice = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const navigate = useNavigate();
   const tableContainerRef = useRef(null);
   const dispatch = useDispatch();
@@ -281,8 +283,8 @@ const VendorInvoice = () => {
   );
 
   // Table Columns
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "poNumber",
         header: "PO NO.",
@@ -318,7 +320,10 @@ const VendorInvoice = () => {
         header: "Status",
         Cell: ({ row }) => getStatusChip(row.original.status),
       },
-      {
+    ];
+
+    if (hasAnyPermission(["vendor_invoices.collect_payment", "vendor_invoices.read"])) {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         size: 80,
@@ -328,30 +333,36 @@ const VendorInvoice = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="View Invoice">
-              <IconButton
-                color="warning"
-                onClick={() => handleViewClick(row.original.purchase_order?.id)}
-                size="small"
-              >
-                <MdOutlineRemoveRedEye size={16} />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Make Payment">
-              <IconButton
-                color="success"
-                onClick={() => handleClickOpen(row.original)}
-                size="small"
-              >
-                <GrCurrency size={16} />
-              </IconButton>
-            </Tooltip>
+            {hasPermission("vendor_invoices.read") && (
+              <Tooltip title="View Invoice">
+                <IconButton
+                  color="warning"
+                  onClick={() => handleViewClick(row.original.purchase_order?.id)}
+                  size="small"
+                >
+                  <MdOutlineRemoveRedEye size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+
+            {hasPermission("vendor_invoices.collect_payment") && (
+              <Tooltip title="Make Payment">
+                <IconButton
+                  color="success"
+                  onClick={() => handleClickOpen(row.original)}
+                  size="small"
+                >
+                  <GrCurrency size={16} />
+                </IconButton>
+              </Tooltip>)}
           </Box>
         ),
-      },
-    ],
-    [handleViewClick, handleClickOpen]
-  );
+      })
+    }
+
+    return baseColumns;
+    [handleViewClick,handleClickOpen,formatDate,getItemCount,getStatusChip,hasPermission,]
+  });
 
   // CSV Export
   const downloadCSV = useCallback(() => {
@@ -493,7 +504,7 @@ const VendorInvoice = () => {
                 p: 1,
               }}
             >
-               <Typography variant="h6" className='page-title'>
+              <Typography variant="h6" className='page-title'>
                 Vendor Invoices/Payments
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -598,21 +609,21 @@ const VendorInvoice = () => {
                       </TextField>
                       {(values.paymentMode === "upi" ||
                         values.paymentMode === "cheque") && (
-                        <TextField
-                          fullWidth
-                          size="small"
-                          margin="dense"
-                          label="Reference Number"
-                          name="referenceNo"
-                          value={values.referenceNo}
-                          onChange={handleChange}
-                          error={
-                            touched.referenceNo && Boolean(errors.referenceNo)
-                          }
-                          helperText={touched.referenceNo && errors.referenceNo}
-                          sx={{ mb: 1 }}
-                        />
-                      )}
+                          <TextField
+                            fullWidth
+                            size="small"
+                            margin="dense"
+                            label="Reference Number"
+                            name="referenceNo"
+                            value={values.referenceNo}
+                            onChange={handleChange}
+                            error={
+                              touched.referenceNo && Boolean(errors.referenceNo)
+                            }
+                            helperText={touched.referenceNo && errors.referenceNo}
+                            sx={{ mb: 1 }}
+                          />
+                        )}
                       <TextField
                         fullWidth
                         size="small"
@@ -725,8 +736,8 @@ const VendorInvoice = () => {
                                     <TableCell sx={{ fontSize: "13px" }}>
                                       {payment.date
                                         ? new Date(
-                                            payment.date
-                                          ).toLocaleDateString("en-IN")
+                                          payment.date
+                                        ).toLocaleDateString("en-IN")
                                         : "-"}
                                     </TableCell>
                                     <TableCell

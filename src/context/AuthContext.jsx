@@ -1,454 +1,291 @@
-import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+// ./context/AuthContext.jsx
+import React, {
+  createContext, useContext, useEffect, useRef,
+  useState, useCallback, useMemo
+} from "react";
 import axios from "axios";
+import { useDispatch } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { logout as reduxLogout, setUser as reduxSetUser } from "../pages/auth/authSlice";
 import { capitalize } from "lodash";
 
-const BASE_URL = import.meta.env.VITE_BASE_URL;
-const mediaUrl = import.meta.env.VITE_MEDIA_URL;
+const BASE_URL = import.meta.env.VITE_BASE_URL || "/";
+const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 
-// Configure axios interceptor for global 401 handling
-let isInterceptorSetup = false;
-const setupAxiosInterceptor = (logoutCallback) => {
-  if (isInterceptorSetup) return;
-  
-  axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response?.status === 401) {
-        console.warn("Token expired or unauthorized");
-        logoutCallback();
-      }
-      return Promise.reject(error);
-    }
-  );
-  
-  isInterceptorSetup = true;
-};
-
-const AuthContext = createContext();
-
-// Define public routes that don't require authentication
 const PUBLIC_ROUTES = [
   "/login",
   "/forgot-password",
   "/reset-password",
-  "/quotation/", 
+  "/quotation/",
 ];
 
-export const AuthProvider = ({ children }) => {
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children, eager = true }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Get auth state from Redux
-  const reduxAuth = useSelector((state) => state.auth);
-  
-  const [loading, setLoading] = useState(true);
-  const [initialCheck, setInitialCheck] = useState(true);
-  
-  const [user, setUser] = useState({
-    name: "",
-    profileImage: "",
-    type: "",
-    roles: [],
-    permissions: []
-  });
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
+  // cached_user (optional) for optimistic UI
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem("cached_user") || "null"); } catch (e) { cached = null; }
+
+  const [user, setUser] = useState(cached);
+  const [checking, setChecking] = useState(Boolean(localStorage.getItem("token"))); // background validation flag
+
+  // NEW: appDetails state
   const [appDetails, setAppDetails] = useState(() => {
-    return {
-      favicon: localStorage.getItem("favicon") || "",
-      logo: localStorage.getItem("logo") || "",
-      application_name: localStorage.getItem("application_name") || "",
-      horizontal_logo: localStorage.getItem("horizontalLogo") || "",
-      company_address: localStorage.getItem("company_address") || "",
-      gst_no: localStorage.getItem("gst_no") || "",
-    };
+    // try to read from localStorage at initialization
+    try {
+      const raw = localStorage.getItem("app_details");
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
   });
 
-  // Memoize public route check
-  const isPublicRoute = useCallback((pathname) => {
-    return PUBLIC_ROUTES.some(route => pathname.startsWith(route));
-  }, []);
-
-  // Permission check helper
-  const hasPermission = useCallback((permission) => {
-    if (!user.permissions || user.permissions.length === 0) return false;
-    return user.permissions.includes(permission);
-  }, [user.permissions]);
-
-  // Check multiple permissions (OR logic - user has any of the permissions)
-  const hasAnyPermission = useCallback((permissions) => {
-    if (!user.permissions || user.permissions.length === 0) return false;
-    return permissions.some(permission => user.permissions.includes(permission));
-  }, [user.permissions]);
-
-  // Check multiple permissions (AND logic - user has all permissions)
-  const hasAllPermissions = useCallback((permissions) => {
-    if (!user.permissions || user.permissions.length === 0) return false;
-    return permissions.every(permission => user.permissions.includes(permission));
-  }, [user.permissions]);
-
-  // Check if user has a specific role
-  const hasRole = useCallback((role) => {
-    if (!user.roles || user.roles.length === 0) return false;
-    return user.roles.includes(role);
-  }, [user.roles]);
-
-  // Fetch app details - runs only once on mount
-  useEffect(() => {
-    const fetchAppDetails = async () => {
-      const hasAllData = 
-        localStorage.getItem("favicon") &&
-        localStorage.getItem("logo") &&
-        localStorage.getItem("application_name") &&
-        localStorage.getItem("company_address") &&
-        localStorage.getItem("gst_no");
-
-      if (hasAllData) return;
-
-      try {
-        const res = await axios.get(`${BASE_URL}app-details`);
-        const appData = res.data.data[0];
-        
-        if (appData) {
-          const newAppDetails = {
-            favicon: appData.favicon ? mediaUrl + appData.favicon : "",
-            logo: appData.logo ? mediaUrl + appData.logo : "",
-            application_name: appData.app_name || "",
-            horizontal_logo: appData.horizontal_logo ? mediaUrl + appData.horizontal_logo : "",
-            company_address: appData.address ?? "",
-            gst_no: appData.gst_no ?? "",
-          };
-
-          localStorage.setItem("favicon", newAppDetails.favicon);
-          localStorage.setItem("logo", newAppDetails.logo);
-          localStorage.setItem("horizontalLogo", newAppDetails.horizontal_logo);
-          localStorage.setItem("application_name", newAppDetails.application_name);
-          localStorage.setItem("company_address", newAppDetails.company_address);
-          localStorage.setItem("gst_no", newAppDetails.gst_no);
-
-          setAppDetails(newAppDetails);
-
-          if (newAppDetails.favicon) {
-            const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-            link.type = 'image/x-icon';
-            link.rel = 'shortcut icon';
-            link.href = newAppDetails.favicon;
-            document.getElementsByTagName('head')[0].appendChild(link);
-          }
-
-          if (newAppDetails.application_name) {
-            document.title = newAppDetails.application_name;
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch app details:", error);
-      }
-    };
-
-    fetchAppDetails();
-  }, []);
-
-  const handleLogoutAndRedirect = useCallback(() => {
-    localStorage.removeItem("token");
-    sessionStorage.removeItem("redirectAfterLogin");
-    dispatch(reduxLogout());
-    setUser({ name: "", profileImage: "", type: "", roles: [], permissions: [] });
-    
-    if (!isPublicRoute(location.pathname)) {
-      navigate("/login", { replace: true });
+  // axios instance
+  const api = axios.create({ baseURL: BASE_URL, withCredentials: false });
+  api.interceptors.request.use(cfg => {
+    const t = localStorage.getItem("token");
+    if (t) cfg.headers = { ...cfg.headers, Authorization: `Bearer ${t}` };
+    return cfg;
+  });
+  api.interceptors.response.use(r => r, err => {
+    if (err?.response?.status === 401) {
+      window.dispatchEvent(new Event("auth-logout"));
     }
-  }, [location.pathname, navigate, isPublicRoute, dispatch]);
+    return Promise.reject(err);
+  });
 
-  // Setup axios interceptor once
-  useEffect(() => {
-    setupAxiosInterceptor(handleLogoutAndRedirect);
-  }, [handleLogoutAndRedirect]);
-
-  // Listen for Redux auth events (login/logout from other components)
-  useEffect(() => {
-    const handleAuthLogin = (event) => {
-      const { token } = event.detail;
-      if (token) {
-        checkAuthUser(token);
-      }
-    };
-
-    const handleAuthLogout = () => {
-      handleLogoutAndRedirect();
-    };
-
-    window.addEventListener('auth-login', handleAuthLogin);
-    window.addEventListener('auth-logout', handleAuthLogout);
-
-    return () => {
-      window.removeEventListener('auth-login', handleAuthLogin);
-      window.removeEventListener('auth-logout', handleAuthLogout);
-    };
-  }, [handleLogoutAndRedirect]);
-
-  // Check user data when authenticated
-  const checkAuthUser = useCallback(async (token) => {
-    try {
-      const res = await axios.post(
-        `${BASE_URL}auth/me`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (res.data.user.access_token) {
-        const userData = {
-          name: res.data.user.name ?? "",
-          profileImage: res.data.user.image ? mediaUrl + res.data.user.image : "",
-          type: capitalize(res.data.roles[0]) ?? "",
-          roles: res.data.roles || [],
-          permissions: res.data.permissions || []
-        };
-        
-        setUser(userData);
-        dispatch(reduxSetUser(userData));
-      }
-    } catch (error) {
-      console.error("Failed to fetch user data:", error);
-    }
+  // Apply user to context + redux + local cache
+  const applyUser = useCallback((u) => {
+    if (!isMountedRef.current) return;
+    setUser(u);
+    try { localStorage.setItem("cached_user", JSON.stringify(u || {})); } catch (e) {}
+    dispatch(reduxSetUser(u));
   }, [dispatch]);
 
-  // Check authentication ONLY ONCE on mount
-  useEffect(() => {
-    const checkToken = async () => {
-      const token = localStorage.getItem("token");
-      
-      if (!token) {
-        setLoading(false);
-        setInitialCheck(false);
-        
-        if (!isPublicRoute(location.pathname)) {
-          sessionStorage.setItem("redirectAfterLogin", location.pathname);
-          navigate("/login", { replace: true });
-        }
-        return;
+  const clearAuthAndRedirect = useCallback(() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("cached_user");
+    dispatch(reduxLogout());
+    if (isMountedRef.current) setUser(null);
+
+    if (!PUBLIC_ROUTES.some(r => location.pathname.startsWith(r))) {
+      navigate("/login", { replace: true });
+    }
+  }, [dispatch, location.pathname, navigate]);
+
+  // Background token validation — does not block initial render when eager=true
+  const validateTokenInBg = useCallback(async (overrideToken = null) => {
+    const token = overrideToken ?? localStorage.getItem("token");
+    if (!token) {
+      if (isMountedRef.current) setChecking(false);
+      if (user) applyUser(null);
+      return null;
+    }
+
+    setChecking(true);
+    try {
+      const res = await api.post("/auth/me", {}, { headers: { Authorization: `Bearer ${token}` }});
+      if (!isMountedRef.current) return null;
+
+      const payloadUser = res.data?.user ?? res.data;
+      const normalized = {
+        name: payloadUser?.name ?? "",
+        profileImage: payloadUser?.image ? (MEDIA_URL + payloadUser.image) : "",
+        type: capitalize((res.data?.roles?.[0]) ?? ""),
+        roles: res.data?.roles ?? [],
+        permissions: res.data?.permissions ?? []
+      };
+
+      applyUser(normalized);
+      return normalized;
+    } catch (err) {
+      if (isMountedRef.current) {
+        applyUser(null);
+        clearAuthAndRedirect();
       }
+      return null;
+    } finally {
+      if (isMountedRef.current) setChecking(false);
+    }
+  }, [api, applyUser, clearAuthAndRedirect, user]);
 
-      try {
-        const res = await axios.post(
-          `${BASE_URL}auth/me`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+  // Run one-time background validation on mount if token exists
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      validateTokenInBg();
+    } else {
+      setChecking(false);
+    }
 
-        if (res.data.user.access_token) {
-          const userData = {
-            name: res.data.user.name ?? "",
-            profileImage: res.data.user.image ? mediaUrl + res.data.user.image : "",
-            type: capitalize(res.data.roles[0]) ?? "",
-            roles: res.data.roles || [],
-            permissions: res.data.permissions || []
-          };
-          
-          setUser(userData);
-          dispatch(reduxSetUser(userData));
-          
-          if (isPublicRoute(location.pathname)) {
-            const redirectPath = sessionStorage.getItem("redirectAfterLogin");
-            
-            if (redirectPath && !isPublicRoute(redirectPath)) {
-              sessionStorage.removeItem("redirectAfterLogin");
-              navigate(redirectPath, { replace: true });
-            } else {
-              navigate("/dashboard", { replace: true });
-            }
-          }
-        } else {
-          handleLogoutAndRedirect();
-        }
-      } catch (error) {
-        console.error("Auth check failed:", error);
-        handleLogoutAndRedirect();
-      } finally {
-        setLoading(false);
-        setInitialCheck(false);
+    const onLogin = (e) => {
+      const t = e?.detail?.token;
+      if (t) {
+        localStorage.setItem("token", t);
+        validateTokenInBg(t);
       }
     };
+    const onLogout = () => {
+      clearAuthAndRedirect();
+    };
+    window.addEventListener("auth-login", onLogin);
+    window.addEventListener("auth-logout", onLogout);
 
-    checkToken();
+    return () => {
+      window.removeEventListener("auth-login", onLogin);
+      window.removeEventListener("auth-logout", onLogout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle route protection without API calls
-  useEffect(() => {
-    if (initialCheck) return;
-
-    const currentPath = location.pathname;
-    const token = localStorage.getItem("token");
-
-    if (!token && !isPublicRoute(currentPath)) {
-      sessionStorage.setItem("redirectAfterLogin", currentPath);
-      navigate("/login", { replace: true });
-      return;
-    }
-
-    if (token && reduxAuth.isAuthenticated && isPublicRoute(currentPath)) {
-      const redirectPath = sessionStorage.getItem("redirectAfterLogin");
-      
-      if (redirectPath && !isPublicRoute(redirectPath)) {
-        sessionStorage.removeItem("redirectAfterLogin");
-        navigate(redirectPath, { replace: true });
-      } else {
-        navigate("/dashboard", { replace: true });
-      }
-    }
-  }, [location.pathname, reduxAuth.isAuthenticated, initialCheck, isPublicRoute]);
-
-  // Optional: Refresh token periodically (every 15 minutes)
-  useEffect(() => {
-    if (!reduxAuth.isAuthenticated) return;
-
-    const refreshToken = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      try {
-        const res = await axios.post(
-          `${BASE_URL}auth/me`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (res.data.access_token) {
-          localStorage.setItem("token", res.data.access_token);
-        }
-      } catch (error) {
-        console.error("Token refresh failed:", error);
-      }
-    };
-
-    const interval = setInterval(refreshToken, 15 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [reduxAuth.isAuthenticated]);
-
-  const login = useCallback((token) => {
+  const login = useCallback(async (token) => {
+    if (!token) return;
     localStorage.setItem("token", token);
-    
-    const redirectPath = sessionStorage.getItem("redirectAfterLogin");
-    
-    if (redirectPath && !isPublicRoute(redirectPath)) {
-      sessionStorage.removeItem("redirectAfterLogin");
-      navigate(redirectPath, { replace: true });
-    } else {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [navigate, isPublicRoute]);
+    window.dispatchEvent(new CustomEvent("auth-login", { detail: { token } }));
+    await validateTokenInBg(token);
+  }, [validateTokenInBg]);
 
   const logout = useCallback(() => {
-    handleLogoutAndRedirect();
-  }, [handleLogoutAndRedirect]);
+    window.dispatchEvent(new Event("auth-logout"));
+    clearAuthAndRedirect();
+  }, [clearAuthAndRedirect]);
 
-  const refreshAppDetails = useCallback(async () => {
+  // permissions helpers
+  const hasPermission = useCallback((p) => !!(user?.permissions && user.permissions.includes(p)), [user]);
+  const hasAnyPermission = useCallback((arr) => !!(user?.permissions && arr.some(p => user.permissions.includes(p))), [user]);
+  const hasAllPermissions = useCallback((arr) => !!(user?.permissions && arr.every(p => user.permissions.includes(p))), [user]);
+  const hasRole = useCallback((r) => !!(user?.roles && user.roles.includes(r)), [user]);
+
+  // --- NEW: fetch app details if not already available ---
+  const fetchAppDetails = useCallback(async (signal) => {
+    // If appDetails already set (state/localStorage) don't re-fetch
     try {
-      const res = await axios.get(`${BASE_URL}app-details`);
-      const appData = res.data.data[0];
-      
-      if (appData) {
-        const newAppDetails = {
-          favicon: appData.favicon ? mediaUrl + appData.favicon : "",
-          logo: appData.logo ? mediaUrl + appData.logo : "",
-          application_name: appData.app_name || "",
-          horizontal_logo: appData.horizontal_logo ? mediaUrl + appData.horizontal_logo : "",
-          company_address: appData.address ?? "",
-          gst_no: appData.gst_no ?? "",
-        };
-
-        localStorage.setItem("favicon", newAppDetails.favicon);
-        localStorage.setItem("logo", newAppDetails.logo);
-        localStorage.setItem("horizontalLogo", newAppDetails.horizontal_logo);
-        localStorage.setItem("application_name", newAppDetails.application_name);
-        localStorage.setItem("company_address", newAppDetails.company_address);
-        localStorage.setItem("gst_no", newAppDetails.gst_no);
-
-        setAppDetails(newAppDetails);
-
-        if (newAppDetails.favicon) {
-          const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
-          link.type = 'image/x-icon';
-          link.rel = 'shortcut icon';
-          link.href = newAppDetails.favicon;
-          document.getElementsByTagName('head')[0].appendChild(link);
-        }
-
-        if (newAppDetails.application_name) {
-          document.title = newAppDetails.application_name;
-        }
+      const stored = localStorage.getItem("app_details");
+      if (stored) {
+        // ensure state reflects localStorage
+        const parsed = JSON.parse(stored);
+        if (isMountedRef.current) setAppDetails(parsed);
+        return parsed;
       }
-    } catch (error) {
-      console.error("Failed to refresh app details:", error);
+    } catch (e) {
+      // ignore parse errors and re-fetch
     }
-  }, []);
 
-  const contextValue = useMemo(() => ({
-    isAuthenticated: reduxAuth.isAuthenticated,
+    try {
+      const res = await api.get("/app-details", { signal });
+      if (!isMountedRef.current) return null;
+      const appData = res?.data?.data?.[0] ?? res?.data ?? null;
+      if (!appData) return null;
+
+      const normalized = {
+        favicon: appData.favicon ? MEDIA_URL + appData.favicon : "",
+        logo: appData.logo ? MEDIA_URL + appData.logo : "",
+        horizontal_logo: appData.horizontal_logo ? MEDIA_URL + appData.horizontal_logo : "",
+        application_name: appData.app_name ?? "",
+        company_address: appData.address ?? "",
+        gst_no: appData.gst_no ?? ""
+      };
+
+      // cache in localStorage and state
+      try {
+        localStorage.setItem("app_details", JSON.stringify(normalized));
+        // for backwards compatibility with other places reading separate keys:
+        if (normalized.favicon) localStorage.setItem("favicon", normalized.favicon);
+        if (normalized.logo) localStorage.setItem("logo", normalized.logo);
+        if (normalized.horizontal_logo) localStorage.setItem("horizontalLogo", normalized.horizontal_logo);
+        if (normalized.application_name) localStorage.setItem("application_name", normalized.application_name);
+        if (normalized.company_address) localStorage.setItem("company_address", normalized.company_address);
+        if (normalized.gst_no) localStorage.setItem("gst_no", normalized.gst_no);
+      } catch (e) {
+        // ignore localStorage write errors
+      }
+
+      if (isMountedRef.current) {
+        setAppDetails(normalized);
+
+        // set favicon if available
+        if (normalized.favicon) {
+          try {
+            let link = document.querySelector("link[rel*='icon']");
+            if (!link) {
+              link = document.createElement("link");
+              link.rel = "shortcut icon";
+              link.type = "image/x-icon";
+              document.getElementsByTagName("head")[0].appendChild(link);
+            }
+            link.href = normalized.favicon;
+          } catch (e) {
+            // ignore DOM failures
+          }
+        }
+        // set title
+        if (normalized.application_name) document.title = normalized.application_name;
+      }
+
+      return normalized;
+    } catch (err) {
+      // network or other error — do not crash app
+      // If request was aborted, ignore
+      if (err?.name === "CanceledError" || err?.name === "AbortError") return null;
+      console.error("Failed to fetch app details:", err);
+      return null;
+    }
+  }, [api]);
+
+  // run fetchAppDetails on mount if appDetails missing
+  useEffect(() => {
+    const controller = new AbortController();
+    // start fetch only if we don't already have appDetails
+    if (!appDetails) {
+      fetchAppDetails(controller.signal);
+    } else {
+      // ensure document title and favicon reflect cached appDetails
+      if (appDetails.application_name) document.title = appDetails.application_name;
+      if (appDetails.favicon) {
+        try {
+          let link = document.querySelector("link[rel*='icon']");
+          if (!link) {
+            link = document.createElement("link");
+            link.rel = "shortcut icon";
+            link.type = "image/x-icon";
+            document.getElementsByTagName("head")[0].appendChild(link);
+          }
+          link.href = appDetails.favicon;
+        } catch (e) {}
+      }
+    }
+
+    return () => controller.abort();
+  }, [appDetails, fetchAppDetails]);
+
+  const value = useMemo(() => ({
+    user,
+    appDetails,
     login,
     logout,
-    user,
-    setUser,
-    loading,
-    appDetails,
-    refreshAppDetails,
+    checking, // background validation in progress
+    isAuthenticated: !!localStorage.getItem("token"),
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
     hasRole
-  }), [
-    reduxAuth.isAuthenticated, 
-    login, 
-    logout, 
-    user, 
-    loading, 
-    appDetails, 
-    refreshAppDetails,
-    hasPermission,
-    hasAnyPermission,
-    hasAllPermissions,
-    hasRole
-  ]);
+  }), [user, appDetails, login, logout, checking, hasPermission, hasAnyPermission, hasAllPermissions, hasRole]);
 
-  if (initialCheck && loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        width: '100vw'
-      }}>
-        <div>Loading...</div>
-      </div>
-    );
-  }
-
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 };

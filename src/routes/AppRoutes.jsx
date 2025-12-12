@@ -1,148 +1,173 @@
-import React from "react";
+// ./routes/AppRoutes.jsx
+import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout";
-import MainLayout from "../layouts/MainLayout";
 import ProtectedRoute from "./ProtectedRoute";
+import SecurePage from "./SecurePage";
 
-// Auth pages
-import Login from "../pages/auth/Login";
-import ForgotPassword from "../pages/auth/ForgotPassword";
+// lazy load pages to reduce initial bundle & memory usage
+const Login = lazy(() => import("../pages/auth/Login"));
+const ForgotPassword = lazy(() => import("../pages/auth/ForgotPassword"));
+const PublicQuoteDetailsView = lazy(() => import("../pages/Public/Quotation"));
 
-// Main pages
-import Dashboard from "../pages/dashboard/Dashboard";
-import Settings from "../pages/settings/Settings";
-import Users from "../pages/Users/Users";
-import Customers from "../pages/Users/Customers";
-import Labours from "../pages/Users/Labours";
+const Dashboard = lazy(() => import("../pages/dashboard/Dashboard"));
+const Settings = lazy(() => import("../pages/settings/Settings"));
+const Users = lazy(() => import("../pages/Users/Users"));
+const Customers = lazy(() => import("../pages/Users/Customers"));
+const Labours = lazy(() => import("../pages/Users/Labours"));
 
-// Vendor pages
-import VendorDashboard from "../pages/Vendor/Dashboard/VendorDashboard";
-import PurchaseOrder from "../pages/Vendor/PurchaseOrder/PurchaseOrder";
-import CreatePurchaseOrder from "../pages/Vendor/PurchaseOrder/CreatePurchaseOrder";
-import EditPurchaseOrder from "../pages/Vendor/PurchaseOrder/EditPurchaseOrder";
-import ViewPurchaseOrder from "../pages/Vendor/PurchaseOrder/ViewPurchaseOrder";
-import ApprovePurchaseOrder from "../pages/Vendor/PurchaseOrder/ApprovePurchaseOrder";
-import PurchaseOrderQC from "../pages/Vendor/PurchaseOrder/PurchaseOrderQC";
-import PrintPurchaseOrder from "../pages/Vendor/PurchaseOrder/PrintPurchaseOrder";
+const VendorDashboard = lazy(() => import("../pages/Vendor/Dashboard/VendorDashboard"));
+const PurchaseOrder = lazy(() => import("../pages/Vendor/PurchaseOrder/PurchaseOrder"));
+const CreatePurchaseOrder = lazy(() => import("../pages/Vendor/PurchaseOrder/CreatePurchaseOrder"));
+const EditPurchaseOrder = lazy(() => import("../pages/Vendor/PurchaseOrder/EditPurchaseOrder"));
+const ViewPurchaseOrder = lazy(() => import("../pages/Vendor/PurchaseOrder/ViewPurchaseOrder"));
+const ApprovePurchaseOrder = lazy(() => import("../pages/Vendor/PurchaseOrder/ApprovePurchaseOrder"));
+const PurchaseOrderQC = lazy(() => import("../pages/Vendor/PurchaseOrder/PurchaseOrderQC"));
+const PrintPurchaseOrder = lazy(() => import("../pages/Vendor/PurchaseOrder/PrintPurchaseOrder"));
 
-import VendorInvoice from "../pages/Vendor/Invoice/Invoice";
-import InvoiceDetail from "../pages/Vendor/Invoice/InvoiceDetail";
+const VendorInvoice = lazy(() => import("../pages/Vendor/Invoice/Invoice"));
+const InvoiceDetail = lazy(() => import("../pages/Vendor/Invoice/InvoiceDetail"));
 
-import Payment from "../pages/Vendor/Payment/Payment";
-import Ledger from "../pages/Vendor/Ledger/Ledger";
-import CreateVendor from "../pages/Vendor/CreateVendor/CreateVendor";
+const Payment = lazy(() => import("../pages/Vendor/Payment/Payment"));
+const Ledger = lazy(() => import("../pages/Vendor/Ledger/Ledger"));
+const CreateVendor = lazy(() => import("../pages/Vendor/CreateVendor/CreateVendor"));
 
-import CustomerDashboard from "../pages/Customer/Dashboard/CustomerDashboard";
-import Quote from "../pages/Customer/Quote/Quote";
-import QuoteDetailsView from "../pages/Customer/Quote/QuoteDetailsView";
-import CreateQuote from "../pages/Customer/Quote/CreateQuote";
-import EditQuote from "../pages/Customer/Quote/EditQuote";
-import OrderDetailsView from "../pages/Customer/Order/OrderDetailsView";
-import CreateOrder from "../pages/Customer/Order/CreateOrder";
-import EditOrder from "../pages/Customer/Order/EditOrder";
-import CustomerLedger from "../pages/Customer/Ledger/Ledger";
-import Vendor from "../pages/Vendor/Ledger/vendor";
-import PublicQuoteDetailsView from "../pages/Public/Quotation";
-import Order from "../pages/Customer/Order/Order";
-import OwnProductionOrder from "../pages/Production/order";
-import AddOrder from "../pages/Production/addOrder";
-import Customer from "../pages/Customer/Ledger/Customer";
-import Production from "../pages/Production/Production";
-import ProductRequest from "../pages/Production/ProductRequest";
-import ReadyProduct from "../pages/Production/ReadyProduct";
-import ProductChallan from "../pages/Production/ProductChallna";
-import Bills from "../pages/Billing/Bills";
-import GenerateBill from "../pages/Billing/GenerateBill";
-import EditBill from "../pages/Billing/EditGenerateBill";
-import ViewBill from "../pages/Billing/ViewBill";
-import Challan from "../pages/Billing/Challan";
-import DispatchProduct from "../pages/Billing/DispatchProduct";
-import StockInOut from "../pages/Billing/Stocks";
-import Permissions from "../pages/Users/Permissions";
-import PermissionGroupManager from "../pages/Users/userPermission";
+const CustomerDashboard = lazy(() => import("../pages/Customer/Dashboard/CustomerDashboard"));
+const Quote = lazy(() => import("../pages/Customer/Quote/Quote"));
+const QuoteDetailsView = lazy(() => import("../pages/Customer/Quote/QuoteDetailsView"));
+const CreateQuote = lazy(() => import("../pages/Customer/Quote/CreateQuote"));
+const EditQuote = lazy(() => import("../pages/Customer/Quote/EditQuote"));
+const OrderDetailsView = lazy(() => import("../pages/Customer/Order/OrderDetailsView"));
+const CreateOrder = lazy(() => import("../pages/Customer/Order/CreateOrder"));
+const EditOrder = lazy(() => import("../pages/Customer/Order/EditOrder"));
+const CustomerLedger = lazy(() => import("../pages/Customer/Ledger/Ledger"));
+const Vendor = lazy(() => import("../pages/Vendor/Ledger/vendor"));
+const PublicQuote = PublicQuoteDetailsView; // alias used above
+const Order = lazy(() => import("../pages/Customer/Order/Order"));
+const OwnProductionOrder = lazy(() => import("../pages/Production/order"));
+const AddOrder = lazy(() => import("../pages/Production/addOrder"));
+const Customer = lazy(() => import("../pages/Customer/Ledger/Customer"));
+const Production = lazy(() => import("../pages/Production/Production"));
+const ProductRequest = lazy(() => import("../pages/Production/ProductRequest"));
+const ReadyProduct = lazy(() => import("../pages/Production/ReadyProduct"));
+const ProductChallan = lazy(() => import("../pages/Production/ProductChallna"));
+const Bills = lazy(() => import("../pages/Billing/Bills"));
+const GenerateBill = lazy(() => import("../pages/Billing/GenerateBill"));
+const EditBill = lazy(() => import("../pages/Billing/EditGenerateBill"));
+const ViewBill = lazy(() => import("../pages/Billing/ViewBill"));
+const Challan = lazy(() => import("../pages/Billing/Challan"));
+const DispatchProduct = lazy(() => import("../pages/Billing/DispatchProduct"));
+const StockInOut = lazy(() => import("../pages/Billing/Stocks"));
+const Permissions = lazy(() => import("../pages/Users/Permissions"));
+const PermissionGroupManager = lazy(() => import("../pages/Users/userPermission"));
+const ProductStocks = lazy(() => import("../pages/Production/ProductStock"));
 
-import Error404 from "../pages/error/404";
-import Error403 from "../pages/error/403";
+const Error404 = lazy(() => import("../pages/error/404"));
+const Error403 = lazy(() => import("../pages/error/403"));
+
+// minimal Suspense fallback
+const SuspenseFallback = () => null;
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      {/* Default → Login */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+    <Suspense fallback={<SuspenseFallback />}>
+      <Routes>
+        {/* Default */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
-      {/* public link */}
-      <Route path="/quotation/:link" element={<PublicQuoteDetailsView />} />
+        {/* Public link */}
+        <Route
+          path="/quotation/:link"
+          element={
+            <AuthLayout>
+              <PublicQuote />
+            </AuthLayout>
+          }
+        />
 
-      {/* Auth pages */}
-      <Route path="/login" element={<AuthLayout><Login /></AuthLayout>} />
-      <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
+        {/* Auth (public) */}
+        <Route path="/login" element={<AuthLayout><Login /></AuthLayout>} />
+        <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
 
-      {/* Protected pages */}
-      <Route path="/dashboard" element={<ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><MainLayout><Settings /></MainLayout></ProtectedRoute>} />
-      <Route path="/users" element={<ProtectedRoute><MainLayout><Users /></MainLayout></ProtectedRoute>} />
-      <Route path="/customers" element={<ProtectedRoute><MainLayout><Customers /></MainLayout></ProtectedRoute>} />
-      <Route path="/labours" element={<ProtectedRoute><MainLayout><Labours /></MainLayout></ProtectedRoute>} />
+        {/* Protected + permissioned pages using SecurePage */}
+        <Route path="/dashboard" element={<SecurePage><Dashboard /></SecurePage>} />
+        <Route path="/settings" element={<SecurePage anyPermissions={[
+          "settings.read",
+          "groups.read",
+          "categories.read",
+          "machines.read",
+          "uom.read",
+          "materials.read",
+          "product_types.read",
+          "product.read",
+          "tax_slabs.read",
+          "roles.read",
+          "vendors.read",
+          "departments.read",
+        ]}><Settings /></SecurePage>} />
+        <Route path="/users" element={<SecurePage permission="users.read"><Users /></SecurePage>} />
+        <Route path="/customers" element={<SecurePage permission="customers.read"><Customers /></SecurePage>} />
+        <Route path="/labours" element={<SecurePage permission="labours.read"><Labours /></SecurePage>} />
+ 
+        {/* Vendor group */}
+        <Route path="/vendor/dashboard" element={<SecurePage ><VendorDashboard /></SecurePage>} />
+        <Route path="/vendor/purchase-order" element={<SecurePage permission="purchase_order.read"><PurchaseOrder /></SecurePage>} />
+        <Route path="/vendor/purchase-order/create" element={<SecurePage permission="purchase_order.create"><CreatePurchaseOrder /></SecurePage>} />
+        <Route path="/vendor/purchase-order/edit/:id" element={<SecurePage permission="purchase_order.edit"><EditPurchaseOrder /></SecurePage>} />
+        <Route path="/vendor/purchase-order/view/:id" element={<SecurePage permission="purchase_order.read"><ViewPurchaseOrder /></SecurePage>} />
+        <Route path="/vendor/purchase-order/approve" element={<SecurePage permission="purchase_order.approve"><ApprovePurchaseOrder /></SecurePage>} />
+        <Route path="/vendor/purchase-order/quality-check/:id" element={<SecurePage permission="qc_po.read"><PurchaseOrderQC /></SecurePage>} />
+        <Route path="/vendor/purchase-order/print/:id" element={<SecurePage permission="qc_po.read"><PrintPurchaseOrder /></SecurePage>} />
 
-      {/* Vendor */}
-      <Route path="/vendor/dashboard" element={<ProtectedRoute><MainLayout><VendorDashboard /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/purchase-order" element={<ProtectedRoute><MainLayout><PurchaseOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/purchase-order/create" element={<ProtectedRoute><MainLayout><CreatePurchaseOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/purchase-order/edit/:id" element={<ProtectedRoute><MainLayout><EditPurchaseOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/purchase-order/view/:id" element={<ProtectedRoute><MainLayout><ViewPurchaseOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/purchase-order/approve" element={<ProtectedRoute><MainLayout><ApprovePurchaseOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/purchase-order/quality-check/:id" element={<ProtectedRoute><MainLayout><PurchaseOrderQC /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/purchase-order/print/:id" element={<ProtectedRoute><MainLayout><PrintPurchaseOrder /></MainLayout></ProtectedRoute>} />
+        <Route path="/vendor/invoice" element={<SecurePage permission="vendor_invoices.read"><VendorInvoice /></SecurePage>} />
+        <Route path="/vendor/invoice/view/:id" element={<SecurePage permission="vendor_invoices.read"><InvoiceDetail /></SecurePage>} />
+        {/* <Route path="/vendor/payment" element={<SecurePage><Payment /></SecurePage>} /> */}
+        <Route path="/vendor/ledger/:id" element={<SecurePage permission="vendor_invoices.read"><Ledger /></SecurePage>} />
+        <Route path="/vendor/list" element={<SecurePage permission="vendor_lists.read"><Vendor /></SecurePage>} />
+        {/* <Route path="/vendor/create-vendor" element={<SecurePage permission="vendor.create"><CreateVendor /></SecurePage>} /> */}
 
-      <Route path="/vendor/invoice" element={<ProtectedRoute><MainLayout><VendorInvoice /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/invoice/view/:id" element={<ProtectedRoute><MainLayout><InvoiceDetail /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/payment" element={<ProtectedRoute><MainLayout><Payment /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/ledger/:id" element={<ProtectedRoute><MainLayout><Ledger /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/list" element={<ProtectedRoute><MainLayout><Vendor /></MainLayout></ProtectedRoute>} />
-      <Route path="/vendor/create-vendor" element={<ProtectedRoute><MainLayout><CreateVendor /></MainLayout></ProtectedRoute>} />
+        {/* Customer */}
+        <Route path="/customer/dashboard" element={<SecurePage><CustomerDashboard /></SecurePage>} />
+        <Route path="/customer/quote" element={<SecurePage permission="quotations.read"><Quote /></SecurePage>} />
+        <Route path="/customer/quote/view/:id" element={<SecurePage permission="quotations.read"><QuoteDetailsView /></SecurePage>} />
+        <Route path="/customer/quote/create" element={<SecurePage permission="quotations.create"><CreateQuote /></SecurePage>} />
+        <Route path="/customer/quote/edit/:id" element={<SecurePage permission="quotations.update"><EditQuote /></SecurePage>} />
+        <Route path="/customer/order" element={<SecurePage permission="customer_orders.read"><Order /></SecurePage>} />
+        <Route path="/customer/order/view/:id" element={<SecurePage permission="customer_orders.read"><OrderDetailsView /></SecurePage>} />
+        <Route path="/customer/order/create" element={<SecurePage permission="customer_orders.create"><CreateOrder /></SecurePage>} />
+        <Route path="/customer/order/edit/:id" element={<SecurePage permission="customer_orders.update"><EditOrder /></SecurePage>} />
+        <Route path="/customer/list" element={<SecurePage permission="customer_lists.read"><Customer /></SecurePage>} />
+        <Route path="/customer/ledger/:id" element={<SecurePage permission="customer_lists.view_ledger"><CustomerLedger /></SecurePage>} />
 
-      {/* Customer */}
-      <Route path="/customer/dashboard" element={<ProtectedRoute><MainLayout><CustomerDashboard /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/quote" element={<ProtectedRoute><MainLayout><Quote /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/quote/view/:id" element={<ProtectedRoute><MainLayout><QuoteDetailsView /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/quote/create" element={<ProtectedRoute><MainLayout><CreateQuote /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/quote/edit/:id" element={<ProtectedRoute><MainLayout><EditQuote /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/order" element={<ProtectedRoute><MainLayout><Order /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/order/view/:id" element={<ProtectedRoute><MainLayout><OrderDetailsView /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/order/create" element={<ProtectedRoute><MainLayout><CreateOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/order/edit/:id" element={<ProtectedRoute><MainLayout><EditOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/list" element={<ProtectedRoute><MainLayout><Customer /></MainLayout></ProtectedRoute>} />
-      <Route path="/customer/ledger/:id" element={<ProtectedRoute><MainLayout><CustomerLedger /></MainLayout></ProtectedRoute>} />
+        {/* Production */}
+        <Route path="/production/create-order" element={<SecurePage permission="company_orders.create"><AddOrder /></SecurePage>} />
+        <Route path="/production/orders" element={<SecurePage permission="company_orders.read"><OwnProductionOrder /></SecurePage>} />
+        <Route path="/production/production-chain" element={<SecurePage permission="productions.read"><Production /></SecurePage>} />
+        <Route path="/production/product-request" element={<SecurePage permission="materials.read"><ProductRequest /></SecurePage>} />
+        <Route path="/product/stocks" element={<SecurePage ><ProductStocks permission="product_stocks.read" /></SecurePage>} />
+        <Route path="/product/ready-product" element={<SecurePage ><ReadyProduct /></SecurePage>} />
+        {/* <Route path="/product/challan/:id" element={<SecurePage permission="product.challan"><ProductChallan /></SecurePage>} /> */}
 
+        {/* Bills */}
+        <Route path="/bills" element={<SecurePage permission="bills.read"><Bills /></SecurePage>} />
+        <Route path="/bill/generate-bill" element={<SecurePage permission="bills.create"><GenerateBill /></SecurePage>} />
+        <Route path="/bill/edit-bill/:id" element={<SecurePage permission="bills.update"><EditBill /></SecurePage>} />
+        <Route path="/bill/view/:id" element={<SecurePage permission="bills.read"><ViewBill /></SecurePage>} />
+        <Route path="/bill/challan/:id" element={<SecurePage permission="bills.create_challan"><Challan /></SecurePage>} />
+        <Route path="/bill/dispatched-product" element={<SecurePage permission="dispatch_product.read"><DispatchProduct /></SecurePage>} />
 
-      {/* Production */}
-      <Route path="/production/create-order" element={<ProtectedRoute><MainLayout><AddOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/production/orders" element={<ProtectedRoute><MainLayout><OwnProductionOrder /></MainLayout></ProtectedRoute>} />
-      <Route path="/production/production-chain" element={<ProtectedRoute><MainLayout><Production /></MainLayout></ProtectedRoute>} />
-      <Route path="/production/product-request" element={<ProtectedRoute><MainLayout><ProductRequest /></MainLayout></ProtectedRoute>} />
-      <Route path="/product/ready-product" element={<ProtectedRoute><MainLayout><ReadyProduct /></MainLayout></ProtectedRoute>} />
-      <Route path="/product/challan/:id" element={<ProtectedRoute><MainLayout><ProductChallan /></MainLayout></ProtectedRoute>} />
+        {/* Stock */}
+        <Route path="/stocks" element={<SecurePage permission="stocks.read"><StockInOut /></SecurePage>} />
 
-      {/* Bills */}
-      <Route path="/bills" element={<ProtectedRoute><MainLayout><Bills /></MainLayout></ProtectedRoute>} />
-      <Route path="/bill/generate-bill" element={<ProtectedRoute><MainLayout><GenerateBill /></MainLayout></ProtectedRoute>} />
-      <Route path="/bill/edit-bill/:id" element={<ProtectedRoute><MainLayout><EditBill /></MainLayout></ProtectedRoute>} />
-      <Route path="/bill/view/:id" element={<ProtectedRoute><MainLayout><ViewBill /></MainLayout></ProtectedRoute>} />
-      <Route path="/bill/challan/:id" element={<ProtectedRoute><MainLayout><Challan /></MainLayout></ProtectedRoute>} />
-      <Route path="/bill/dispatched-product" element={<ProtectedRoute><MainLayout><DispatchProduct /></MainLayout></ProtectedRoute>} />
+        {/* Permission */}
+        {/* <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} /> */}
+        <Route path="/settings/:id/fetch-permissions" element={<SecurePage permission="roles.assign"><PermissionGroupManager /></SecurePage>} />
 
-      {/* stock */}
-      <Route path="/stocks" element={<ProtectedRoute><MainLayout><StockInOut /></MainLayout></ProtectedRoute>} />
-
-      {/* Permission */}
-      <Route path="/permissions" element={<ProtectedRoute><MainLayout><Permissions /></MainLayout></ProtectedRoute>} />
-      <Route path="/settings/:id/fetch-permissions" element={<ProtectedRoute><MainLayout><PermissionGroupManager /></MainLayout></ProtectedRoute>} />
-
-
-
-      {/* Catch-all */}
-      <Route path="*" element={<Error404 />} />
-    </Routes>
+        {/* Error pages */}
+        <Route path="/403" element={<Error403 />} />
+        <Route path="*" element={<Error404 />} />
+      </Routes>
+    </Suspense>
   );
 };
 

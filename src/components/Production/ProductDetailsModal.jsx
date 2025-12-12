@@ -409,7 +409,7 @@ export default function ProductDetailsModal({
                   </Typography>
                 </Box>
 
-                {currentDepartment?.id === 5 && (
+                {(hasPermission("productions.qc_fail") && currentDepartment?.id === 5) && (
                   <Button
                     variant="contained"
                     color="error"
@@ -425,7 +425,7 @@ export default function ProductDetailsModal({
                 />
 
 
-                {currentDepartment?.id == '8' && (
+                {(hasPermission("productions.ready_for_delivery") && currentDepartment?.id == '8') && (
                   <Button
                     variant="outlined"
                     startIcon={<TbTruckDelivery />}
@@ -535,14 +535,14 @@ export default function ProductDetailsModal({
               </Grid>
 
               <Grid container spacing={2} sx={{ marginTop: 2 }}>
-                <Grid item xs={12} className="production-status">
+                <Grid size={12} className="production-status">
                   <table className="production-status-details">
                     <tbody>
                       <tr>
                         <td className="title">
                           <strong>Tentative:</strong>
                         </td>
-                        <td style={{ position: "relative" }}>
+                        <td style={{ position: "relative", width: "100%" }}>
                           <Box
                             sx={{
                               display: "flex",

@@ -38,7 +38,7 @@ export const updateRole = createAsyncThunk(
   async (updated, { rejectWithValue }) => {
     try {
       // Using PUT for RESTful update
-      const res = await api.put(`admin/roles/update/${updated.id}`, updated);
+      const res = await api.post(`admin/roles/update/${updated.id}`, updated);
       successMessage(res.data.message);
       // return the updated role object from server if available, otherwise fallback
       return res.data.data ?? updated;
@@ -90,7 +90,7 @@ export const deleteRole = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       // Using DELETE for RESTful delete
-      const res = await api.delete(`admin/roles/delete/${id}`);
+      const res = await api.post(`admin/roles/delete/${id}`);
       successMessage(res.data.message || 'Role deleted successfully!');
       // return the deleted id so reducer can remove it
       return id;

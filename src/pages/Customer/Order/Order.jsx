@@ -255,7 +255,7 @@ const Order = () => {
       },
     ];
 
-    if (hasAnyPermission(["company_orders.read", "company_orders.update"])) {
+    if (hasAnyPermission(["customer_orders.add_production", "customer_orders.update"])) {
       baseColumns.push({
         id: "actions",
         header: "Action",
@@ -266,7 +266,7 @@ const Order = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            {hasPermission("company_orders.read") && (
+            {hasPermission("customer_orders.add_production") && (
               <Tooltip title="View">
                 <IconButton
                   color="warning"
@@ -276,7 +276,7 @@ const Order = () => {
                 </IconButton>
               </Tooltip>
             )}
-            {(hasPermission("company_orders.update") && row.original.status === 0)
+            {(hasPermission("customer_orders.update") && row.original.status === 0)
               && (
                 <Tooltip title="Edit">
                   <IconButton
@@ -364,7 +364,7 @@ const Order = () => {
           <Typography variant="h6">Order</Typography>
         </Grid>
         <Grid>
-          {hasPermission("company_orders.create") && (
+          {hasPermission("customer_orders.create") && (
             <Button
               variant="contained"
               startIcon={<AddIcon />}

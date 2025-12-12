@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Grid,
   Paper,
@@ -27,6 +27,21 @@ const ForgotPassword = () => {
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [logoLoaded, setLogoLoaded] = useState(false);
+  const [logoError, setLogoError] = useState(false);
+  const [isLoadingAppDetails, setIsLoadingAppDetails] = useState(true);
+
+  // Check if appDetails is loaded
+  useEffect(() => {
+    if (appDetails && Object.keys(appDetails).length > 0) {
+      setIsLoadingAppDetails(false);
+    } 
+    // else {
+    //   const timer = setTimeout(() => {
+    //     setIsLoadingAppDetails(false);
+    //   }, 1000);
+    //   return () => clearTimeout(timer);
+    // }
+  }, [appDetails]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,27 +75,54 @@ const ForgotPassword = () => {
     }
   };
 
+  // Determine logo source with fallback logic
+  const storedLogo = localStorage.getItem("logo");
+  let logoSrc = Logo; // Default fallback
+
+  if (appDetails && appDetails.logo) {
+    logoSrc = appDetails.logo;
+  } else if (storedLogo) {
+    logoSrc = storedLogo;
+  }
+
+  // If logo failed to load, use default Logo
+  const displayLogo = logoError ? Logo : logoSrc;
+
+  const handleLogoLoad = () => {
+    setLogoLoaded(true);
+    setLogoError(false);
+  };
+
+  const handleLogoError = () => {
+    setLogoLoaded(true);
+    setLogoError(true);
+  };
+
+  // Show skeleton while loading app details OR while logo is loading
+  const showSkeleton = isLoadingAppDetails || !logoLoaded;
+
   return (
     <Paper elevation={10} style={paperStyle}>
       <Grid align="center">
-        {!logoLoaded && (
+        {showSkeleton && (
           <Skeleton
             variant="rectangular"
             width={100}
             height={100}
-            sx={{ marginBottom: "10px", borderRadius: 1 }}
+            sx={{ marginBottom: "10px", borderRadius: 1, margin: "0 auto" }}
           />
         )}
         <img
-          src={appDetails?.logo ?? Logo}
+          src={displayLogo}
           alt="logo"
           style={{
             width: "100px",
             marginBottom: "10px",
-            display: logoLoaded ? "block" : "none",
+            display: showSkeleton ? "none" : "block",
+            margin: showSkeleton ? "0" : "0 auto 10px",
           }}
-          onLoad={() => setLogoLoaded(true)}
-          onError={() => setLogoLoaded(true)}
+          onLoad={handleLogoLoad}
+          onError={handleLogoError}
         />
         <Typography variant="h5" component="h2" sx={{ mb: 1 }}>
           Forgot Password

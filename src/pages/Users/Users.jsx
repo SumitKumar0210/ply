@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -37,10 +37,10 @@ import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 import { useDispatch, useSelector } from "react-redux";
 import { addUser, fetchUsers, updateUser, statusUpdate, deleteUser } from "./slices/userSlice";
 import { fetchStates } from "../settings/slices/stateSlice";
-import { fetchActiveUserTypes } from "../settings/slices/userTypeSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { compressImage } from "../../components/imageCompressor/imageCompressor";
 import { useAuth } from "../../context/AuthContext";
+import { fetchActiveRoles } from "../settings/slices/roleSlice";
 
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
@@ -117,7 +117,7 @@ const validationSchema = Yup.object({
     .matches(/^[0-9]{6}$/, "PIN code must be exactly 6 digits")
     .required("PIN code is required"),
 
-  user_type_id: Yup.string().required("User type is required"),
+  user_type_id: Yup.string().required("Role is required"),
 
   image: Yup.mixed().nullable(),
 });
@@ -158,7 +158,7 @@ const editValidationSchema = Yup.object({
     .matches(/^[0-9]{6}$/, "PIN code must be exactly 6 digits")
     .required("PIN code is required"),
 
-  user_type_id: Yup.string().required("User type is required"),
+  user_type_id: Yup.string().required("Role is required"),
 
   image: Yup.mixed().nullable(),
 });
@@ -191,9 +191,8 @@ const Users = () => {
     totalRows = 0 // Make sure your slice returns totalRows
   } = useSelector((state) => state.user);
   const tableData = tableDatas.data || [];
-  console.log(tableData)
   const { data: states = [] } = useSelector((state) => state.state);
-  const { data: userTypes = [] } = useSelector((state) => state.userType);
+  const { data: userTypes = [] } = useSelector((state) => state.role);
 
   const dispatch = useDispatch();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
@@ -211,96 +210,110 @@ const Users = () => {
   // Fetch states and user types on mount
   useEffect(() => {
     dispatch(fetchStates());
-    dispatch(fetchActiveUserTypes());
+    dispatch(fetchActiveRoles());
   }, [dispatch]);
 
-  // Handle global filter change with debounce
-  const handleGlobalFilterChange = (value) => {
+  // Handle global filter change with debounce (simple version)
+  const handleGlobalFilterChange = useCallback((value) => {
     setGlobalFilter(value);
     setPagination((prev) => ({ ...prev, pageIndex: 0 })); // Reset to first page on search
-  };
+  }, []);
 
-  const handleAdd = async (values, { resetForm, setSubmitting }) => {
-    try {
-      const res = await dispatch(addUser(values)).unwrap();
-      resetForm();
-      setOpen(false);
-      // Refresh data after add
-      const params = {
-        page: pagination.pageIndex + 1,
-        per_page: pagination.pageSize,
-        search: globalFilter || "",
-      };
-      dispatch(fetchUsers(params));
-    } catch (error) {
-      console.error("Add user failed:", error);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Stable callbacks
+  const handleUpdate = useCallback((row) => {
+    setEditData(row);
+    setEditOpen(true);
+  }, []);
 
-  const handleDeleteClick = (row) => {
+  const handleDeleteClick = useCallback((row) => {
     setDeleteDialog({
       open: true,
       id: row.id,
       name: row.name,
       loading: false,
     });
-  };
+  }, []);
 
-  const confirmDelete = async () => {
+  const handleEditClose = useCallback(() => {
+    setEditOpen(false);
+    setEditData(null);
+  }, []);
+
+  //  Add user
+  const handleAdd = useCallback(async (values, { resetForm, setSubmitting }) => {
+    setSubmitting(true);
+    try {
+      await dispatch(addUser(values)).unwrap(); // throws on error
+      resetForm();
+      setOpen(false); // close only after success
+
+      // Refresh data after add
+      const params = {
+        page: pagination.pageIndex + 1,
+        per_page: pagination.pageSize,
+        search: globalFilter || "",
+      };
+      await dispatch(fetchUsers(params)).unwrap();
+    } catch (error) {
+      console.error("Add user failed:", error);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
+
+  //  confirm delete
+  const confirmDelete = useCallback(async () => {
     if (!deleteDialog.id) return;
 
     setDeleteDialog((prev) => ({ ...prev, loading: true }));
 
     try {
       await dispatch(deleteUser(deleteDialog.id)).unwrap();
+      // On success close dialog
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
+
       // Refresh data after delete
       const params = {
         page: pagination.pageIndex + 1,
         per_page: pagination.pageSize,
         search: globalFilter || "",
       };
-      dispatch(fetchUsers(params));
+      await dispatch(fetchUsers(params)).unwrap();
     } catch (error) {
       console.error("Delete failed:", error);
       setDeleteDialog((prev) => ({ ...prev, loading: false }));
     }
-  };
+  }, [dispatch, deleteDialog.id, pagination.pageIndex, pagination.pageSize, globalFilter]);
 
-  const handleUpdate = (row) => {
-    setEditData(row);
-    setEditOpen(true);
-  };
-
-  const handleEditClose = () => {
-    setEditOpen(false);
-    setEditData(null);
-  };
-
-  const handleEditSubmit = async (values, { resetForm, setSubmitting }) => {
+  //  Edit submit
+  const handleEditSubmit = useCallback(async (values, { resetForm, setSubmitting }) => {
+    if (!editData?.id) {
+      setSubmitting(false);
+      return;
+    }
+    setSubmitting(true);
     try {
-      const res = await dispatch(updateUser({ id: editData.id, ...values })).unwrap();
+      await dispatch(updateUser({ id: editData.id, ...values })).unwrap();
       resetForm();
-      handleEditClose();
+      handleEditClose(); // close only after success
+
       // Refresh data after update
       const params = {
         page: pagination.pageIndex + 1,
         per_page: pagination.pageSize,
         search: globalFilter || "",
       };
-      dispatch(fetchUsers(params));
+      await dispatch(fetchUsers(params)).unwrap();
     } catch (error) {
       console.error("Update failed:", error);
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [dispatch, editData, pagination.pageIndex, pagination.pageSize, globalFilter, handleEditClose]);
 
   // Handle image compression
-  const handleImageChange = async (event, setFieldValue) => {
-    const file = event.currentTarget.files[0];
+  const handleImageChange = useCallback(async (event, setFieldValue) => {
+    const file = event.currentTarget.files?.[0];
     if (!file) return;
 
     // Validate file type
@@ -324,17 +337,6 @@ const Users = () => {
         maxWidthOrHeight: 1024,
       });
 
-      // Log compression results
-      const originalSize = (file.size / 1024).toFixed(2);
-      const compressedSize = (compressed.size / 1024).toFixed(2);
-      const reduction = (
-        ((file.size - compressed.size) / file.size) * 100
-      ).toFixed(2);
-
-      console.log(
-        `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
-      );
-
       setFieldValue("image", compressed);
     } catch (error) {
       console.error("Image compression failed:", error);
@@ -343,7 +345,7 @@ const Users = () => {
     } finally {
       setCompressingImage(false);
     }
-  };
+  }, []);
 
   const canUpdate = useMemo(() => hasPermission("users.update"), [hasPermission]);
 
@@ -368,8 +370,11 @@ const Users = () => {
       { accessorKey: "city", header: "City" },
       {
         accessorKey: "user_type_id",
-        header: "User Type",
-        Cell: ({ row }) => row.original.user_type?.name ?? "N/A",
+        header: "Role",
+        Cell: ({ row }) => {
+          const roles = row.original.roles || [];
+          return roles.length ? roles.map(r => r.name).join(', ') : 'N/A';
+        },
       },
       {
         accessorKey: "status",
@@ -422,21 +427,10 @@ const Users = () => {
     }
 
     return baseColumns;
-  }, [
-    dispatch,
-    mediaUrl,
-    Profile,
-    hasPermission,
-    hasAnyPermission,
-    canUpdate,
-    handleUpdate,
-    handleDeleteClick,
-    statusUpdate,
-  ]);
-
+  }, [dispatch, mediaUrl, canUpdate, handleUpdate, handleDeleteClick, hasAnyPermission, hasPermission]);
 
   //  CSV export
-  const downloadCSV = () => {
+  const downloadCSV = useCallback(() => {
     const headers = ["Name", "Email", "Mobile", "City", "User Type"];
     const rows = tableData.map((row) => [
       `"${row.name ?? ""}"`,
@@ -456,10 +450,10 @@ const Users = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
+  }, [tableData]);
 
   //  Print handler
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
     const printContents = tableContainerRef.current.innerHTML;
     const originalContents = document.body.innerHTML;
@@ -467,7 +461,7 @@ const Users = () => {
     window.print();
     document.body.innerHTML = originalContents;
     window.location.reload();
-  };
+  }, []);
 
   return (
     <>
@@ -629,7 +623,7 @@ const Users = () => {
                       id="user_type_id"
                       name="user_type_id"
                       select
-                      label="User Type *"
+                      label="Role *"
                       variant="standard"
                       fullWidth
                       margin="dense"
@@ -643,7 +637,7 @@ const Users = () => {
                         <em>Select User Type</em>
                       </MenuItem>
                       {userTypes.map((option) => (
-                        <MenuItem key={option.id} value={option.id}>
+                        <MenuItem key={option.id} value={option.name}>
                           {option.name}
                         </MenuItem>
                       ))}
@@ -873,7 +867,7 @@ const Users = () => {
                       id="user_type_id"
                       name="user_type_id"
                       select
-                      label="User Type *"
+                      label="Role *"
                       variant="standard"
                       fullWidth
                       margin="dense"
@@ -887,7 +881,7 @@ const Users = () => {
                         <em>Select User Type</em>
                       </MenuItem>
                       {userTypes.map((option) => (
-                        <MenuItem key={option.id} value={option.id}>
+                        <MenuItem key={option.id} value={option.name}>
                           {option.name}
                         </MenuItem>
                       ))}

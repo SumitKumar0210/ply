@@ -66,6 +66,7 @@ const MODULES = [
   { value: "materials", label: "Materials" },
   { value: "productions", label: "Productions" },
   { value: "product", label: "Product" },
+  { value: "product_stocks", label: "Product stocks" },
   { value: "product_types", label: "Product Types" },
   { value: "purchase_order", label: "Purchase Order" },
   { value: "qc_po", label: "QC PO" },

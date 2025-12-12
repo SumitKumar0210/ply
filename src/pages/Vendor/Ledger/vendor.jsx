@@ -37,6 +37,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   fetchVendors,
 } from "../../settings/slices/vendorSlice";
+import { useAuth } from "../../../context/AuthContext";
 
 import { fetchActiveCategories } from "../../settings/slices/categorySlice";
 
@@ -71,6 +72,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 const Vendor = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
@@ -167,8 +169,8 @@ console.log("vendorData", vendorData);
   };
 
   //  Table columns
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       { accessorKey: "name", header: "Vendor Name" },
       { accessorKey: "mobile", header: "Mobile" },
       { accessorKey: "email", header: "Email" },
@@ -178,7 +180,11 @@ console.log("vendorData", vendorData);
         Cell: ({ row }) => row.original.category?.name || "—" 
       },
       { accessorKey: "gst", header: "GST" },
-      {
+    ];
+
+    if(hasPermission("vendor_lists.read"))
+    {
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         size: 80,
@@ -195,10 +201,12 @@ console.log("vendorData", vendorData);
             </Tooltip>
           </Box>
         ),
-      },
-    ],
+      })
+    }
+
+    return baseColumns;
     []
-  );
+  });
 
   //  CSV download
   const downloadCSV = useCallback(() => {

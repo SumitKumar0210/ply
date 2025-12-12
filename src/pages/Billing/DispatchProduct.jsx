@@ -40,6 +40,7 @@ import * as Yup from "yup";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchBills, markAsDelivered } from "./slice/billsSlice";
 import { fetchPaymentRecord, storePayment, clearPayments } from "./slice/paymentSlice";
+import { useAuth } from "../../context/AuthContext";
 
 // Payment validation schema
 const validationSchema = Yup.object().shape({
@@ -61,6 +62,7 @@ const validationSchema = Yup.object().shape({
 });
 
 const DispatchProduct = () => {
+  const { hasPermission, hasAnyPermission } = useAuth();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
@@ -263,8 +265,8 @@ const DispatchProduct = () => {
   }, []);
 
   // Table columns
-  const columns = useMemo(
-    () => [
+  const columns = useMemo(() => {
+    const baseColumns = [
       {
         accessorKey: "invoice_no",
         header: "Invoice No",
@@ -332,7 +334,10 @@ const DispatchProduct = () => {
           );
         },
       },
-      {
+    ];
+
+    if(hasAnyPermission(["dispatch_product.collect_payment","dispatch_product.view_challan","dispatch_product.read","dispatch_product.mark_delivered"])){
+      baseColumns.push({
         id: "actions",
         header: "Actions",
         enableSorting: false,
@@ -341,7 +346,8 @@ const DispatchProduct = () => {
         muiTableBodyCellProps: { align: "right" },
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-            <Tooltip title="View Bill">
+            {hasPermission("dispatch_product.read") && (
+              <Tooltip title="View Bill">
               <IconButton
                 color="primary"
                 onClick={() => handleViewBill(row.original.id)}
@@ -350,8 +356,10 @@ const DispatchProduct = () => {
                 <MdOutlineRemoveRedEye size={16} />
               </IconButton>
             </Tooltip>
+            )}
 
-            <Tooltip title="Create Challan">
+            {hasPermission("dispatch_product.view_challan") && (
+              <Tooltip title="View Challan">
               <IconButton
                 color="primary"
                 onClick={() => handleChallan(row.original.id)}
@@ -360,8 +368,9 @@ const DispatchProduct = () => {
                 <MdDescription size={18} />
               </IconButton>
             </Tooltip>
+            )}
 
-            {row.original.status === 2 && (
+            {(hasPermission("dispatch_product.mark_delivered") && row.original.status === 2) && (
               <Tooltip title="Mark as Delivered">
                 <IconButton
                   color="success"
@@ -378,7 +387,8 @@ const DispatchProduct = () => {
               </Tooltip>
             )}
 
-            <Tooltip title="Make Payment">
+            {hasPermission("dispatch_product.collect_payment") && (
+              <Tooltip title="Make Payment">
               <IconButton
                 color="success"
                 onClick={() => handleOpenPayment(row.original)}
@@ -387,10 +397,13 @@ const DispatchProduct = () => {
                 <GrCurrency size={16} />
               </IconButton>
             </Tooltip>
+            )}
           </Box>
         ),
-      },
-    ],
+      })
+    }
+
+    return baseColumns ;
     [
       getStatusConfig,
       handleViewBill,
@@ -399,6 +412,7 @@ const DispatchProduct = () => {
       handleOpenPayment,
       markingDelivered,
     ]
+  }
   );
 
   // Download CSV
@@ -575,13 +589,15 @@ const DispatchProduct = () => {
                       </IconButton>
                     </Tooltip>
 
-                    <Button
+                    {hasPermission("bills.create") && (
+                      <Button
                       variant="contained"
                       startIcon={<AddIcon />}
                       onClick={handleAddBill}
                     >
                       Add Bill
                     </Button>
+                    )}
                   </Box>
                 </Box>
               )}

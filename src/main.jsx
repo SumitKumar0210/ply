@@ -10,6 +10,7 @@ import { Provider } from 'react-redux';
 import { ToastContainer, toast, Bounce } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { initializeAppDetails } from './components/appUtils.js';
+import { AuthProvider } from "./context/AuthContext";
 
 
 initializeAppDetails();
@@ -18,8 +19,10 @@ createRoot(document.getElementById('root')).render(
     <ThemeProvider theme={theme}>
       <BrowserRouter>
         <CssBaseline />
-        <App />
-        <ToastContainer />
+        <AuthProvider>
+          <App />
+          <ToastContainer />
+        </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
   </Provider>
