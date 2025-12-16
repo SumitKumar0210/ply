@@ -239,7 +239,7 @@ const ApprovePurchaseOrder = () => {
       },
     ];
 
-    if(hasAnyPermission(["qc_po.delete","qc_po.read","qc_po.approve_qc","qc_po.upload_bill","qc_po.update","qc_po.upload_invoice"])){
+    if(hasAnyPermission(["qc_po.delete","qc_po.read","qc_po.approve_qc","qc_po.update","qc_po.upload_invoice"])){
       baseColumns.push({
         id: "actions",
         header: "Actions",

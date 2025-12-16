@@ -26,7 +26,7 @@ export const addProduct = createAsyncThunk(
     // console.log("sendData:", JSON.stringify(newData, null, 2));
 
     try {
-      const res = await api.post("admin/product/store", newData, );
+      const res = await api.post("admin/product/store", newData,);
       successMessage(res.data.message);
       return res.data.data;
     } catch (error) {
@@ -58,7 +58,7 @@ export const updateProduct = createAsyncThunk(
 export const statusUpdate = createAsyncThunk(
   "product/update",
   async (updated) => {
-    try{
+    try {
       const res = await api.post("admin/product/status-update", {
         id: updated.id,
         status: updated.status,
@@ -75,7 +75,7 @@ export const statusUpdate = createAsyncThunk(
 
 // Delete product
 export const deleteProduct = createAsyncThunk("product/delete", async (id) => {
-  try{
+  try {
     const res = await api.post(`admin/product/delete/${id}`);
     successMessage(res.data.message);
     return id;
@@ -85,6 +85,27 @@ export const deleteProduct = createAsyncThunk("product/delete", async (id) => {
     return rejectWithValue(errMsg);
   }
 });
+
+// Action to update product RRP
+export const updateProductRRP = createAsyncThunk(
+  "product/updateRRP",
+  async (rrpData, { rejectWithValue }) => {
+    try {
+      const response = await axios.put(
+        `${API_URL}/products/${rrpData.id}/rrp`,
+        {
+          miscellaneous_cost: rrpData.miscellaneous_cost,
+          labour_cost: rrpData.labour_cost,
+          gross_profit: rrpData.gross_profit,
+          rrp_price: rrpData.rrp_price,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || "Failed to update RRP");
+    }
+  }
+);
 
 const productSlice = createSlice({
   name: "product",
@@ -120,7 +141,24 @@ const productSlice = createSlice({
       // Delete
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.data = state.data.filter((d) => d.id !== action.payload);
+      })
+      // Add to extraReducers in your slice
+      .addCase(updateProductRRP.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(updateProductRRP.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update the product in the state
+        const index = state.data.findIndex(p => p.id === action.payload.id);
+        if (index !== -1) {
+          state.data[index] = { ...state.data[index], ...action.payload };
+        }
+      })
+      .addCase(updateProductRRP.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
+
   },
 });
 

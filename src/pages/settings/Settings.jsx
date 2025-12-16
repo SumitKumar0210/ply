@@ -47,6 +47,7 @@ import TaxSlab from "./TaxSlab/TaxSlab";
 import ProductType from "./ProductType/ProductType";
 import RolesPage from "./Roles/Roles";
 import { useAuth } from "../../context/AuthContext";
+import WorkShift from "./Workshift/Workshift";
 
 // Define tab configuration with required permissions
 const tabConfig = [
@@ -121,6 +122,13 @@ const tabConfig = [
     icon: <MdOutlineStorefront />, 
     component: <Vendor/>,
     permission: "vendors.read"
+  },
+  { 
+    value: "tab47", 
+    label: "Working Shift", 
+    icon: <MdOutlineStorefront />, 
+    component: <WorkShift/>,
+    permission: "working_shifts.read"
   },
   { 
     value: "tab15", 

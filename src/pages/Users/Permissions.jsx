@@ -78,7 +78,8 @@ const MODULES = [
   { value: "users", label: "Users" },
   { value: "vendor_invoices", label: "Vendor Invoices" },
   { value: "vendor_lists", label: "Vendor Lists" },
-  { value: "vendors", label: "Vendors" }
+  { value: "vendors", label: "Vendors" },
+  { value: "working_shifts", label: "Working Shifts" }
 ];
 
 

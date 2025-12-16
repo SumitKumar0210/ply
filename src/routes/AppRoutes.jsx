@@ -61,6 +61,8 @@ const StockInOut = lazy(() => import("../pages/Billing/Stocks"));
 const Permissions = lazy(() => import("../pages/Users/Permissions"));
 const PermissionGroupManager = lazy(() => import("../pages/Users/userPermission"));
 const ProductStocks = lazy(() => import("../pages/Production/ProductStock"));
+const RRPManagement = lazy(() => import("../pages/Production/RRPManagement"));
+
 
 const Error404 = lazy(() => import("../pages/error/404"));
 const Error403 = lazy(() => import("../pages/error/403"));
@@ -113,7 +115,7 @@ const AppRoutes = () => {
         <Route path="/vendor/dashboard" element={<SecurePage ><VendorDashboard /></SecurePage>} />
         <Route path="/vendor/purchase-order" element={<SecurePage permission="purchase_order.read"><PurchaseOrder /></SecurePage>} />
         <Route path="/vendor/purchase-order/create" element={<SecurePage permission="purchase_order.create"><CreatePurchaseOrder /></SecurePage>} />
-        <Route path="/vendor/purchase-order/edit/:id" element={<SecurePage permission="purchase_order.edit"><EditPurchaseOrder /></SecurePage>} />
+        <Route path="/vendor/purchase-order/edit/:id" element={<SecurePage permission="purchase_order.update"><EditPurchaseOrder /></SecurePage>} />
         <Route path="/vendor/purchase-order/view/:id" element={<SecurePage permission="purchase_order.read"><ViewPurchaseOrder /></SecurePage>} />
         <Route path="/vendor/purchase-order/approve" element={<SecurePage permission="purchase_order.approve"><ApprovePurchaseOrder /></SecurePage>} />
         <Route path="/vendor/purchase-order/quality-check/:id" element={<SecurePage permission="qc_po.read"><PurchaseOrderQC /></SecurePage>} />
@@ -145,6 +147,7 @@ const AppRoutes = () => {
         <Route path="/production/production-chain" element={<SecurePage permission="productions.read"><Production /></SecurePage>} />
         <Route path="/production/product-request" element={<SecurePage permission="materials.read"><ProductRequest /></SecurePage>} />
         <Route path="/product/stocks" element={<SecurePage ><ProductStocks permission="product_stocks.read" /></SecurePage>} />
+        <Route path="/production/rrp-calculation" element={<SecurePage ><RRPManagement  /></SecurePage>} />
         <Route path="/product/ready-product" element={<SecurePage ><ReadyProduct /></SecurePage>} />
         {/* <Route path="/product/challan/:id" element={<SecurePage permission="product.challan"><ProductChallan /></SecurePage>} /> */}
 
@@ -160,7 +163,7 @@ const AppRoutes = () => {
         <Route path="/stocks" element={<SecurePage permission="stocks.read"><StockInOut /></SecurePage>} />
 
         {/* Permission */}
-        {/* <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} /> */}
+        <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} />
         <Route path="/settings/:id/fetch-permissions" element={<SecurePage permission="roles.assign"><PermissionGroupManager /></SecurePage>} />
 
         {/* Error pages */}
