@@ -10,8 +10,8 @@ import {
   Grid,
   Box,
   CircularProgress,
+  Divider,
 } from "@mui/material";
-
 const RRPDialog = ({ open, onClose, productData, onSave }) => {
   const [formData, setFormData] = useState({
     miscellaneous_cost: "",
@@ -107,8 +107,9 @@ const RRPDialog = ({ open, onClose, productData, onSave }) => {
       <DialogTitle>
         Calculate RRP - {productData?.name}
       </DialogTitle>
+      <Divider />
       <DialogContent>
-        <Box sx={{ mt: 2 }}>
+        <Box>
           <Grid container spacing={2}>
             <Grid size={6}>
               <TextField
@@ -137,6 +138,8 @@ const RRPDialog = ({ open, onClose, productData, onSave }) => {
           </Grid>
         </Box>
       </DialogContent>
+      <Divider />
+
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={handleClose} disabled={isSaving}>
           Cancel

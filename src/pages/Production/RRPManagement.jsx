@@ -50,6 +50,10 @@ const RRPManagement = () => {
             order_id: order.id,
             name: product.item_name,
             model: product.modal_no || "-",
+            gross_profit: product.rrp?.gross_profit || "-",
+            miscellaneous_cost: product.rrp?.miscellaneous || "-",
+            material_cost: product.rrp?.material_cost || "-",
+            labour_cost: product.rrp?.labour_cost || "-",
             product_type: product.group?.trim() || "-",
           });
         });
@@ -71,6 +75,7 @@ const RRPManagement = () => {
 
   const handleSaveRRP = async (rrpData) => {
     try {
+      console.log(rrpData);
       await dispatch(updateProductRRP(rrpData));
       dispatch(fetchReadyProduct());
     } catch (error) {
@@ -100,14 +105,28 @@ const RRPManagement = () => {
       size: 100
     },
     {
-      accessorKey: "qty",
-      header: "Quantity",
+      accessorKey: "labour_cost",
+      header: "Labour Cost",
       size: 100,
-      Cell: ({ row }) => (
-        <Typography variant="body2">
-          {row.original.qty || 0}
-        </Typography>
-      ),
+      Cell: ({ cell }) => `₹${cell.getValue()}`,
+    },
+    {
+      accessorKey: "material_cost",
+      header: "Material Cost",
+      size: 100,
+      Cell: ({ cell }) => `₹${cell.getValue()}`,
+    },
+    {
+      accessorKey: "miscellaneous_cost",
+      header: "MSC",
+      size: 100,
+      Cell: ({ cell }) => `₹${cell.getValue()}`,
+    },
+    {
+      accessorKey: "gross_profit",
+      header: "Qross Profit",
+      size: 100,
+      Cell: ({ cell }) => `${cell.getValue()}%`,
     },
     {
       accessorKey: "rrp_price",

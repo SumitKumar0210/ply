@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import Grid from "@mui/material/Grid";
 import PropTypes from "prop-types";
 import {
@@ -42,11 +42,12 @@ import {
   fetchLabours,
   updateLabour,
   statusUpdate,
+  fetchAllLaboursWithSearch,
 } from "./slices/labourSlice";
 import { fetchActiveDepartments } from "../settings/slices/departmentSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { compressImage } from "../../components/imageCompressor/imageCompressor";
-import { fetchActiveWorkShifts } from "../settings/slices/workshiftslice";
+import { fetchActiveWorkShifts } from "../settings/slices/Workshiftslice";
 
 // Constants
 const DOCUMENT_TYPES = [
@@ -233,29 +234,74 @@ const Labours = () => {
   const [editData, setEditData] = useState(null);
   const [compressingImage, setCompressingImage] = useState(false);
   const [compressingDocument, setCompressingDocument] = useState(false);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [globalFilter, setGlobalFilter] = useState("");
   const tableContainerRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState(null);
 
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
-  const { data: tableData = [], loading } = useSelector((state) => state.labour);
+  const { searchResults = [], loading } = useSelector(
+    (state) => state.labour
+  );
   const { data: departments = [] } = useSelector((state) => state.department);
   const { data: shifts = [] } = useSelector((state) => state.workShift);
-  console.log(shifts);
-
+  
+  
+  const {
+    data: rowData = [],
+  } = searchResults;
+  
+  const {
+    data: tableData = [],
+    total = 0,
+  } = rowData;
+  
   const dispatch = useDispatch();
-
+  
+  // Fetch labours with pagination and search
   useEffect(() => {
-    dispatch(fetchLabours());
-  }, [dispatch]);
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
 
+    // Debounce search by 500ms
+    searchTimeoutRef.current = setTimeout(() => {
+      dispatch(
+        fetchAllLaboursWithSearch({
+          pageIndex: pagination.pageIndex + 1,
+          pageLimit: pagination.pageSize,
+          search: globalFilter || "", // Send empty string if not searching
+        })
+      );
+    }, 500);
+
+    // Cleanup
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
+
+  // Fetch departments and shifts when modals open
   useEffect(() => {
     if (open || editOpen) {
       dispatch(fetchActiveDepartments());
       dispatch(fetchActiveWorkShifts());
     }
   }, [open, editOpen, dispatch]);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, [globalFilter]);
 
   // Cleanup preview URLs on unmount
   useEffect(() => {
@@ -269,7 +315,7 @@ const Labours = () => {
     };
   }, [previewUrl, documentPreviewUrl]);
 
-  const handleAdd = async (values, { resetForm }) => {
+  const handleAdd = useCallback(async (values, { resetForm }) => {
     try {
       const res = await dispatch(addLabour(values));
       if (res.error) return;
@@ -280,23 +326,23 @@ const Labours = () => {
       console.error("Add labour failed:", error);
       errorMessage("Failed to add labour. Please try again.");
     }
-  };
+  }, [dispatch]);
 
-  const handleDeleteClick = (row) => {
+  const handleDeleteClick = useCallback((row) => {
     setDeleteDialog({
       open: true,
       id: row.id,
       name: row.name,
       loading: false,
     });
-  };
+  }, []);
 
   const shortFileName = (name = "", limit = 20) => {
     if (!name) return "";
     return name.length > limit ? name.substring(0, limit) + "..." : name;
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = useCallback(async () => {
     if (!deleteDialog.id) return;
 
     setDeleteDialog((prev) => ({ ...prev, loading: true }));
@@ -310,17 +356,17 @@ const Labours = () => {
     } finally {
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
     }
-  };
+  }, [deleteDialog.id, dispatch]);
 
-  const handleUpdate = (row) => {
+  const handleUpdate = useCallback((row) => {
     setEditData(row);
     if (row.image) {
       setPreviewUrl(mediaUrl + row.image);
     }
     setEditOpen(true);
-  };
+  }, [mediaUrl]);
 
-  const handleEditClose = () => {
+  const handleEditClose = useCallback(() => {
     setEditOpen(false);
     setEditData(null);
     if (previewUrl && previewUrl.startsWith("blob:")) {
@@ -331,9 +377,9 @@ const Labours = () => {
     }
     setPreviewUrl(null);
     setDocumentPreviewUrl(null);
-  };
+  }, [previewUrl, documentPreviewUrl]);
 
-  const handleEditSubmit = async (values, { resetForm }) => {
+  const handleEditSubmit = useCallback(async (values, { resetForm }) => {
     try {
       const res = await dispatch(
         updateLabour({ updated: { id: editData.id, ...values } })
@@ -346,7 +392,7 @@ const Labours = () => {
       console.error("Update failed:", error);
       errorMessage("Failed to update labour. Please try again.");
     }
-  };
+  }, [dispatch, editData, handleEditClose]);
 
   // Handle image compression
   const handleImageChange = async (event, setFieldValue, isEdit = false) => {
@@ -478,6 +524,11 @@ const Labours = () => {
     }
   };
 
+  const handleStatusChange = useCallback((row, checked) => {
+    const newStatus = checked ? 1 : 0;
+    dispatch(statusUpdate({ ...row, status: newStatus }));
+  }, [dispatch]);
+
   // Table columns
   const columns = useMemo(
     () => [
@@ -524,10 +575,7 @@ const Labours = () => {
         Cell: ({ row }) => (
           <CustomSwitch
             checked={!!row.original.status}
-            onChange={(e) => {
-              const newStatus = e.target.checked ? 1 : 0;
-              dispatch(statusUpdate({ ...row.original, status: newStatus }));
-            }}
+            onChange={(e) => handleStatusChange(row.original, e.target.checked)}
           />
         ),
         size: 100,
@@ -556,11 +604,11 @@ const Labours = () => {
         ),
       },
     ],
-    [dispatch, mediaUrl]
+    [dispatch, mediaUrl, handleStatusChange, handleUpdate, handleDeleteClick]
   );
 
   // CSV export
-  const downloadCSV = () => {
+  const downloadCSV = useCallback(() => {
     const headers = ["Name", "Department", "Per Hour Cost", "Overtime Rate", "Status"];
     const rows = tableData.map((row) => [
       `"${row.name}"`,
@@ -580,18 +628,50 @@ const Labours = () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
+  }, [tableData]);
 
   // Print handler
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
-  };
+
+    const printWindow = window.open('', '_blank');
+    const tableHTML = tableContainerRef.current.innerHTML;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Labours List</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            @media print {
+              button, .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Labours List</h2>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  }, []);
+
+  const closeDeleteDialog = useCallback(() => {
+    setDeleteDialog({ open: false, id: null, name: "", loading: false });
+  }, []);
+
+  const handleCloseAdd = useCallback(() => setOpen(false), []);
+  const handleOpenAdd = useCallback(() => setOpen(true), []);
 
   // Initial values generator
   const getInitialValues = (isEdit = false, data = null) => {
@@ -885,7 +965,7 @@ const Labours = () => {
           <Typography variant="h6">Labours</Typography>
         </Grid>
         <Grid>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>
             Add Labour
           </Button>
         </Grid>
@@ -901,9 +981,20 @@ const Labours = () => {
           <MaterialReactTable
             columns={columns}
             data={tableData}
+            getRowId={(row) => row.id}
+            rowCount={total}
+            manualPagination
+            manualFiltering
+            onPaginationChange={setPagination}
+            onGlobalFilterChange={setGlobalFilter}
+            state={{
+              isLoading: loading,
+              pagination,
+              globalFilter,
+            }}
             enableTopToolbar
-            enableColumnFilters
-            enableSorting
+            enableColumnFilters={false}
+            enableSorting={false}
             enablePagination
             enableBottomToolbar
             enableGlobalFilter
@@ -911,13 +1002,12 @@ const Labours = () => {
             enableColumnActions={false}
             enableFullScreenToggle={false}
             initialState={{ density: "compact" }}
-            state={{ isLoading: loading }}
             muiTableContainerProps={{
               sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto" },
             }}
             muiTableBodyCellProps={{ sx: { whiteSpace: "nowrap" } }}
             muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-            muiTableBodyRowProps={{ hover: false }}
+            muiTableBodyRowProps={{ hover: true }}
             renderTopToolbar={({ table }) => (
               <Box
                 sx={{
@@ -928,7 +1018,7 @@ const Labours = () => {
                   p: 1,
                 }}
               >
-                 <Typography variant="h6" className='page-title'>
+                <Typography variant="h6" className='page-title'>
                   Labours List
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -952,8 +1042,8 @@ const Labours = () => {
       </Grid>
 
       {/* Add Modal */}
-      <BootstrapDialog onClose={() => setOpen(false)} open={open} fullWidth maxWidth="md">
-        <BootstrapDialogTitle onClose={() => setOpen(false)}>
+      <BootstrapDialog onClose={handleCloseAdd} open={open} fullWidth maxWidth="md">
+        <BootstrapDialogTitle onClose={handleCloseAdd}>
           Add Labour
         </BootstrapDialogTitle>
         <Formik
@@ -974,7 +1064,7 @@ const Labours = () => {
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={() => setOpen(false)}>
+                <Button variant="outlined" color="error" onClick={handleCloseAdd}>
                   Cancel
                 </Button>
                 <Button type="submit" variant="contained" color="primary">
@@ -1025,10 +1115,7 @@ const Labours = () => {
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={deleteDialog.open}
-        onClose={() =>
-          !deleteDialog.loading &&
-          setDeleteDialog({ open: false, id: null, name: "", loading: false })
-        }
+        onClose={closeDeleteDialog}
         maxWidth="xs"
         fullWidth
       >
@@ -1042,9 +1129,7 @@ const Labours = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
-            onClick={() =>
-              setDeleteDialog({ open: false, id: null, name: "", loading: false })
-            }
+            onClick={closeDeleteDialog}
             disabled={deleteDialog.loading}
             variant="outlined"
           >

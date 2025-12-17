@@ -91,13 +91,12 @@ export const updateProductRRP = createAsyncThunk(
   "product/updateRRP",
   async (rrpData, { rejectWithValue }) => {
     try {
-      const response = await axios.put(
-        `${API_URL}/products/${rrpData.id}/rrp`,
+      const response = await api.post(
+        `admin/production-order/calculate-rrp`,
         {
           miscellaneous_cost: rrpData.miscellaneous_cost,
-          labour_cost: rrpData.labour_cost,
           gross_profit: rrpData.gross_profit,
-          rrp_price: rrpData.rrp_price,
+          id: rrpData.id,
         }
       );
       return response.data;

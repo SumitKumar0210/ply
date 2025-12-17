@@ -25,7 +25,7 @@ import { LiaFileInvoiceSolid } from "react-icons/lia";
 import { LuTable } from "react-icons/lu";
 import { IoConstructOutline } from "react-icons/io5";
 import { TbUsersPlus } from "react-icons/tb";
-import { BsBoxSeam } from "react-icons/bs";
+import { BsBoxSeam, BsTag  } from "react-icons/bs";
 
 import Logo from "../../assets/images/logo.svg";
 import { useAuth } from "../../context/AuthContext";
@@ -179,6 +179,9 @@ const menuSections = [
           },
           {
             text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
+          },
+          {
+            text: "RRP", to: "/production/rrp-calculation", icon: <BsTag  />, permission:"rrp.read"
           },
         ],
       },

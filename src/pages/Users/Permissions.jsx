@@ -72,6 +72,7 @@ const MODULES = [
   { value: "qc_po", label: "QC PO" },
   { value: "quotations", label: "Quotations" },
   { value: "roles", label: "Roles" },
+  { value: "rrp", label: "RRP" },
   { value: "stocks", label: "Stocks" },
   { value: "tax_slabs", label: "Tax Slabs" },
   { value: "uom", label: "UOM" },

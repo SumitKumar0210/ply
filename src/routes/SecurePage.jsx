@@ -1,5 +1,5 @@
 // ./routes/SecurePage.jsx
-import React, { useMemo } from "react";
+import React from "react";
 import ProtectedRoute from "./ProtectedRoute";
 import PermissionRoute from "./PermissionRoute";
 import MainLayout from "../layouts/MainLayout";
@@ -15,21 +15,15 @@ import MainLayout from "../layouts/MainLayout";
  *  <SecurePage permission="foo.bar"><Page /></SecurePage>
  *  <SecurePage anyPermissions={["a","b"]}><Page /></SecurePage>
  */
-const SecurePage = ({ children, permission = null, anyPermissions = null }) => {
-  const Wrapped = useMemo(
-    () => (
-      <ProtectedRoute>
-        <PermissionRoute permission={permission} anyPermissions={anyPermissions}>
-          <MainLayout>{children}</MainLayout>
-        </PermissionRoute>
-      </ProtectedRoute>
-    ),
-    // keep dependencies minimal so wrapper is stable
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [permission, anyPermissions]
-  );
 
-  return Wrapped;
+const SecurePage = ({ children, permission = null, anyPermissions = null }) => {
+  return (
+    <ProtectedRoute>
+      <PermissionRoute permission={permission} anyPermissions={anyPermissions}>
+        <MainLayout>{children}</MainLayout>
+      </PermissionRoute>
+    </ProtectedRoute>
+  );
 };
 
 export default SecurePage;

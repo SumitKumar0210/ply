@@ -147,7 +147,7 @@ const AppRoutes = () => {
         <Route path="/production/production-chain" element={<SecurePage permission="productions.read"><Production /></SecurePage>} />
         <Route path="/production/product-request" element={<SecurePage permission="materials.read"><ProductRequest /></SecurePage>} />
         <Route path="/product/stocks" element={<SecurePage ><ProductStocks permission="product_stocks.read" /></SecurePage>} />
-        <Route path="/production/rrp-calculation" element={<SecurePage ><RRPManagement  /></SecurePage>} />
+        <Route path="/production/rrp-calculation" element={<SecurePage ><RRPManagement permission="rrp.read"  /></SecurePage>} />
         <Route path="/product/ready-product" element={<SecurePage ><ReadyProduct /></SecurePage>} />
         {/* <Route path="/product/challan/:id" element={<SecurePage permission="product.challan"><ProductChallan /></SecurePage>} /> */}
 
@@ -163,7 +163,7 @@ const AppRoutes = () => {
         <Route path="/stocks" element={<SecurePage permission="stocks.read"><StockInOut /></SecurePage>} />
 
         {/* Permission */}
-        <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} />
+        {/* <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} /> */}
         <Route path="/settings/:id/fetch-permissions" element={<SecurePage permission="roles.assign"><PermissionGroupManager /></SecurePage>} />
 
         {/* Error pages */}

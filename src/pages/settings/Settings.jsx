@@ -142,7 +142,7 @@ const tabConfig = [
     label: "General Settings", 
     icon: <IoSettingsOutline />, 
     component: <GeneralSetting/>,
-    permission: "settings.read",
+    permission: "general_settings.read",
     // Or require admin role
     // role: "admin"
   },
