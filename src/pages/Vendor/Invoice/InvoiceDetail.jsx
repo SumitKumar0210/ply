@@ -84,7 +84,7 @@ const InvoiceDetail = () => {
         sx={{ mb: 2 }}
       >
         <Grid item>
-          <Typography variant="h6">Invoice Detail</Typography>
+          <Typography variant="h6" className="page-title">Invoice Detail</Typography>
         </Grid>
         <Grid item>
           <Button
@@ -103,7 +103,7 @@ const InvoiceDetail = () => {
         <Card>
           <CardContent>
             <Typography variant="body2" sx={{ lineHeight: 1.8, mb: 2 }}>
-              <strong>{invoice.vendor?.name || "-"}</strong>
+              <span style={{ fontSize: "18px", fontWeight: "500" }}>{invoice.vendor?.name || "-"}</span>
               <br />
              {invoice.vendor?.address || "-"}
               <br />

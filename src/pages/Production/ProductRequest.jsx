@@ -286,7 +286,7 @@ const ProductRequest = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Material Requests</Typography>
+          <Typography variant="h6" className="page-title">Material Requests</Typography>
         </Grid>
       </Grid>
 
@@ -382,7 +382,7 @@ const ProductRequest = () => {
       >
         <DialogTitle>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography variant="h6">Material Request Details</Typography>
+            <Typography variant="h6" className="page-title">Material Request Details</Typography>
             {selectedRow?.material_request?.[0]?.status !== undefined &&
               getStatusChip(selectedRow.material_request[0].status)}
           </Box>

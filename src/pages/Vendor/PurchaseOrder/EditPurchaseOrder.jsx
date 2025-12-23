@@ -39,6 +39,7 @@ import { addDays, format, parseISO } from "date-fns";
 import { successMessage, errorMessage } from "../../../toast";
 import VendorFormModal from "../../../components/Vendor/VendorFormModal";
 import MaterialFormModal from "../../../components/Material/MaterialFormModal";
+import { useTheme, useMediaQuery } from "@mui/material";
 
 // Validation Schema
 const validationSchema = Yup.object().shape({
@@ -68,7 +69,8 @@ const EditPurchaseOrder = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
+   const theme = useTheme();
+    const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
   const { selected: poData = {}, loading: poLoading } = useSelector((state) => state.purchaseOrder);
   const { data: vendors = [], loading: vendorLoading } = useSelector((state) => state.vendor);
   const { data: materials = [] } = useSelector((state) => state.material);
@@ -444,7 +446,12 @@ const EditPurchaseOrder = () => {
                                 onChange={handleChange}
                                 error={touched.creditDays && !!errors.creditDays}
                                 helperText={touched.creditDays && errors.creditDays}
-                                sx={{ width: 150 }}
+                                sx={{
+                                  width: {
+                                    xs: "50%",
+                                    md: 150,
+                                  },
+                                }}
                                 inputProps={{ min: 0, max: 365 }}
                               />
                               <DatePicker
@@ -454,7 +461,12 @@ const EditPurchaseOrder = () => {
                                 slotProps={{
                                   textField: {
                                     size: 'small',
-                                    sx: { width: 300 },
+                                    sx: {
+                                      width: {
+                                        xs: "50%",
+                                        md: 300,
+                                      },
+                                    },
                                     error: touched.edd_date && !!errors.edd_date,
                                     helperText: touched.edd_date && errors.edd_date,
                                   },
@@ -478,7 +490,17 @@ const EditPurchaseOrder = () => {
                       )}
 
                       <Grid size={12} sx={{ pt: 2 }}>
-                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+                        <Box 
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: {
+                              xs: 1,
+                              lg: 2,
+                            },
+                            alignItems: "flex-end",
+                          }}                        
+                        >
                           <Autocomplete
                             options={[{ id: "add_new", name: "➕ Add New Material" }, ...materials]}
                             value={selectedItemCode}
@@ -500,7 +522,12 @@ const EditPurchaseOrder = () => {
                             renderInput={(params) => (
                               <TextField {...params} label="Select Material" variant="outlined" />
                             )}
-                            sx={{ width: 300 }}
+                             sx={{
+                              width: {
+                                xs: "100%",
+                                md: 300,
+                              },
+                            }}
                             noOptionsText="No materials available"
                           />
                           <TextField
@@ -510,15 +537,28 @@ const EditPurchaseOrder = () => {
                             onChange={(e) => setSelectedQty(e.target.value)}
                             type="number"
                             value={selectedQty}
-                            sx={{ width: 150 }}
+                            
                             inputProps={{ min: 1 }}
                             placeholder="Enter quantity"
+                              sx={{
+                              width: {
+                                xs: "calc(50% - 6px)", // 👈 important
+                                md: 150,
+                              },
+                              height: 40,
+                            }}
                           />
                           <Button
                             variant="contained"
                             color="primary"
                             onClick={handleAddItem}
-                            sx={{ height: 40 }}
+                            sx={{
+                              width: {
+                                xs: "calc(50% - 6px)", // 👈 important
+                                md: 150,
+                              },
+                              height: 40,
+                            }}
                             disabled={isSubmitting}
                           >
                             Add Item
@@ -527,64 +567,211 @@ const EditPurchaseOrder = () => {
                         </Box>
                       </Grid>
 
-                      <Grid size={12} sx={{ mt: 3, overflowX: 'auto' }}>
-                        <Table>
-                          <Thead>
-                            <Tr>
-                              <Th>Material Name</Th>
-                              <Th>Qty</Th>
-                              <Th>Size</Th>
-                              <Th>UOM</Th>
-                              <Th>Rate</Th>
-                              <Th>Total</Th>
-                              <Th style={{ textAlign: "right" }}>Action</Th>
-                            </Tr>
-                          </Thead>
-                          <Tbody>
-                            {items.length > 0 ? (
-                              items.map((item) => (
-                                <Tr key={item.id}>
-                                  <Td>{item.name}</Td>
-                                  <Td>
-                                    <TextField
-                                      type="number"
-                                      size="small"
-                                      value={item.qty}
-                                      onChange={(e) => handleQtyChange(item.id, e.target.value)}
-                                      inputProps={{ min: 1 }}
-                                      sx={{ width: '80px' }}
-                                    />
-                                  </Td>
-                                  <Td>{item.size}</Td>
-                                  <Td>{item.uom}</Td>
-                                  <Td>₹{item.rate.toLocaleString('en-IN')}</Td>
-                                  <Td>₹{item.total.toLocaleString('en-IN')}</Td>
-                                  <Td align="right">
-                                    <Tooltip title="Delete Item">
-                                      <IconButton
-                                        color="error"
-                                        onClick={() => handleDeleteClick(item.id)}
-                                        size="small"
-                                      >
-                                        <RiDeleteBinLine size={18} />
-                                      </IconButton>
-                                    </Tooltip>
-                                  </Td>
-                                </Tr>
-                              ))
-                            ) : (
-                              <Tr>
-                                <Td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
-                                  No items added yet. Add items to continue.
-                                </Td>
-                              </Tr>
-                            )}
-                          </Tbody>
-                        </Table>
-                      </Grid>
+                           <Grid size={12} sx={{ mt: 3 }}>
+                                                {isMobileOrTablet ? (
+                                                  /* ================= MOBILE / TABLET CARDS ================= */
+                                                  <Stack spacing={2}>
+                                                    {items.length > 0 ? (
+                                                      items.map((item) => (
+                                                        <Card
+                                                          key={item.id}
+                                                          variant="outlined"
+                                                          sx={{
+                                                            borderRadius: 2,
+                                                            borderColor: "divider",
+                                                            boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+                                                            background: "#f7f7f7",
+                                                          }}
+                                                        >
+                                                          <CardContent sx={{ p: 2 }}>
+                                                            {/* Header */}
+                                                            <Box
+                                                              sx={{
+                                                                display: "flex",
+                                                                justifyContent: "space-between",
+                                                                alignItems: "center",
+                                                                mb: 1,
+                                                              }}
+                                                            >
+                                                              <Typography
+                                                                sx={{
+                                                                  fontWeight: 600,
+                                                                  fontSize: "0.95rem",
+                                                                  maxWidth: "85%",
+                                                                  overflow: "hidden",
+                                                                  textOverflow: "ellipsis",
+                                                                  whiteSpace: "nowrap",
+                                                                }}
+                                                              >
+                                                                {item.name}
+                                                              </Typography>
+                                                              <IconButton
+                                                                size="small"
+                                                                onClick={() => handleDeleteClick(item.id)}
+                                                                sx={{
+                                                                  ml: 1,
+                                                                  bgcolor: "error.light",
+                                                                  color: "#fff",
+                                                                  borderRadius: 1,
+                                                                  "&:hover": {
+                                                                    bgcolor: "error.dark",
+                                                                  },
+                                                                }}
+                                                              >
+                                                                <RiDeleteBinLine size={18} />
+                                                              </IconButton>
+                        
+                        
+                                                            </Box>
+                        
+                                                            {/* Details */}
+                                                            <Box
+                                                              sx={{
+                                                                display: "flex",
+                                                                flexDirection: "column",
+                                                                gap: 0.5,
+                                                                mb: 1,
+                                                              }}
+                                                            >
+                                                              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                                                                <Typography variant="body2" color="text.secondary">
+                                                                  Size
+                                                                </Typography>
+                                                                <Typography variant="body2">{item.size}</Typography>
+                                                              </Box>
+                        
+                                                              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                                                                <Typography variant="body2" color="text.secondary">
+                                                                  UOM
+                                                                </Typography>
+                                                                <Typography variant="body2">{item.uom}</Typography>
+                                                              </Box>
+                        
+                                                              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                                                                <Typography variant="body2" color="text.secondary">
+                                                                  Rate
+                                                                </Typography>
+                                                                <Typography variant="body2">
+                                                                  ₹{item.rate.toLocaleString("en-IN")}
+                                                                </Typography>
+                                                              </Box>
+                                                            </Box>
+                        
+                        
+                                                            {/* Footer */}
+                                                            <Box
+                                                              sx={{
+                                                                display: "flex",
+                                                                justifyContent: "space-between",
+                                                                alignItems: "center",
+                                                                // mt: 1.5,
+                                                                pt: 1,
+                                                                borderTop: "1px dashed",
+                                                                borderColor: "divider",
+                                                              }}
+                                                            >
+                                                              <TextField
+                                                                label="Qty"
+                                                                type="number"
+                                                                size="small"
+                                                                value={item.qty}
+                                                                onChange={(e) => handleQtyChange(item.id, e.target.value)}
+                                                                inputProps={{ min: 1 }}
+                                                                sx={{ width: 90, mt: 1 }}
+                                                              />
+                        
+                                                              <Typography
+                                                                sx={{
+                                                                  fontWeight: 600,
+                                                                  fontSize: "1rem",
+                                                                }}
+                                                              >
+                                                                ₹{item.total.toLocaleString("en-IN")}
+                                                              </Typography>
+                                                            </Box>
+                                                          </CardContent>
+                                                        </Card>
+                        
+                                                      ))
+                                                    ) : (
+                                                      <Typography align="center" color="text.secondary">
+                                                        No items added yet. Add items to continue.
+                                                      </Typography>
+                                                    )}
+                                                  </Stack>
+                                                ) : (
+                                                  /* ================= DESKTOP TABLE ================= */
+                                                  <Table>
+                                                    <Thead>
+                                                      <Tr>
+                                                        <Th>Material Name</Th>
+                                                        <Th>Qty</Th>
+                                                        <Th>Size</Th>
+                                                        <Th>UOM</Th>
+                                                        <Th>Rate</Th>
+                                                        <Th>Total</Th>
+                                                        <Th style={{ textAlign: "right" }}>Action</Th>
+                                                      </Tr>
+                                                    </Thead>
+                                                    <Tbody>
+                                                      {items.length > 0 ? (
+                                                        items.map((item) => (
+                                                          <Tr key={item.id}>
+                                                            <Td>{item.name}</Td>
+                                                            <Td>
+                                                              <TextField
+                                                                type="number"
+                                                                size="small"
+                                                                value={item.qty}
+                                                                onChange={(e) =>
+                                                                  handleQtyChange(item.id, e.target.value)
+                                                                }
+                                                                inputProps={{ min: 1 }}
+                                                                sx={{ width: "80px" }}
+                                                              />
+                                                            </Td>
+                                                            <Td>{item.size}</Td>
+                                                            <Td>{item.uom}</Td>
+                                                            <Td>₹{item.rate.toLocaleString("en-IN")}</Td>
+                                                            <Td>₹{item.total.toLocaleString("en-IN")}</Td>
+                                                            <Td align="right">
+                                                              <IconButton
+                                                                color="error"
+                                                                size="small"
+                                                                onClick={() => handleDeleteClick(item.id)}
+                                                              >
+                                                                <RiDeleteBinLine size={18} />
+                                                              </IconButton>
+                                                            </Td>
+                                                          </Tr>
+                                                        ))
+                                                      ) : (
+                                                        <Tr>
+                                                          <Td colSpan={7} style={{ textAlign: "center", padding: 20 }}>
+                                                            No items added yet. Add items to continue.
+                                                          </Td>
+                                                        </Tr>
+                                                      )}
+                                                    </Tbody>
+                                                  </Table>
+                                                )}
+                                              </Grid>
+
+
+
+                    
 
                       <Grid size={12} sx={{ mt: 3 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%', gap: 2 }}>
+                          <Box
+                            sx={{
+                              width: {
+                                xs: "100%",
+                                md: "100%",
+                                lg: "50%",
+                              },
+                            }}
+                          >                
                           <TextareaAutosize
                             minRows={3}
                             maxRows={6}
@@ -592,16 +779,34 @@ const EditPurchaseOrder = () => {
                             name="term_and_conditions"
                             value={values.term_and_conditions}
                             onChange={handleChange}
-                            style={{ width: '50%', padding: '8px', fontFamily: 'inherit', borderRadius: '4px', border: '1px solid #ccc' }}
+                            style={{
+                                width: "100%",
+                                padding: "8px",
+                                fontFamily: "inherit",
+                                borderRadius: "4px",
+                                border: "1px solid #ccc",
+                              }}
                           />
 
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '20%' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
+                          </Box>
+                          <Box 
+                            sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 1,
+                                width: {
+                                  xs: "100%",
+                                  md: "100%",
+                                  lg: "20%",
+                                },
+                              }}
+                            >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5, mb:1 }}>
                               <span>Sub Total</span>
                               <span>₹{subTotal.toLocaleString('en-IN')}</span>
                             </Box>
 
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center', mb: 1 }}>
                               <TextField
                                 label="Discount"
                                 type="number"
@@ -616,7 +821,7 @@ const EditPurchaseOrder = () => {
                               <span>₹{(subTotal - discountAmount).toLocaleString('en-IN')}</span>
                             </Box>
 
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center', mb:1 }}>
                               <TextField
                                 label="Add Charges"
                                 type="number"

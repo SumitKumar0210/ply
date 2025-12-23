@@ -61,7 +61,7 @@ const Header = ({ mobileOpen, onToggleSidebar }) => {
               <HiOutlineMenu size={22} />
             </IconButton>
             {/* Title (Aarish Ply) */}
-            <Typography variant="h6" sx={{ fontWeight: 600, display: { xs: 'block', sm: 'none' } }}>
+            <Typography variant="h5" sx={{ fontSize: 20, fontWeight: 500, display: { xs: 'block', sm: 'none' } }}>
               Aarish Ply
             </Typography>
           </Box>
