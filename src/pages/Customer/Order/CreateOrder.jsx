@@ -248,7 +248,7 @@ const CreateOrder = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Create Order</Typography>
+          <Typography variant="h6" className="page-title">Create Order</Typography>
         </Grid>
       </Grid>
 

@@ -72,7 +72,7 @@ const ViewPurchaseOrder = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Order Details</Typography>
+          <Typography variant="h6" className="page-title">Order Details</Typography>
         </Grid>
         <Grid>
           <Button

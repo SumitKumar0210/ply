@@ -343,7 +343,7 @@ const EditOrder = () => {
       {/* Header */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12}>
-          <Typography variant="h6">Edit Order</Typography>
+          <Typography variant="h6" className="page-title">Edit Order</Typography>
         </Grid>
       </Grid>
 

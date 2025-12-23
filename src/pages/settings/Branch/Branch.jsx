@@ -233,7 +233,7 @@ const Branch = () => {
                     p: 1,
                   }}
                 >
-                  <Typography variant="h6">Branch</Typography>
+                  <Typography variant="h6" className="page-title">Branch</Typography>
                   <Box sx={{ display: "flex", gap: 1 }}>
                     <MRT_GlobalFilterTextField table={table} />
                     <MRT_ToolbarInternalButtons table={table} />

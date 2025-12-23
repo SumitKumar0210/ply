@@ -224,7 +224,7 @@ function SettingsPage() {
     >
       {/* Page Title */}
       <Box sx={{ mb: 2 }}>
-        <Typography variant="h6">Settings</Typography>
+        <Typography variant="h6" className="page-title">Settings</Typography>
       </Box>
       
       <Box
@@ -253,7 +253,7 @@ function SettingsPage() {
             }}
           >
             <CardContent sx={{ p: 2 }}>
-              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+              <Typography variant="h3" sx={{ mb: 2 }}>
                 Navigation
               </Typography>
               <Tabs
@@ -320,6 +320,7 @@ function SettingsPage() {
             flex: 1,
             height: isMobile ? "auto !important" : "100%",
             boxSizing: "border-box",
+            overflowX:"auto"
           }}
         >
           <Card

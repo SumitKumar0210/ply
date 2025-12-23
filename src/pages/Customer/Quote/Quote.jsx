@@ -422,7 +422,7 @@ const Quote = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Quotation</Typography>
+          <Typography variant="h6" className="page-title">Quotation</Typography>
         </Grid>
         <Grid>
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>

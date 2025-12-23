@@ -347,7 +347,7 @@ const ApprovePurchaseOrder = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Quality Checks Order</Typography>
+          <Typography variant="h6" className="page-title">Quality Checks Order</Typography>
         </Grid>
         <Grid>
           {hasPermission("purchase_order.create") && (

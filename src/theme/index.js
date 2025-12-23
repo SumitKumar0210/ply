@@ -32,6 +32,15 @@ const theme = createTheme({
             },
           },
         },
+        MuiDialogTitle: {
+          styleOverrides: {
+            root: {
+              fontSize: "20px",
+              fontWeight: "400"
+             
+            },
+          },
+        },
         MuiTableCell: {
           styleOverrides: {
             root: {

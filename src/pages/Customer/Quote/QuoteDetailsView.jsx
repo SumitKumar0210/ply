@@ -158,7 +158,7 @@ const QuoteDetailsView = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Quotation Details</Typography>
+          <Typography variant="h6" className="page-title">Quotation Details</Typography>
         </Grid>
         <Grid>
           {(quotationDetails.status !== 2) && (

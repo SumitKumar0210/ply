@@ -259,7 +259,7 @@ const PurchaseOrderQC = () => {
     <>
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
-          <Typography variant="h6">Purchase Order</Typography>
+          <Typography variant="h6" className="page-title">Purchase Order</Typography>
         </Grid>
       </Grid>
 

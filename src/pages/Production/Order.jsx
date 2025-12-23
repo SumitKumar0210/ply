@@ -398,7 +398,7 @@ const Order = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Order</Typography>
+          <Typography variant="h6" className="page-title">Order</Typography>
         </Grid>
         <Grid>
           {hasPermission("company_orders.create") && (

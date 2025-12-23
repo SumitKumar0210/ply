@@ -315,7 +315,7 @@ const CreatePurchaseOrder = () => {
     <>
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
-          <Typography variant="h6">Create Purchase Order</Typography>
+          <Typography variant="h6" className="page-title">Create Purchase Order</Typography>
         </Grid>
       </Grid>
 

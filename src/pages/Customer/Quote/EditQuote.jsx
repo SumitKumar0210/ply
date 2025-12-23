@@ -640,7 +640,7 @@ const EditQuote = () => {
         sx={{ mb: 2 }}
       >
         <Grid size={12}>
-          <Typography variant="h6">Edit Quote</Typography>
+          <Typography variant="h6" className="page-title">Edit Quote</Typography>
         </Grid>
       </Grid>
 
