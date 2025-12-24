@@ -15,6 +15,9 @@ import {
   DialogContentText,
   DialogTitle,
   CircularProgress,
+  Divider,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -31,6 +34,9 @@ const PurchaseOrderQC = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const { selected: po = {}, loading: poLoading = true } = useSelector((state) => state.purchaseOrder);
   const { data: materials = [] } = useSelector((state) => state.material);
@@ -267,21 +273,21 @@ const PurchaseOrderQC = () => {
         <Grid size={12}>
           <Card>
             <CardContent>
-              {po?.inward &&(
+              {po?.inward && (
                 <Grid size={12} sx={{ pt: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-                  <Typography variant="h6" className="fs-15">Purchase Order: {po.purchase_no}</Typography>
-                  <Button variant="contained" color="warning" sx={{ mt: 0 }} onClick={handlePrintClick}>
-                     Print QC Report
-                  </Button>
-                </Box>
-              </Grid>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+                    <Typography variant="h6" className="fs-15">Purchase Order: {po.purchase_no}</Typography>
+                    <Button variant="contained" color="warning" sx={{ mt: 0 }} onClick={handlePrintClick}>
+                      Print QC Report
+                    </Button>
+                  </Box>
+                </Grid>
               )}
-              
+
               {po?.vendor && (
                 <Grid size={{ xs: 12, md: 3 }} sx={{ pt: 2 }}>
                   <Typography variant="p">
-                    From
+                    <strong>From,</strong>
                     <br />
                     <b>{po.vendor?.name}</b>
                     <br />
@@ -293,13 +299,11 @@ const PurchaseOrderQC = () => {
                   </Typography>
                 </Grid>
               )}
-
-
               <Grid size={12} sx={{ pt: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'nowrap' }}>
-                  <Box sx={{ display: 'flex', gap: 3, alignItems: 'center', justifyContent: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body1" sx={{ m: 0 }}>Vendor Invoice No.: <b>{po.inward?.vendor_invoice_no}</b></Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 3 }, flexWrap: 'wrap' }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: { xs: 1, md: 3 } }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body1" sx={{ m: 0 }}>Vendor Invoice No.: <span className="fw-semibold">{po.inward?.vendor_invoice_no}</span></Typography>
                       {!po.inward && (<TextField
                         label="Invoice No"
                         type="text"
@@ -307,11 +311,13 @@ const PurchaseOrderQC = () => {
                         name="invoice_no"
                         value={invoiceNo}
                         onChange={(e) => setInvoiceNo(e.target.value)}
-                        sx={{ width: 150 }}
+                        sx={{ width: {
+                          xs: '100%', md: '200px'
+                        } }}
                       />)}
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body1" sx={{ m: 0 }}>Vendor Invoice Date: <b>{po.inward?.vendor_invoice_date}</b></Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body1" sx={{ m: 0 }}>Vendor Invoice Date: <span className="fw-semibold">{po.inward?.vendor_invoice_date}</span></Typography>
                       {!po.inward && (<TextField
                         label="Invoice Date"
                         type="date"
@@ -319,13 +325,19 @@ const PurchaseOrderQC = () => {
                         name="invoice_date"
                         value={invoiceDate}
                         onChange={(e) => setInvoiceDate(e.target.value)}
-                        sx={{ width: 150 }}
+                         sx={{ width: {
+                          xs: '100%', md: '200px'
+                        } }}
                         InputLabelProps={{ shrink: true }}
                       />)}
                     </Box>
                   </Box>
                   {!po.inward && (
-                    <Button variant="contained" color="primary" onClick={handleApprove}>
+                    <Button variant="contained" color="primary" onClick={handleApprove}
+                     sx={{ width: {
+                          xs: '100%', md: '100px'
+                        } }}
+                    >
                       Approve
                     </Button>
                   )}
@@ -334,7 +346,7 @@ const PurchaseOrderQC = () => {
 
               {!po.inward && (
                 <Grid size={12} sx={{ pt: 2 }}>
-                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 1, md: 2 }, alignItems: 'flex-end' }}>
                     <Autocomplete
                       options={materials}
                       value={selectedItemCode}
@@ -344,7 +356,7 @@ const PurchaseOrderQC = () => {
                       renderInput={(params) => (
                         <TextField {...params} label="Select Material" variant="outlined" />
                       )}
-                      sx={{ width: 300 }}
+                      sx={{ mb: { xs: 1, md: 0 }, width: { xs: '100%', md: '300px' } }}
                       noOptionsText="No materials available"
                     />
                     <TextField
@@ -354,7 +366,7 @@ const PurchaseOrderQC = () => {
                       onChange={(e) => setSelectedQty(e.target.value)}
                       type="number"
                       value={selectedQty}
-                      sx={{ width: 150 }}
+                      sx={{ width: { xs: '100%', md: '150px' } }}
                       inputProps={{ min: 1 }}
                       placeholder="Enter quantity"
                     />
@@ -362,14 +374,135 @@ const PurchaseOrderQC = () => {
                       variant="contained"
                       color="primary"
                       onClick={handleAddItem}
-                      sx={{ height: 40 }}
+                      sx={{ height: 40, width: { xs: '100%', md: '120px' } }}
                     >
                       Add Item
                     </Button>
                   </Box>
                 </Grid>
               )}
-              <Grid size={12} sx={{ mt: 3, overflowX: 'auto' }}>
+              {/* Mobile View - Cards */}
+              <Grid size={12} sx={{ display: { xs: 'block', md: 'none' }, mt: 3 }}>
+                {items.length > 0 ? (
+                  items.map((item) => (
+                    <Card
+                      key={item.id}
+                      sx={{
+                        mb: 2,
+                        border: '1px solid #e0e0e0',
+                        boxShadow: 1,
+                        backgroundColor: '#f7f7f7'
+                      }}
+                    >
+                      <CardContent>
+                        {/* Header */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            mb: 2,
+                            gap: 1,
+                          }}
+                        >
+                          <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
+                            {item.name}
+                          </Typography>
+
+                          <Tooltip title="Delete Item">
+                            <IconButton
+                              color="error"
+                              size="small"
+                              onClick={() => handleDeleteClick(item.id)}
+                            >
+                              <RiDeleteBinLine size={18} />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+
+                        <Divider sx={{ mb: 2 }} />
+
+                        {/* Quantity */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Quantity
+                          </Typography>
+                          <TextField
+                            type="number"
+                            size="small"
+
+                            sx={{
+                              mt: 0.5,
+                              width: '80px',
+
+                            }}
+                            disabled={po?.quality_status !== "1" && po?.inward}
+                            value={item.qty}
+                            onChange={(e) => handleQtyChange(item.id, e.target.value)}
+                            inputProps={{ min: 1 }}
+                          />
+                        </Box>
+
+                        {/* Size */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Size
+                          </Typography>
+                          <Typography variant="body1">{item.size}</Typography>
+                        </Box>
+
+                        {/* UOM */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            UOM
+                          </Typography>
+                          <Typography variant="body1">{item.uom}</Typography>
+                        </Box>
+
+                        {/* Rate */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Rate
+                          </Typography>
+                          <Typography variant="body1">
+                            ₹{item.rate.toLocaleString("en-IN")}
+                          </Typography>
+                        </Box>
+
+                        <Divider sx={{ my: 1 }} />
+
+                        {/* Total */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Total Amount
+                          </Typography>
+                          <Typography variant="h6" color="primary" sx={{ fontWeight: 500 }}>
+                            ₹{item.total.toLocaleString("en-IN")}
+                          </Typography>
+                        </Box>
+                      </CardContent>
+
+                    </Card>
+                  ))
+                ) : (
+                  <Card sx={{ textAlign: 'center', py: 4 }}>
+                    <CardContent>
+                      <Typography color="text.secondary">
+                        No items added yet. Add items to continue.
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                )}
+              </Grid>
+
+              {/* Desktop View - Table */}
+              <Grid size={12} sx={{ display: { xs: 'none', md: 'block' }, mt: 3, overflowX: 'auto' }}>
                 <Table>
                   <Thead>
                     <Tr>
@@ -391,7 +524,7 @@ const PurchaseOrderQC = () => {
                             <TextField
                               type="number"
                               size="small"
-                              disabled={po?.quality_status !== '1' && po?.inward }
+                              disabled={po?.quality_status !== '1' && po?.inward}
                               value={item.qty}
                               onChange={(e) => handleQtyChange(item.id, e.target.value)}
                               inputProps={{ min: 1 }}
@@ -429,27 +562,27 @@ const PurchaseOrderQC = () => {
               <Grid size={12} sx={{ mt: 3 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '300px', marginLeft: 'auto' }}>
                   <Box className="fs-15" sx={{ display: 'flex', borderBottom: '1px solid #ccc', pb: 0.5 }}>
-                    <span>Sub Total</span>
+                    <strong>Sub Total</strong>
                     <span style={{ marginLeft: 'auto' }}>₹{subTotal.toLocaleString('en-IN')}</span>
                   </Box>
 
                   <Box className="fs-15" sx={{ display: 'flex' }}>
-                    <span>Discount</span>
+                    <strong>Discount</strong>
                     <span style={{ marginLeft: 'auto' }}>₹{calculateTotals.discountAmount.toLocaleString('en-IN')}</span>
                   </Box>
 
                   <Box className="fs-15" sx={{ display: 'flex' }}>
-                    <span>Additional Charges</span>
+                    <strong>Additional Charges</strong>
                     <span style={{ marginLeft: 'auto' }}>₹{calculateTotals.cariageAmount.toLocaleString('en-IN')}</span>
                   </Box>
 
                   <Box className="fs-15" sx={{ display: 'flex' }}>
-                    <span>GST ({calculateTotals.gst_perValue}%)</span>
+                    <strong>GST ({calculateTotals.gst_perValue}%)</strong>
                     <span style={{ marginLeft: 'auto' }}>₹{calculateTotals.gstAmount.toLocaleString('en-IN')}</span>
                   </Box>
 
                   <Box className="fs-15" sx={{ display: 'flex', borderTop: '1px solid #222', mt: 1, pt: 0.5, fontWeight: 600 }}>
-                    <span>Grand Total</span>
+                    <strong>Grand Total</strong>
                     <span style={{ marginLeft: 'auto' }}>₹{calculateTotals.grandTotal.toLocaleString('en-IN')}</span>
                   </Box>
                 </Box>

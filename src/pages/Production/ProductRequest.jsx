@@ -11,6 +11,8 @@ import {
   DialogContentText,
   DialogTitle,
   Box,
+  Card,
+  CardContent,
   Tooltip,
   Chip,
   Grid,
@@ -20,8 +22,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
+  InputAdornment,
   Avatar,
   CircularProgress,
+  useMediaQuery,
+  useTheme,
+  Pagination,
 } from "@mui/material";
 import { MdOutlineRemoveRedEye, MdCheckCircle } from "react-icons/md";
 import {
@@ -31,11 +38,19 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import CloseIcon from "@mui/icons-material/Close";
+import { RiDeleteBinLine } from "react-icons/ri";
+import { FiUser, FiCalendar, FiPackage, FiCreditCard, FiPlus } from 'react-icons/fi';
+import SearchIcon from "@mui/icons-material/Search";
+import { IoMdCheckmarkCircleOutline } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchAllRequestItems, approveRequest } from "./slice/materialRequestSlice";
 import { useAuth } from "../../context/AuthContext";
+import { Divider } from "@mui/material";
 
 const ProductRequest = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { hasPermission, hasAnyPermission } = useAuth();
   const [openApprove, setOpenApprove] = useState(false);
   const [openViewModal, setOpenViewModal] = useState(false);
@@ -131,7 +146,7 @@ const ProductRequest = () => {
 
       setOpenApprove(false);
       setSelectedRow(null);
-                                 
+
       await dispatch(
         fetchAllRequestItems({
           pageIndex: pagination.pageIndex,
@@ -184,8 +199,7 @@ const ProductRequest = () => {
       },
     ];
 
-    if(hasAnyPermission(["material_request.approve","material_request.read"]))
-    {
+    if (hasAnyPermission(["material_request.approve", "material_request.read"])) {
       baseColumns.push({
         id: "actions",
         header: "Actions",
@@ -198,15 +212,15 @@ const ProductRequest = () => {
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             {hasPermission("material_request.read") && (
               <Tooltip title="View Details">
-              <IconButton
-                color="info"
-                onClick={() => handleView(row.original)}
-              >
-                <MdOutlineRemoveRedEye size={18} />
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  color="info"
+                  onClick={() => handleView(row.original)}
+                >
+                  <MdOutlineRemoveRedEye size={18} />
+                </IconButton>
+              </Tooltip>
             )}
-            
+
             {(hasPermission("material_request.approve") && row.original?.material_request?.[0]?.status === 0) && (
               <Tooltip title="Approve Request">
                 <IconButton
@@ -222,7 +236,7 @@ const ProductRequest = () => {
       })
     }
 
-    return baseColumns ;
+    return baseColumns;
     [handleView, handleApprove, handleDateFormat, getStatusChip]
   }
   );
@@ -274,7 +288,10 @@ const ProductRequest = () => {
     document.body.innerHTML = originalContents;
     window.location.reload();
   }, []);
-
+  // Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
   return (
     <>
       {/* Header Row */}
@@ -289,90 +306,250 @@ const ProductRequest = () => {
           <Typography variant="h6" className="page-title">Material Requests</Typography>
         </Grid>
       </Grid>
-
-      {/* Product Request Table */}
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          ref={tableContainerRef}
-          sx={{
-            width: "100%",
-            overflow: "hidden",
-            backgroundColor: "#fff",
-            px: 2,
-            py: 1,
-          }}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={tableData}
-            manualPagination
-            rowCount={totalRecords}
-            state={{
-              isLoading: loading,
-              showLoadingOverlay: loading,
-              pagination: pagination,
-              globalFilter,
-            }}
-            onPaginationChange={setPagination}
-            onGlobalFilterChange={setGlobalFilter}
-            enableTopToolbar
-            enableColumnFilters={false}
-            enableSorting={false}
-            enablePagination
-            enableBottomToolbar
-            enableGlobalFilter
-            enableDensityToggle={false}
-            enableColumnActions={false}
-            enableColumnVisibilityToggle={false}
-            initialState={{ density: "compact" }}
-            muiTableContainerProps={{
-              sx: {
-                width: "100%",
-                backgroundColor: "#fff",
-                overflowX: "auto",
-                minWidth: "1200px",
-              },
-            }}
-            muiTablePaperProps={{
-              sx: { backgroundColor: "#fff", boxShadow: "none" },
-            }}
-            muiTableBodyRowProps={{
-              hover: false,
-            }}
-            renderTopToolbar={({ table }) => (
+      {isMobile ? (
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box sx={{ minHeight: '100vh' }}>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search purchase orders..."
+                value=""
+                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
+            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+              {/* Header Section - Blue Background */}
               <Box
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  p: 1,
+                  bgcolor: "primary.main",
+                  p: 1.25,
+                  color: "primary.contrastText",
                 }}
               >
-                <Typography variant="h6" className='page-title'>
-                  Material Request List
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print Table">
-                    <IconButton onClick={handlePrint}>
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download as CSV">
-                    <IconButton onClick={downloadCSV}>
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                      Decorative Laminate Sheet
+                    </Typography>
+
+                  </Box>
+                  <Chip
+                    label="Pending"
+                    size="small"
+                    sx={{
+                      bgcolor: "white",
+                      color: "primary.main",
+                      fontWeight: 500,
+                      fontSize: "0.75rem",
+                    }}
+                  />
                 </Box>
               </Box>
-            )}
-          />
-        </Paper>
-      </Grid>
 
+              {/* Body Section */}
+              <CardContent sx={{ p: 1.5}}>
+                {/* Details Grid */}
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid size={12}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1, mb: 0 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.25,
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex", alignItems: "start", gap: 1
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "1rem",
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          Request Date:
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "1rem" }}>
+                          Dec 15, 2024
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={12}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1, mb: 0 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiPackage size={16} />
+                      </Box>
+                      <Box
+                        sx={{
+                          display: "flex", alignItems: "start", gap: 1
+                        }}
+                      >
+
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "1rem",
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          Materials Requested:
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "1rem" }}>
+                          12 items
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+                <Divider sx={{ mb: 1.5 }} />
+                {/* Action Buttons */}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#fff3e0",
+                      color: "#ff9800",
+                      "&:hover": { bgcolor: "#ffe0b2" },
+                    }}
+                  >
+                    <MdOutlineRemoveRedEye size={20} />
+                  </IconButton>
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "success.light",
+                      color: "white",
+                      "&:hover": { bgcolor: "success.light" },
+                    }}
+                  >
+                    <MdCheckCircle size={20} />
+                  </IconButton>
+                </Box>
+              </CardContent>
+            </Card>
+            {/* Mobile Pagination */}
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+              <Pagination
+                count={Math.ceil(10 / pagination.pageSize)}
+                page={pagination.pageIndex + 1}
+                onChange={handleMobilePageChange}
+                color="primary"
+              />
+            </Box>
+          </Box>
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
+
+        <Grid size={12}>
+          <Paper
+            elevation={0}
+            ref={tableContainerRef}
+            sx={{
+              width: "100%",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+              px: 2,
+              py: 1,
+            }}
+          >
+            <MaterialReactTable
+              columns={columns}
+              data={tableData}
+              manualPagination
+              rowCount={totalRecords}
+              state={{
+                isLoading: loading,
+                showLoadingOverlay: loading,
+                pagination: pagination,
+                globalFilter,
+              }}
+              onPaginationChange={setPagination}
+              onGlobalFilterChange={setGlobalFilter}
+              enableTopToolbar
+              enableColumnFilters={false}
+              enableSorting={false}
+              enablePagination
+              enableBottomToolbar
+              enableGlobalFilter
+              enableDensityToggle={false}
+              enableColumnActions={false}
+              enableColumnVisibilityToggle={false}
+              initialState={{ density: "compact" }}
+              muiTableContainerProps={{
+                sx: {
+                  width: "100%",
+                  backgroundColor: "#fff",
+                  overflowX: "auto",
+                  minWidth: "1200px",
+                },
+              }}
+              muiTablePaperProps={{
+                sx: { backgroundColor: "#fff", boxShadow: "none" },
+              }}
+              muiTableBodyRowProps={{
+                hover: false,
+              }}
+              renderTopToolbar={({ table }) => (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="h6" className='page-title'>
+                    Material Request List
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
+                    <Tooltip title="Print Table">
+                      <IconButton onClick={handlePrint}>
+                        <FiPrinter size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download as CSV">
+                      <IconButton onClick={downloadCSV}>
+                        <BsCloudDownload size={20} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              )}
+            />
+          </Paper>
+        </Grid>
+      )}
       {/* View Materials Modal */}
       <Dialog
         open={openViewModal}
@@ -387,7 +564,7 @@ const ProductRequest = () => {
               getStatusChip(selectedRow.material_request[0].status)}
           </Box>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ pb: 4 }}>
           {/* Production Item Info */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -396,7 +573,7 @@ const ProductRequest = () => {
             <Typography variant="h6" sx={{ mb: 1 }}>
               {selectedRow?.item_name}
             </Typography>
-            <Box sx={{ display: "flex", gap: 2, mb: 1 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: { xs: 1, md: 2 }, mb: 1 }}>
               <Typography variant="body2">
                 <strong>Size:</strong> {selectedRow?.size || "—"}
               </Typography>
@@ -404,7 +581,7 @@ const ProductRequest = () => {
                 <strong>Quantity:</strong> {selectedRow?.qty || "—"}
               </Typography>
             </Box>
-            <Box sx={{ display: "flex", gap: 2 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: { xs: 1, md: 2 } }}>
               <Typography variant="body2">
                 <strong>Start Date:</strong> {handleDateFormat(selectedRow?.start_date)}
               </Typography>
@@ -488,11 +665,11 @@ const ProductRequest = () => {
             </Table>
           </TableContainer>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ pb: 3 }}>
           <Button onClick={() => setOpenViewModal(false)} variant="outlined">
             Close
           </Button>
-          {(hasPermission("material_request.approve")  && selectedRow?.material_request?.[0]?.status === 0) && (
+          {(hasPermission("material_request.approve") && selectedRow?.material_request?.[0]?.status === 0) && (
             <Button
               onClick={() => {
                 setOpenViewModal(false);

@@ -19,8 +19,16 @@ body {
   font-size: 15px;
 }
 
+.fw-semibold {
+  font-weight: 500 !important;
+}
+
 strong {
   font-weight: 600 !important;
+}
+
+.tdBefore {
+  display: none;
 }
 
 .login-bg {
@@ -177,6 +185,3 @@ textarea:focus-visible {
   font-weight: 400 !important;
   line-height: 26px !important;
 }/*# sourceMappingURL=style.css.map */
-.tdBefore{
-  display: none;
-}

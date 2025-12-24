@@ -13,9 +13,17 @@ import {
   DialogTitle,
   Box,
   Tooltip,
+  TextField,
   Chip,
   CircularProgress,
+  Pagination,
+  InputAdornment
 } from "@mui/material";
+import { Card, CardContent } from '@mui/material';
+import { FiUser, FiCalendar, FiPackage, FiCreditCard, FiPlus } from 'react-icons/fi';
+import { MdCurrencyRupee, MdOutlineRemoveRedEye } from 'react-icons/md';
+import SearchIcon from "@mui/icons-material/Search";
+import { BiSolidEditAlt } from 'react-icons/bi';
 import { styled } from "@mui/material/styles";
 import { Link, useNavigate } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
@@ -33,6 +41,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getApprovePOData, deletePO } from "../slice/purchaseOrderSlice";
 import UploadInvoiceButton from "../../../components/UploadInvoiceButton/UploadInvoiceButton";
 import { useAuth } from "../../../context/AuthContext";
+import { useTheme, useMediaQuery } from "@mui/material";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -87,6 +96,9 @@ const getStatusChip = (status) => {
 };
 
 const ApprovePurchaseOrder = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   const { hasPermission, hasAnyPermission } = useAuth();
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -99,7 +111,7 @@ const ApprovePurchaseOrder = () => {
     (state) => state.purchaseOrder
   );
 
- 
+
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
@@ -112,15 +124,15 @@ const ApprovePurchaseOrder = () => {
   const searchTimeoutRef = useRef(null);
 
   useEffect(() => {
-   
+
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    
+
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(globalFilter);
-    }, 500); 
+    }, 500);
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -188,7 +200,7 @@ const ApprovePurchaseOrder = () => {
     setIsDeleting(true);
     try {
       await dispatch(deletePO(deleteId)).unwrap();
-    
+
       dispatch(
         getApprovePOData({
           page: pagination.pageIndex + 1,
@@ -239,7 +251,7 @@ const ApprovePurchaseOrder = () => {
       },
     ];
 
-    if(hasAnyPermission(["qc_po.delete","qc_po.read","qc_po.approve_qc","qc_po.update","qc_po.upload_invoice"])){
+    if (hasAnyPermission(["qc_po.delete", "qc_po.read", "qc_po.approve_qc", "qc_po.update", "qc_po.upload_invoice"])) {
       baseColumns.push({
         id: "actions",
         header: "Actions",
@@ -256,42 +268,42 @@ const ApprovePurchaseOrder = () => {
 
             {hasPermission("qc_po.approve_qc") && (
               <Tooltip title="Quality Check">
-              <IconButton
-                color="primary"
-                onClick={() => handleQualitycheckClick(row.original.id)}
-              >
-                <IoMdCheckmarkCircleOutline size={16} />
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  color="primary"
+                  onClick={() => handleQualitycheckClick(row.original.id)}
+                >
+                  <IoMdCheckmarkCircleOutline size={16} />
+                </IconButton>
+              </Tooltip>
             )}
-            
+
             {hasPermission("qc_po.read") && (
               <Tooltip title="Print PO">
-              <IconButton
-                color="warning"
-                onClick={() => handlePrintClick(row.original.id)}
-              >
-                <FiPrinter size={16} />
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  color="warning"
+                  onClick={() => handlePrintClick(row.original.id)}
+                >
+                  <FiPrinter size={16} />
+                </IconButton>
+              </Tooltip>
             )}
             {hasPermission("qc_po.delete") && (
               <Tooltip title="Delete PO">
-              <IconButton
-                aria-label="delete"
-                color="error"
-                onClick={() => handleDeleteClick(row.original.id)}
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  aria-label="delete"
+                  color="error"
+                  onClick={() => handleDeleteClick(row.original.id)}
+                >
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
             )}
           </Box>
         ),
       })
     }
 
-    return baseColumns ; 
+    return baseColumns;
     [handlePrintClick, handleQualitycheckClick, handleDeleteClick]
   });
 
@@ -337,6 +349,10 @@ const ApprovePurchaseOrder = () => {
     window.location.reload();
   }, []);
 
+  // Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
   return (
     <>
       <Grid
@@ -352,102 +368,346 @@ const ApprovePurchaseOrder = () => {
         <Grid>
           {hasPermission("purchase_order.create") && (
             <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            component={Link}
-            to="/vendor/purchase-order/create"
-          >
-            Create PO
-          </Button>
+              variant="contained"
+              startIcon={<AddIcon />}
+              component={Link}
+              to="/vendor/purchase-order/create"
+            >
+              Create PO
+            </Button>
           )}
         </Grid>
       </Grid>
-
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          ref={tableContainerRef}
-          sx={{
-            width: "100%",
-            overflow: "hidden",
-            backgroundColor: "#fff",
-            px: 2,
-            py: 1,
-          }}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={tableData}
-            manualPagination
-            rowCount={total}
-            state={{
-              pagination,
-              globalFilter,
-              isLoading: loading,
-              showLoadingOverlay: loading,
-            }}
-            onPaginationChange={setPagination}
-            onGlobalFilterChange={setGlobalFilter}
-            enableTopToolbar
-            enableColumnFilters={false}
-            enableSorting={false}
-            enableBottomToolbar
-            enableGlobalFilter
-            enableDensityToggle={false}
-            enableColumnActions={false}
-            enableColumnVisibilityToggle={false}
-            initialState={{ density: "compact" }}
-            muiTableContainerProps={{
-              sx: {
-                width: "100%",
-                backgroundColor: "#fff",
-                overflowX: "auto",
-                minWidth: "1200px",
-              },
-            }}
-            muiTablePaperProps={{
-              sx: { backgroundColor: "#fff", boxShadow: "none" },
-            }}
-            muiTableBodyRowProps={({ row }) => ({
-              hover: false,
-              sx:
-                row.original.status === "inactive"
-                  ? { "&:hover": { backgroundColor: "transparent" } }
-                  : {},
-            })}
-            renderTopToolbar={({ table }) => (
+      {isMobile ? (
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box sx={{ minHeight: '100vh' }}>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search purchase orders..."
+                value=""
+                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
+            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+              {/* Header Section - Blue Background */}
               <Box
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  p: 1,
+                    bgcolor: "primary.main",
+                    p: 2,
+                    color: "primary.contrastText",
                 }}
               >
-                 <Typography variant="h6" className='page-title'>
-                  Quality Checks Purchase Orders
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print Table">
-                    <IconButton onClick={handlePrint}>
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download as CSV">
-                    <IconButton onClick={downloadCSV}>
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                      PO-2024-001
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <FiUser size={14} />
+                      <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                        ABC Suppliers Ltd.
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Chip
+                    label="Pending"
+                    size="small"
+                    sx={{
+                      bgcolor: "white",
+                      color: "primary.main",
+                      fontWeight: 500,
+                      fontSize: "0.75rem",
+                    }}
+                  />
                 </Box>
               </Box>
-            )}
-          />
-        </Paper>
-      </Grid>
 
+              {/* Body Section */}
+              <CardContent sx={{ p: 2 }}>
+                {/* Details Grid */}
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Order Date
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          Dec 15, 2024
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiPackage size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Items Ordered
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          12 items
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiCreditCard size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Credit Days
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          30 days
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiPlus size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          QC Passes Items
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                         20
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                {/* Total Section */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    bgcolor: "#f0f7ff",
+                    px: 2,
+                    py: 1,
+                    borderRadius: 1,
+                    mb: 2,
+                    border: "1px solid #e3f2fd",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {/* <MdCurrencyRupee size={20} color="primary.main" /> */}
+                    <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
+                      Order Total
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 500, color: "primary.main", fontSize: "1rem" }}
+                  >
+                    ₹45,750.00
+                  </Typography>
+                </Box>
+
+                {/* Action Buttons */}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#e3f2fd",
+                      color: "primary.main",
+                      "&:hover": { bgcolor: "#bbdefb" },
+                    }}
+                  >
+                    <BsCloudDownload size={20} />
+                  </IconButton>
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#e3f2fd",
+                      color: "primary.main",
+                      "&:hover": { bgcolor: "#bbdefb" },
+                    }}
+                  >
+                    <IoMdCheckmarkCircleOutline size={20} />
+                  </IconButton>
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#fff3e0",
+                      color: "#ff9800",
+                      "&:hover": { bgcolor: "#ffe0b2" },
+                    }}
+                  >
+                    <FiPrinter size={20} />
+                  </IconButton>
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#ffebee",
+                      color: "#d32f2f",
+                      "&:hover": { bgcolor: "#ffcdd2" },
+                    }}
+                  >
+                    <RiDeleteBinLine size={20} />
+                  </IconButton>
+                </Box>
+              </CardContent>
+            </Card>
+            {/* Mobile Pagination */}
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+              <Pagination
+                count={Math.ceil(10 / pagination.pageSize)}
+                page={pagination.pageIndex + 1}
+                onChange={handleMobilePageChange}
+                color="primary"
+              />
+            </Box>
+          </Box>
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
+        <Grid size={12}>
+          <Paper
+            elevation={0}
+            ref={tableContainerRef}
+            sx={{
+              width: "100%",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+              px: 2,
+              py: 1,
+            }}
+          >
+            <MaterialReactTable
+              columns={columns}
+              data={tableData}
+              manualPagination
+              rowCount={total}
+              state={{
+                pagination,
+                globalFilter,
+                isLoading: loading,
+                showLoadingOverlay: loading,
+              }}
+              onPaginationChange={setPagination}
+              onGlobalFilterChange={setGlobalFilter}
+              enableTopToolbar
+              enableColumnFilters={false}
+              enableSorting={false}
+              enableBottomToolbar
+              enableGlobalFilter
+              enableDensityToggle={false}
+              enableColumnActions={false}
+              enableColumnVisibilityToggle={false}
+              initialState={{ density: "compact" }}
+              muiTableContainerProps={{
+                sx: {
+                  width: "100%",
+                  backgroundColor: "#fff",
+                  overflowX: "auto",
+                  minWidth: "1200px",
+                },
+              }}
+              muiTablePaperProps={{
+                sx: { backgroundColor: "#fff", boxShadow: "none" },
+              }}
+              renderTopToolbar={({ table }) => (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="h6" className="page-title">
+                    Quality Checks Purchase Orders
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
+                  </Box>
+                </Box>
+              )}
+            />
+          </Paper>
+        </Grid>
+      )}
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={openDelete}
