@@ -61,6 +61,7 @@ const MODULES = [
   { value: "general_settings", label: "General Settings" }, // fixed spelling
   { value: "groups", label: "Groups" },
   { value: "labours", label: "Labours" },
+  { value: "labour_worksheet", label: "Labour Worksheet" },
   { value: "machines", label: "Machines" },
   { value: "material_request", label: "Material Request" },
   { value: "materials", label: "Materials" },

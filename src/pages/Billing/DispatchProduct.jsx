@@ -41,6 +41,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchBills, markAsDelivered } from "./slice/billsSlice";
 import { fetchPaymentRecord, storePayment, clearPayments } from "./slice/paymentSlice";
 import { useAuth } from "../../context/AuthContext";
+import LinkGenerator from "../../components/Links/LinkGenerator";
 
 // Payment validation schema
 const validationSchema = Yup.object().shape({
@@ -245,6 +246,14 @@ const DispatchProduct = () => {
     [dispatch, selectedInvoice, dueAmount, fetchData]
   );
 
+  const getCustomerId = useCallback(
+  (id) => {
+    if (!bills?.length) return null;
+    return bills.find((item) => item.id === id)?.customer_id ?? null;
+  },
+  [bills]
+);
+
   // Search toggle
   const handleSearchToggle = useCallback(() => {
     if (showSearch && globalFilter) {
@@ -336,7 +345,7 @@ const DispatchProduct = () => {
       },
     ];
 
-    if(hasAnyPermission(["dispatch_product.collect_payment","dispatch_product.view_challan","dispatch_product.read","dispatch_product.mark_delivered"])){
+    if (hasAnyPermission(["dispatch_product.collect_payment", "dispatch_product.view_challan", "dispatch_product.read", "dispatch_product.mark_delivered"])) {
       baseColumns.push({
         id: "actions",
         header: "Actions",
@@ -348,26 +357,31 @@ const DispatchProduct = () => {
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             {hasPermission("dispatch_product.read") && (
               <Tooltip title="View Bill">
-              <IconButton
-                color="primary"
-                onClick={() => handleViewBill(row.original.id)}
-                size="small"
-              >
-                <MdOutlineRemoveRedEye size={16} />
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  color="primary"
+                  onClick={() => handleViewBill(row.original.id)}
+                  size="small"
+                >
+                  <MdOutlineRemoveRedEye size={16} />
+                </IconButton>
+              </Tooltip>
             )}
+            <LinkGenerator
+              id={row.original.id}
+              customerId={getCustomerId(row.original.id)?? null}
+              entity="challan"
+            />
 
             {hasPermission("dispatch_product.view_challan") && (
               <Tooltip title="View Challan">
-              <IconButton
-                color="primary"
-                onClick={() => handleChallan(row.original.id)}
-                size="small"
-              >
-                <MdDescription size={18} />
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  color="primary"
+                  onClick={() => handleChallan(row.original.id)}
+                  size="small"
+                >
+                  <MdDescription size={18} />
+                </IconButton>
+              </Tooltip>
             )}
 
             {(hasPermission("dispatch_product.mark_delivered") && row.original.status === 2) && (
@@ -389,21 +403,21 @@ const DispatchProduct = () => {
 
             {hasPermission("dispatch_product.collect_payment") && (
               <Tooltip title="Make Payment">
-              <IconButton
-                color="success"
-                onClick={() => handleOpenPayment(row.original)}
-                size="small"
-              >
-                <GrCurrency size={16} />
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  color="success"
+                  onClick={() => handleOpenPayment(row.original)}
+                  size="small"
+                >
+                  <GrCurrency size={16} />
+                </IconButton>
+              </Tooltip>
             )}
           </Box>
         ),
       })
     }
 
-    return baseColumns ;
+    return baseColumns;
     [
       getStatusConfig,
       handleViewBill,
@@ -425,6 +439,7 @@ const DispatchProduct = () => {
     const headers = ["Invoice No", "Customer Name", "Mobile", "Bill Date", "Total", "Status"];
 
     const rows = normalizedBills.map((row) => {
+      const customerId = row.customer?.id || "N/A";
       const customerName = row.customer?.name || "N/A";
       const customerMobile = row.customer?.mobile || "N/A";
       const date = row.date
@@ -437,6 +452,7 @@ const DispatchProduct = () => {
 
       return [
         `"${row.invoice_no || ""}"`,
+        `"${customerId}"`,
         `"${customerName}"`,
         `"${customerMobile}"`,
         `"${date}"`,
@@ -591,12 +607,12 @@ const DispatchProduct = () => {
 
                     {hasPermission("bills.create") && (
                       <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddBill}
-                    >
-                      Add Bill
-                    </Button>
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddBill}
+                      >
+                        Add Bill
+                      </Button>
                     )}
                   </Box>
                 </Box>

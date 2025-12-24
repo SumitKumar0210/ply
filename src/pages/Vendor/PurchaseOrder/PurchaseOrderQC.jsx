@@ -566,10 +566,10 @@ const PurchaseOrderQC = () => {
                     <span style={{ marginLeft: 'auto' }}>₹{subTotal.toLocaleString('en-IN')}</span>
                   </Box>
 
-                  <Box className="fs-15" sx={{ display: 'flex' }}>
-                    <strong>Discount</strong>
+                  {/* <Box className="fs-15" sx={{ display: 'flex' }}>
+                    <span>Discount</span>
                     <span style={{ marginLeft: 'auto' }}>₹{calculateTotals.discountAmount.toLocaleString('en-IN')}</span>
-                  </Box>
+                  </Box> */}
 
                   <Box className="fs-15" sx={{ display: 'flex' }}>
                     <strong>Additional Charges</strong>

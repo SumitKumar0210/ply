@@ -9,6 +9,8 @@ import SecurePage from "./SecurePage";
 const Login = lazy(() => import("../pages/auth/Login"));
 const ForgotPassword = lazy(() => import("../pages/auth/ForgotPassword"));
 const PublicQuoteDetailsView = lazy(() => import("../pages/Public/Quotation"));
+const PublicChallanView = lazy(() => import("../pages/Public/Challan"));
+const PublicPurchaseOrderView = lazy(() => import("../pages/Public/PurchaseOrder"));
 
 const Dashboard = lazy(() => import("../pages/dashboard/Dashboard"));
 const Settings = lazy(() => import("../pages/settings/Settings"));
@@ -62,6 +64,7 @@ const Permissions = lazy(() => import("../pages/Users/Permissions"));
 const PermissionGroupManager = lazy(() => import("../pages/Users/userPermission"));
 const ProductStocks = lazy(() => import("../pages/Production/ProductStock"));
 const RRPManagement = lazy(() => import("../pages/Production/RRPManagement"));
+const Calendar = lazy(() => import("../pages/Users/Calendar/Calendar"));
 
 
 const Error404 = lazy(() => import("../pages/error/404"));
@@ -81,9 +84,20 @@ const AppRoutes = () => {
         <Route
           path="/quotation/:link"
           element={
-            <AuthLayout>
               <PublicQuote />
-            </AuthLayout>
+          }
+        />
+        <Route
+          path="/challan/:link"
+          element={
+              <PublicChallanView />
+          }
+        />
+
+        <Route
+          path="/purchase-order/:link"
+          element={
+              <PublicPurchaseOrderView />
           }
         />
 
@@ -110,6 +124,7 @@ const AppRoutes = () => {
         <Route path="/users" element={<SecurePage permission="users.read"><Users /></SecurePage>} />
         <Route path="/customers" element={<SecurePage permission="customers.read"><Customers /></SecurePage>} />
         <Route path="/labours" element={<SecurePage permission="labours.read"><Labours /></SecurePage>} />
+        <Route path="/attendance-calendar" element={<SecurePage permission="labour_worksheet.read"><Calendar /></SecurePage>} />
  
         {/* Vendor group */}
         <Route path="/vendor/dashboard" element={<SecurePage ><VendorDashboard /></SecurePage>} />
@@ -163,7 +178,7 @@ const AppRoutes = () => {
         <Route path="/stocks" element={<SecurePage permission="stocks.read"><StockInOut /></SecurePage>} />
 
         {/* Permission */}
-        {/* <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} /> */}
+        <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} />
         <Route path="/settings/:id/fetch-permissions" element={<SecurePage permission="roles.assign"><PermissionGroupManager /></SecurePage>} />
 
         {/* Error pages */}

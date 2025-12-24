@@ -8,6 +8,7 @@ import { fetchVendorInvoiceById } from "../slice/vendorInvoiceSlice";
 import { useParams } from "react-router-dom";
 
 const InvoiceDetail = () => {
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
   const contentRef = useRef(null);
   const { id } = useParams();
@@ -89,6 +90,20 @@ const InvoiceDetail = () => {
           <Typography variant="h6" className="page-title">Invoice Detail</Typography>
         </Grid>
         <Grid item>
+          {invoice?.document && (
+            <Button
+              sx={{ mr: 2 }}
+              variant="contained"
+              color="secondary"
+              component="a"
+              href={mediaUrl + invoice.document}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Uploaded Invoice
+            </Button>
+          )}
+
           <Button
             variant="contained"
             color="secondary"
@@ -232,17 +247,17 @@ const InvoiceDetail = () => {
                     pb: 0.5,
                   }}
                 >
-                  <strong>Sub Total</strong>
+                  <span>Sub Total</span>
                   <span style={{ marginLeft: 'auto' }}>{invoice.subtotal || 0}</span>
                 </Box>
 
-                <Box className="fs-15" sx={{ display: 'flex' }}>
-                  <strong>Discount</strong>
+                {/* <Box className="fs-15" sx={{ display: 'flex' }}>
+                  <span>Discount</span>
                   <span style={{ marginLeft: 'auto' }}>{invoice.discount || 0}</span>
-                </Box>
+                </Box> */}
 
                 <Box className="fs-15" sx={{ display: 'flex' }}>
-                  <strong>Additional Charges</strong>
+                  <span>Additional Charges</span>
                   <span style={{ marginLeft: 'auto' }}>{invoice.carriage_amount || 0}</span>
                 </Box>
 

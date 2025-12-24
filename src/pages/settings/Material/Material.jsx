@@ -126,6 +126,12 @@ const columns = useMemo(() => {
       Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="50%" /> : cell.getValue()),
     },
     {
+      accessorKey: "hsn_code",
+      header: "HSN Code",
+      size: 50,
+      Cell: ({ cell }) => (loading ? <Skeleton variant="text" width="50%" /> : cell.getValue()),
+    },
+    {
       accessorKey: "price",
       header: "Price",
       size: 75,

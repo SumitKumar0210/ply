@@ -42,6 +42,7 @@ import { BsCloudDownload } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import { deletePO, fetchPurchaseOrders } from "../slice/purchaseOrderSlice";
 import { useAuth } from "../../../context/AuthContext";
+import LinkGenerator from "../../../components/Links/LinkGenerator";
 
 // Status mapping: 0-draft, 1-save, 2-reject, 3-approve
 const STATUS_CONFIG = {
@@ -482,7 +483,18 @@ const PurchaseOrder = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             {hasPermission("purchase_order.read") && (
-              <Tooltip title="View">
+              <Tooltip title="View/Approve PO">
+                <IconButton
+                  color="warning"
+                  onClick={() => handleViewClick(row.original.id)}
+                  size="small"
+                >
+                  <MdOutlineRemoveRedEye size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {(hasPermission("purchase_order.update") && row.original.status === 0 || row.original.status === 1) && (
+              <Tooltip title="Edit">
                 <IconButton
                   color="warning"
                   onClick={() => handleViewClick(row.original.id)}
@@ -504,6 +516,11 @@ const PurchaseOrder = () => {
                   </IconButton>
                 </Tooltip>
               )}
+            <LinkGenerator
+              id={row.original.id}
+              customerId={row.original.vendor?.id}
+              entity="purchase_order"
+            />
             {hasPermission("purchase_order.delete") && (
               <Tooltip title="Delete">
                 <IconButton
@@ -663,6 +680,24 @@ const PurchaseOrder = () => {
           {loading && (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress />
+            >
+              <Typography variant="h6" className='page-title'>
+                Purchase Order
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <MRT_GlobalFilterTextField table={table} />
+                <MRT_ToolbarInternalButtons table={table} />
+                <Tooltip title="Print">
+                  <IconButton onClick={handlePrint} size="small">
+                    <FiPrinter size={20} />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Download CSV">
+                  <IconButton onClick={downloadCSV} size="small">
+                    <BsCloudDownload size={20} />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
           )}
 

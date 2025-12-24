@@ -47,7 +47,8 @@ import {
 import { fetchActiveDepartments } from "../settings/slices/departmentSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { compressImage } from "../../components/imageCompressor/imageCompressor";
-import { fetchActiveWorkShifts } from "../settings/slices/Workshiftslice";
+// import { fetchActiveWorkShifts } from "../settings/slices/Workshiftslice";
+import { fetchActiveWorkShifts } from "../settings/slices/workshiftslice";
 
 // Constants
 const DOCUMENT_TYPES = [

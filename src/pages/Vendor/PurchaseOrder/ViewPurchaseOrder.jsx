@@ -123,15 +123,15 @@ const ViewPurchaseOrder = () => {
                   }}
                 >
                   {data.status == '1' && (
-
-                    <Button
-                      variant="contained"
-                      color="success"
-                      onClick={() => { handleApprove(id) }}
-                      startIcon={<MdOutlineCheckCircle />} >
-                      Approve
-                    </Button>
-
+                    
+                      <Button
+                        variant="contained"
+                        color="success"
+                        onClick={() => {handleApprove(id)}}
+                        startIcon={<MdOutlineCheckCircle />} >
+                        Approve PO
+                      </Button>
+                    
                   )}
                   <Button
                     variant="contained"
@@ -310,10 +310,10 @@ const ViewPurchaseOrder = () => {
                       <span>Sub Total:</span>
                       <span>₹{data.subtotal?.toLocaleString('en-IN') || 0}</span>
                     </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
+                    {/* <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
                       <span>Discount:</span>
                       <span>₹{data.discount?.toLocaleString('en-IN') || 0}</span>
-                    </Box>
+                    </Box> */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
                       <span>Charges:</span>
                       <span>₹{data.cariage_amount?.toLocaleString('en-IN') || 0}</span>

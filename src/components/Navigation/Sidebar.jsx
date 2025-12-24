@@ -23,7 +23,7 @@ import { MdStorefront, MdOutlineDashboard } from "react-icons/md";
 import { RiFileList3Line, RiFlowChart } from "react-icons/ri";
 import { LiaFileInvoiceSolid } from "react-icons/lia";
 import { LuTable } from "react-icons/lu";
-import { IoConstructOutline } from "react-icons/io5";
+import { IoConstructOutline, IoPeopleOutline  } from "react-icons/io5";
 import { TbUsersPlus } from "react-icons/tb";
 import { BsBoxSeam, BsTag  } from "react-icons/bs";
 
@@ -95,7 +95,10 @@ const menuSections = [
             ]
           },
           { text: "Vendor list", to: "/vendor/list", icon: <LuTable />, anyPermissions: ["vendor_lists.read"] },
-          { text: "Stock", to: "/stocks", icon: <BsBoxSeam />, anyPermissions: ["stocks.read"] },
+          { text: "Movement", to: "/stocks", icon: <BsBoxSeam />, anyPermissions: ["stocks.read"] },
+          {
+            text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
+          },
         ],
       },
       {
@@ -127,13 +130,14 @@ const menuSections = [
             ]
           },
           {
-            text: "Order", to: "/customer/order", icon: <RiFileList3Line />, anyPermissions: [
+            text: "Production Order", to: "/customer/order", icon: <RiFileList3Line />, anyPermissions: [
               "customer_orders.add_production",
               "customer_orders.create",
               "customer_orders.update",
               "customer_orders.read",
             ]
           },
+          
           { text: "Customer List", to: "/customer/list", icon: <LuTable />, anyPermissions: ["customer_lists.view_ledger"] },
         ],
       },
@@ -157,6 +161,13 @@ const menuSections = [
         ],
         children: [
           {
+            text: "IH Production Order", to: "/production/orders", icon: <MdOutlineDashboard />, anyPermissions: [
+              "company_orders.read",
+              "company_orders.update",
+              "company_orders.create",
+            ]
+          },
+          {
             text: "Production Chain", to: "/production/production-chain", icon: <RiFlowChart />, anyPermissions: [
               "productions.switch_to",
               "productions.change_supervisor",
@@ -170,16 +181,7 @@ const menuSections = [
               "productions.ready_for_delivery"
             ]
           },
-          {
-            text: "Order", to: "/production/orders", icon: <MdOutlineDashboard />, anyPermissions: [
-              "company_orders.read",
-              "company_orders.update",
-              "company_orders.create",
-            ]
-          },
-          {
-            text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
-          },
+          
           {
             text: "RRP", to: "/production/rrp-calculation", icon: <BsTag  />, permission:"rrp.read"
           },
@@ -252,10 +254,16 @@ const menuSections = [
             ]
           },
           {
-            text: "Labours", to: "/labours", icon: <IoConstructOutline />, anyPermissions: [
+            text: "Foreman", to: "/labours", icon: <IoConstructOutline />, anyPermissions: [
               "labours.delete",
               "labours.create",
               "labours.update",
+            ]
+          },
+          {
+            text: "Attendance", to: "/attendance-calendar", icon: <IoPeopleOutline  />, anyPermissions: [
+              "labour_worksheet.update",
+              "labour_worksheet.read",
             ]
           },
         ],

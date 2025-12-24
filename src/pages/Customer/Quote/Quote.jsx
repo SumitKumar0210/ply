@@ -25,7 +25,7 @@ import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import TaskAltIcon from "@mui/icons-material/TaskAlt";
 import { RiDeleteBinLine } from "react-icons/ri";
 import AddIcon from "@mui/icons-material/Add";
-import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { MdOutlineRemoveRedEye, MdOutlineVisibilityOff } from "react-icons/md";
 import { IoMdRefresh } from "react-icons/io";
 import { useNavigate } from "react-router-dom";
 import { TextField } from "@mui/material";
@@ -309,7 +309,7 @@ const Quote = () => {
                   <LinkGenerator
                   id={row.original.id}
                   customerId={row.original.customer?.id}
-                  quotationData={row.original}
+                  entity="quotation"
                 />
                 )}
                 {hasPermission("quotations.read") && (
@@ -429,11 +429,11 @@ const Quote = () => {
             {hasPermission("quotations.approved_data") && (
             <Button
               variant={showApproved ? "contained" : "outlined"}
-              startIcon={<CheckCircleIcon />}
+              startIcon={showApproved ?<MdOutlineRemoveRedEye /> : <MdOutlineVisibilityOff />}
               onClick={handleToggleApproved}
               color={showApproved ? "success" : "primary"}
             >
-              {showApproved ? "Showing Approved" : "Approved Data"}
+              {showApproved ? "Showing Approved" : "Approved Quotes"}
             </Button>
             )}
             {hasPermission("quotations.create") && (

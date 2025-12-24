@@ -1,8 +1,13 @@
 import { Box, Typography } from "@mui/material";
+import { useAuth } from "../../context/AuthContext";
 
 const drawerWidth = 220;
 
 const Footer = ({ mobileOpen }) => {
+  const auth = useAuth();
+  const ctxAppDetails = auth?.appDetails ?? null;
+  const displayAppName = ctxAppDetails?.application_name || (typeof window !== "undefined" ? localStorage.getItem("application_name") : "") || "";
+  
   return (
     <Box
       sx={{
@@ -25,7 +30,7 @@ const Footer = ({ mobileOpen }) => {
         }}
       >
         <Typography variant="body2">
-          © {new Date().getFullYear()} Aarish Ply. All rights reserved.
+          © {new Date().getFullYear()} {displayAppName}. All rights reserved.
         </Typography>
 
         <Typography variant="body2">

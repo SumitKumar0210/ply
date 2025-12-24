@@ -168,7 +168,7 @@ const QuoteDetailsView = () => {
               onClick={() => handleApprove(quotationData.id)}
               sx={{ mr: 2 }}
             >
-              Approve
+              Approve Quotation
             </Button>
           )}
 
@@ -421,7 +421,7 @@ const QuoteDetailsView = () => {
                         <span>₹{subTotal.toLocaleString("en-IN")}</span>
                       </Box>
 
-                      <Box
+                      {/* <Box
                         sx={{
                           display: "flex",
                           justifyContent: "space-between",
@@ -429,7 +429,7 @@ const QuoteDetailsView = () => {
                       >
                         <span>Discount</span>
                         <span>₹{discount.toLocaleString("en-IN")}</span>
-                      </Box>
+                      </Box> */}
 
                       <Box
                         sx={{

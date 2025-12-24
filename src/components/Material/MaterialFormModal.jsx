@@ -45,6 +45,7 @@ const validationSchema = Yup.object({
     .required("Name is required"),
   unit_of_measurement_id: Yup.string().required("UOM is required"),
   size: Yup.string().required("Size is required"),
+  hsn_code: Yup.string().required("HSN Code is required"),
   price: Yup.number()
     .typeError("Price must be a number")
     .positive("Price must be positive")
@@ -102,6 +103,7 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
     name: editData?.name || "",
     unit_of_measurement_id: String(editData?.unit_of_measurement_id || ""),
     size: editData?.size || "",
+    hsn_code: editData?.hsn_code || "",
     price: editData?.price || "",
     category_id: String(editData?.category_id || ""),
     group_id: String(editData?.group_id || ""),
@@ -265,6 +267,21 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     onChange={handleChange}
                     error={touched.size && Boolean(errors.size)}
                     helperText={touched.size && errors.size}
+                    disabled={isSubmitting}
+
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    name="hsn_code"
+                    label="HSN Code"
+                    size="small"
+                    value={values.hsn_code}
+                    onChange={handleChange}
+                    error={touched.hsn_code && Boolean(errors.hsn_code)}
+                    helperText={touched.hsn_code && errors.hsn_code}
                     disabled={isSubmitting}
 
                   />

@@ -9,9 +9,7 @@ const api = axios.create({
 const PUBLIC_ENDPOINTS = [
   "/login",
   "/forgot-password",
-  "/public/quotation/",
-  "/public/order/",
-  "/public/invoice/",
+  "/quotation/",
 ];
 
 // Check if URL is a public endpoint
