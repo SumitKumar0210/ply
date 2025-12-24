@@ -809,7 +809,7 @@ const EditPurchaseOrder = () => {
                               <span>₹{subTotal.toLocaleString('en-IN')}</span>
                             </Box>
 
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center', mb: 1 }}>
+                            {/* <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center', mb: 1 }}>
                               <TextField
                                 label="Discount"
                                 type="number"
