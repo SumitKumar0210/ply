@@ -493,17 +493,6 @@ const PurchaseOrder = () => {
                 </IconButton>
               </Tooltip>
             )}
-            {(hasPermission("purchase_order.update") && row.original.status === 0 || row.original.status === 1) && (
-              <Tooltip title="Edit">
-                <IconButton
-                  color="warning"
-                  onClick={() => handleViewClick(row.original.id)}
-                  size="small"
-                >
-                  <MdOutlineRemoveRedEye size={16} />
-                </IconButton>
-              </Tooltip>
-            )}
             {hasPermission("purchase_order.update") &&
               (row.original.status === 0 || row.original.status === 1) && (
                 <Tooltip title="Edit">
