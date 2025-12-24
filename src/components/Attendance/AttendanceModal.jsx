@@ -26,10 +26,12 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useDispatch, useSelector } from "react-redux";
 import { markAttendance, fetchMonthlyAttendance } from "../../pages/Users/Calendar/slice/calendarSlice";
+import { useAuth } from "../../context/AuthContext";
 
 const AttendanceModal = ({ open, onClose, selectedDate, labours, attendanceData }) => {
 
     const dispatch = useDispatch();
+    const { hasPermission } = useAuth();
     const { loading } = useSelector((state) => state.calendar);
 
     const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -56,7 +58,8 @@ const AttendanceModal = ({ open, onClose, selectedDate, labours, attendanceData 
         if (!open || !selectedDate || labours.length === 0) return;
 
         // Wait until attendance data is ready
-        if (!isAttendanceReady) return;
+        const isFuture = selectedDate ? selectedDate.isAfter(dayjs(), "day") : false;
+        if (isFuture) return;
 
         setIsInitializing(true);
         initializeAttendanceRecords();
@@ -396,7 +399,7 @@ const AttendanceModal = ({ open, onClose, selectedDate, labours, attendanceData 
                 <Button onClick={onClose} disabled={loading}>
                     Cancel
                 </Button>
-                {canMarkAttendance && (
+                {( hasPermission('labour_worksheet.update') && canMarkAttendance) && (
                     <Button
                         onClick={handleSaveAttendance}
                         variant="contained"

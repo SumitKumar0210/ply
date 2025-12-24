@@ -124,7 +124,7 @@ const ViewPurchaseOrder = () => {
                         color="success"
                         onClick={() => {handleApprove(id)}}
                         startIcon={<MdOutlineCheckCircle />} >
-                        Approve
+                        Approve PO
                       </Button>
                     
                   )}

@@ -326,7 +326,7 @@ const PurchaseOrderQC = () => {
                   </Box>
                   {!po.inward && (
                     <Button variant="contained" color="primary" onClick={handleApprove}>
-                      Approve
+                      Approve QC
                     </Button>
                   )}
                 </Box>

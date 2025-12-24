@@ -228,7 +228,7 @@ const PurchaseOrder = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             {hasPermission("purchase_order.read") && (
-              <Tooltip title="View">
+              <Tooltip title="View/Approve PO">
                 <IconButton
                   color="warning"
                   onClick={() => handleViewClick(row.original.id)}

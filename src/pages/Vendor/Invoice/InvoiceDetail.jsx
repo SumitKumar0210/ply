@@ -8,10 +8,11 @@ import { fetchVendorInvoiceById } from "../slice/vendorInvoiceSlice";
 import { useParams } from "react-router-dom";
 
 const InvoiceDetail = () => {
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
   const contentRef = useRef(null);
   const { id } = useParams();
-  
+
   const { selected: invoice, loading: dataLoading } = useSelector(
     (state) => state.vendorInvoice
   );
@@ -43,7 +44,7 @@ const InvoiceDetail = () => {
   // Parse material items from invoice data
   const items = (() => {
     if (!invoice?.material_items) return [];
-    
+
     try {
       return typeof invoice.material_items === "string"
         ? JSON.parse(invoice.material_items)
@@ -87,6 +88,20 @@ const InvoiceDetail = () => {
           <Typography variant="h6">Invoice Detail</Typography>
         </Grid>
         <Grid item>
+          {invoice?.document && (
+            <Button
+              sx={{ mr: 2 }}
+              variant="contained"
+              color="secondary"
+              component="a"
+              href={mediaUrl + invoice.document}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Uploaded Invoice
+            </Button>
+          )}
+
           <Button
             variant="contained"
             color="secondary"
@@ -105,7 +120,7 @@ const InvoiceDetail = () => {
             <Typography variant="body2" sx={{ lineHeight: 1.8, mb: 2 }}>
               <strong>{invoice.vendor?.name || "-"}</strong>
               <br />
-             {invoice.vendor?.address || "-"}
+              {invoice.vendor?.address || "-"}
               <br />
               GSTIN: {invoice.vendor?.gst || "-"}
             </Typography>
@@ -144,57 +159,57 @@ const InvoiceDetail = () => {
             </Table>
 
             <Grid size={12} sx={{ mt: 3 }}>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: 1,
-                                  width: '300px',
-                                  marginLeft: 'auto',
-                                }}
-                              >
-                                <Box
-                                  className="fs-15"
-                                  sx={{
-                                    display: 'flex',
-                                    borderBottom: '1px solid #ccc',
-                                    pb: 0.5,
-                                  }}
-                                >
-                                  <span>Sub Total</span>
-                                  <span style={{ marginLeft: 'auto' }}>{invoice.subtotal || 0}</span>
-                                </Box>
-            
-                                <Box className="fs-15" sx={{ display: 'flex' }}>
-                                  <span>Discount</span>
-                                  <span style={{ marginLeft: 'auto' }}>{invoice.discount || 0}</span>
-                                </Box>
-            
-                                <Box className="fs-15" sx={{ display: 'flex' }}>
-                                  <span>Additional Charges</span>
-                                  <span style={{ marginLeft: 'auto' }}>{invoice.carriage_amount || 0}</span>
-                                </Box>
-            
-                                <Box className="fs-15" sx={{ display: 'flex' }}>
-                                  <span>GST ({parseInt(invoice.gst_per) || 0}%)</span>
-                                  <span style={{ marginLeft: 'auto' }}>{invoice.gst_amount || 0}</span>
-                                </Box>
-            
-                                <Box
-                                  className="fs-15"
-                                  sx={{
-                                    display: 'flex',
-                                    borderTop: '1px solid #222',
-                                    mt: 1,
-                                    pt: 0.5,
-                                    fontWeight: 600,
-                                  }}                
-                                >
-                                  <span>Grand Total</span>
-                                  <span style={{ marginLeft: 'auto' }}>{invoice.grand_total || 0}</span>
-                                </Box>
-                              </Box>
-                            </Grid>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 1,
+                  width: '300px',
+                  marginLeft: 'auto',
+                }}
+              >
+                <Box
+                  className="fs-15"
+                  sx={{
+                    display: 'flex',
+                    borderBottom: '1px solid #ccc',
+                    pb: 0.5,
+                  }}
+                >
+                  <span>Sub Total</span>
+                  <span style={{ marginLeft: 'auto' }}>{invoice.subtotal || 0}</span>
+                </Box>
+
+                {/* <Box className="fs-15" sx={{ display: 'flex' }}>
+                  <span>Discount</span>
+                  <span style={{ marginLeft: 'auto' }}>{invoice.discount || 0}</span>
+                </Box> */}
+
+                <Box className="fs-15" sx={{ display: 'flex' }}>
+                  <span>Additional Charges</span>
+                  <span style={{ marginLeft: 'auto' }}>{invoice.carriage_amount || 0}</span>
+                </Box>
+
+                <Box className="fs-15" sx={{ display: 'flex' }}>
+                  <span>GST ({parseInt(invoice.gst_per) || 0}%)</span>
+                  <span style={{ marginLeft: 'auto' }}>{invoice.gst_amount || 0}</span>
+                </Box>
+
+                <Box
+                  className="fs-15"
+                  sx={{
+                    display: 'flex',
+                    borderTop: '1px solid #222',
+                    mt: 1,
+                    pt: 0.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  <span>Grand Total</span>
+                  <span style={{ marginLeft: 'auto' }}>{invoice.grand_total || 0}</span>
+                </Box>
+              </Box>
+            </Grid>
           </CardContent>
         </Card>
       </div>

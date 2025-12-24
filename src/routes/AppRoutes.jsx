@@ -124,7 +124,7 @@ const AppRoutes = () => {
         <Route path="/users" element={<SecurePage permission="users.read"><Users /></SecurePage>} />
         <Route path="/customers" element={<SecurePage permission="customers.read"><Customers /></SecurePage>} />
         <Route path="/labours" element={<SecurePage permission="labours.read"><Labours /></SecurePage>} />
-        <Route path="/attendance-calendar" element={<SecurePage permission="labours.read"><Calendar /></SecurePage>} />
+        <Route path="/attendance-calendar" element={<SecurePage permission="labour_worksheet.read"><Calendar /></SecurePage>} />
  
         {/* Vendor group */}
         <Route path="/vendor/dashboard" element={<SecurePage ><VendorDashboard /></SecurePage>} />
@@ -178,7 +178,7 @@ const AppRoutes = () => {
         <Route path="/stocks" element={<SecurePage permission="stocks.read"><StockInOut /></SecurePage>} />
 
         {/* Permission */}
-        {/* <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} /> */}
+        <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} />
         <Route path="/settings/:id/fetch-permissions" element={<SecurePage permission="roles.assign"><PermissionGroupManager /></SecurePage>} />
 
         {/* Error pages */}
