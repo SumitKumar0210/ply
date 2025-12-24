@@ -2,8 +2,6 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../api";
 import { successMessage, errorMessage, getErrorMessage, infoMessage } from "../../../toast";
 
-
-
 // Generate Public Link
 export const generateLink = createAsyncThunk(
   "link/generate",
@@ -12,7 +10,7 @@ export const generateLink = createAsyncThunk(
       const res = await api.post("admin/generate-link", payload);
       successMessage(res.data.message || "Public link generated successfully!");
       return res.data.data;
-    } catch (error) {
+    } catch (error) { 
       const errMsg = getErrorMessage(error);
       errorMessage(errMsg);
       return rejectWithValue(errMsg);
@@ -20,16 +18,17 @@ export const generateLink = createAsyncThunk(
   }
 );
 
-// Get Public Link by Quotation ID
+// Get Public Link by Entity ID and Type
 export const getLink = createAsyncThunk(
   "link/get",
-  async (id, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      const res = await api.post("admin/get-link", id);
-      if(res.data.success){
+      const res = await api.post("admin/get-link", payload);
+      if (res.data.success) {
+        // Optionally show success message
         // successMessage(res.data.message || "Public link fetched successfully!");
       } else {
-        infoMessage(res.data.message || "No public link found for this quotation.")
+        infoMessage(res.data.message || `No public link found for this ${payload.entity}.`);
       }
       return res.data.data;
     } catch (error) {

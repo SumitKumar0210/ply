@@ -162,6 +162,7 @@ const CreatePurchaseOrder = () => {
       name: materialData.name || "Unknown",
       qty,
       size: materialData.size || "N/A",
+      hsn_code: materialData.hsn_code || "N/A",
       uom: materialData?.unit_of_measurement.name || "pcs",
       rate,
       total,
@@ -205,6 +206,7 @@ const CreatePurchaseOrder = () => {
       name: item.name,
       qty: item.qty,
       size: item.size,
+      hsn_code: item.hsn_code,
       uom: item.uom,
       rate: item.rate,
       total: item.total,
@@ -499,6 +501,7 @@ const CreatePurchaseOrder = () => {
                               <Th>Material Name</Th>
                               <Th>Qty</Th>
                               <Th>Size</Th>
+                              <Th>HSN Code</Th>
                               <Th>UOM</Th>
                               <Th>Rate</Th>
                               <Th>Total</Th>
@@ -521,6 +524,7 @@ const CreatePurchaseOrder = () => {
                                     />
                                   </Td>
                                   <Td>{item.size}</Td>
+                                  <Td>{item.hsn_code}</Td>
                                   <Td>{item.uom}</Td>
                                   <Td>₹{item.rate.toLocaleString('en-IN')}</Td>
                                   <Td>₹{item.total.toLocaleString('en-IN')}</Td>
@@ -573,7 +577,7 @@ const CreatePurchaseOrder = () => {
                               <span>₹{subTotal.toLocaleString('en-IN')}</span>
                             </Box>
 
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                            {/* <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
                               <TextField
                                 label="Discount"
                                 type="number"
@@ -586,7 +590,7 @@ const CreatePurchaseOrder = () => {
                                 inputProps={{ min: 0 }}
                               />
                               <span>₹{(subTotal - discountAmount).toLocaleString('en-IN')}</span>
-                            </Box>
+                            </Box> */}
 
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
                               <TextField

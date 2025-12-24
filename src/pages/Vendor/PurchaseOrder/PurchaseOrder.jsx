@@ -30,6 +30,7 @@ import { BsCloudDownload } from "react-icons/bs";
 import { useDispatch, useSelector } from "react-redux";
 import { deletePO, fetchPurchaseOrders } from "../slice/purchaseOrderSlice";
 import { useAuth } from "../../../context/AuthContext";
+import LinkGenerator from "../../../components/Links/LinkGenerator";
 
 // Status mapping: 0-draft, 1-save, 2-reject, 3-approve
 const STATUS_CONFIG = {
@@ -183,7 +184,7 @@ const PurchaseOrder = () => {
   }, [deleteId, dispatch, showAlert, fetchData, globalFilter]);
 
   // Table columns
-  const columns = useMemo( () => {
+  const columns = useMemo(() => {
     const baseColumns = [
       { accessorKey: "purchase_no", header: "Po No." },
       {
@@ -215,7 +216,7 @@ const PurchaseOrder = () => {
       },
     ];
 
-    if(hasAnyPermission(["purchase_order.delete","purchase_order.update","purchase_order.read"])){
+    if (hasAnyPermission(["purchase_order.delete", "purchase_order.update", "purchase_order.read"])) {
       baseColumns.push({
         id: "actions",
         header: "Action",
@@ -228,14 +229,14 @@ const PurchaseOrder = () => {
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             {hasPermission("purchase_order.read") && (
               <Tooltip title="View">
-              <IconButton
-                color="warning"
-                onClick={() => handleViewClick(row.original.id)}
-                size="small"
-              >
-                <MdOutlineRemoveRedEye size={16} />
-              </IconButton>
-            </Tooltip>
+                <IconButton
+                  color="warning"
+                  onClick={() => handleViewClick(row.original.id)}
+                  size="small"
+                >
+                  <MdOutlineRemoveRedEye size={16} />
+                </IconButton>
+              </Tooltip>
             )}
             {(hasPermission("purchase_order.update") && row.original.status === 0 || row.original.status === 1) && (
               <Tooltip title="Edit">
@@ -248,22 +249,27 @@ const PurchaseOrder = () => {
                 </IconButton>
               </Tooltip>
             )}
+            <LinkGenerator
+              id={row.original.id}
+              customerId={row.original.vendor?.id}
+              entity="purchase_order"
+            />
             {hasPermission("purchase_order.delete") && (
-            <Tooltip title="Delete">
-              <IconButton
-                color="error"
-                onClick={() => handleDeleteClick(row.original.id)}
-                size="small"
-              >
-                <RiDeleteBinLine size={16} />
-              </IconButton>
-            </Tooltip>
+              <Tooltip title="Delete">
+                <IconButton
+                  color="error"
+                  onClick={() => handleDeleteClick(row.original.id)}
+                  size="small"
+                >
+                  <RiDeleteBinLine size={16} />
+                </IconButton>
+              </Tooltip>
             )}
           </Box>
         ),
       })
     }
-    return baseColumns ;
+    return baseColumns;
     [handleViewClick, handleEditClick, handleDeleteClick]
   });
 
@@ -364,13 +370,13 @@ const PurchaseOrder = () => {
         <Grid item>
           {hasPermission("purchase_order.create") && (
             <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            component={Link}
-            to="/vendor/purchase-order/create"
-          >
-            Create PO
-          </Button>
+              variant="contained"
+              startIcon={<AddIcon />}
+              component={Link}
+              to="/vendor/purchase-order/create"
+            >
+              Create PO
+            </Button>
           )}
         </Grid>
       </Grid>
@@ -430,7 +436,7 @@ const PurchaseOrder = () => {
                 p: 1,
               }}
             >
-               <Typography variant="h6" className='page-title'>
+              <Typography variant="h6" className='page-title'>
                 Purchase Order
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

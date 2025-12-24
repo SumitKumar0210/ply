@@ -144,7 +144,7 @@ const ViewPurchaseOrder = () => {
                   <Thead>
                     <Tr>
                       <Th>Item Name</Th>
-                      <Th>Item Code</Th>
+                      <Th>HSN Code</Th>
                       <Th>Qty</Th>
                       <Th>Size</Th>
                       <Th>UOM</Th>
@@ -157,7 +157,7 @@ const ViewPurchaseOrder = () => {
                       items.map((item) => (
                         <Tr key={item.id || Math.random()}>
                           <Td>{item.name}</Td>
-                          <Td>{item.code || "N/A"}</Td>
+                          <Td>{item.hsn_code || "N/A"}</Td>
                           <Td>{item.qty}</Td>
                           <Td>{item.size}</Td>
                           <Td>{item.uom}</Td>
@@ -183,10 +183,10 @@ const ViewPurchaseOrder = () => {
                       <span>Sub Total:</span>
                       <span>₹{data.subtotal?.toLocaleString('en-IN') || 0}</span>
                     </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
+                    {/* <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
                       <span>Discount:</span>
                       <span>₹{data.discount?.toLocaleString('en-IN') || 0}</span>
-                    </Box>
+                    </Box> */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
                       <span>Charges:</span>
                       <span>₹{data.cariage_amount?.toLocaleString('en-IN') || 0}</span>

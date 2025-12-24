@@ -118,6 +118,7 @@ const EditPurchaseOrder = () => {
           name: item.name,
           qty: item.qty,
           size: item.size,
+          hsn_code: item.hsn_code,
           uom: item.uom,
           rate: item.rate,
           total: item.total,
@@ -209,6 +210,7 @@ const EditPurchaseOrder = () => {
       name: materialData.name || "Unknown",
       qty,
       size: materialData.size || "N/A",
+      hsn_code: materialData.hsn_code || "N/A",
       uom: materialData?.unit_of_measurement?.name || "pcs",
       rate,
       total,
@@ -252,6 +254,7 @@ const EditPurchaseOrder = () => {
       name: item.name,
       qty: item.qty,
       size: item.size,
+      hsn_code: item.hsn_code,
       uom: item.uom,
       rate: item.rate,
       total: item.total,
@@ -534,6 +537,7 @@ const EditPurchaseOrder = () => {
                               <Th>Material Name</Th>
                               <Th>Qty</Th>
                               <Th>Size</Th>
+                              <Th>HSN Code</Th>
                               <Th>UOM</Th>
                               <Th>Rate</Th>
                               <Th>Total</Th>
@@ -556,6 +560,7 @@ const EditPurchaseOrder = () => {
                                     />
                                   </Td>
                                   <Td>{item.size}</Td>
+                                  <Td>{item.hsn_code}</Td>
                                   <Td>{item.uom}</Td>
                                   <Td>₹{item.rate.toLocaleString('en-IN')}</Td>
                                   <Td>₹{item.total.toLocaleString('en-IN')}</Td>
@@ -601,7 +606,7 @@ const EditPurchaseOrder = () => {
                               <span>₹{subTotal.toLocaleString('en-IN')}</span>
                             </Box>
 
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                            {/* <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
                               <TextField
                                 label="Discount"
                                 type="number"
@@ -614,7 +619,7 @@ const EditPurchaseOrder = () => {
                                 inputProps={{ min: 0 }}
                               />
                               <span>₹{(subTotal - discountAmount).toLocaleString('en-IN')}</span>
-                            </Box>
+                            </Box> */}
 
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
                               <TextField

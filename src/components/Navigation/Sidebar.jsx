@@ -23,7 +23,7 @@ import { MdStorefront, MdOutlineDashboard } from "react-icons/md";
 import { RiFileList3Line, RiFlowChart } from "react-icons/ri";
 import { LiaFileInvoiceSolid } from "react-icons/lia";
 import { LuTable } from "react-icons/lu";
-import { IoConstructOutline } from "react-icons/io5";
+import { IoConstructOutline, IoPeopleOutline  } from "react-icons/io5";
 import { TbUsersPlus } from "react-icons/tb";
 import { BsBoxSeam, BsTag  } from "react-icons/bs";
 
@@ -253,6 +253,13 @@ const menuSections = [
           },
           {
             text: "Labours", to: "/labours", icon: <IoConstructOutline />, anyPermissions: [
+              "labours.delete",
+              "labours.create",
+              "labours.update",
+            ]
+          },
+          {
+            text: "Attendance", to: "/attendance-calendar", icon: <IoPeopleOutline  />, anyPermissions: [
               "labours.delete",
               "labours.create",
               "labours.update",

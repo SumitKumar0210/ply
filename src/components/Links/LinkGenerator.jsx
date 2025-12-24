@@ -27,7 +27,25 @@ import { successMessage, errorMessage } from "../../toast";
 
 const URL = import.meta.env.VITE_FRONTEND_BASE_URL;
 
-const LinkGenerator = ({ id, customerId }) => {
+const ENTITY_CONFIG = {
+  quotation: {
+    label: "Quotation",
+    mailAction: sendQuotationMail,
+    urlPrefix: "quotation/",
+  },
+  challan: {
+    label: "Challan",
+    mailAction: null,
+    urlPrefix: "challan/",
+  },
+  purchase_order: {
+    label: "Purchase Order",
+    mailAction: null, // Add mail action if available
+    urlPrefix: "purchase-order/",
+  },
+};
+
+const LinkGenerator = ({ id, customerId, entity = "quotation" }) => {
   const dispatch = useDispatch();
   const { loading } = useSelector((state) => state.link);
 
@@ -37,7 +55,8 @@ const LinkGenerator = ({ id, customerId }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  const prefix = URL + "quotation/";
+  const entityConfig = ENTITY_CONFIG[entity] || ENTITY_CONFIG.quotation;
+  const prefix = URL + entityConfig.urlPrefix;
 
   // Check if link already exists
   const handleGenerateableId = async () => {
@@ -45,16 +64,18 @@ const LinkGenerator = ({ id, customerId }) => {
     setCurrentLink(null);
 
     try {
-      const result = await dispatch(getLink({ id })).unwrap();
+      const result = await dispatch(getLink({ id, entity })).unwrap();
       setCurrentLink(result.link);
-      
-      // Optionally show message that link already exists
+
       if (result.link) {
-        successMessage(result.successMessage || result.message || "Link already exists");
+        successMessage(
+          result.successMessage ||
+          result.message ||
+          `Link already exists for this ${entityConfig.label.toLowerCase()}`
+        );
       }
     } catch (error) {
       setCurrentLink(null);
-      // Only show error if it's not a "not found" error
       if (error.errorMessage || error.message) {
         errorMessage(error.errorMessage || error.message);
       }
@@ -66,24 +87,31 @@ const LinkGenerator = ({ id, customerId }) => {
     setIsGenerating(true);
     try {
       const result = await dispatch(
-        generateLink({ id, expiry_days: expiryDays })
+        generateLink({ id, expiry_days: expiryDays, entity })
       ).unwrap();
       setCurrentLink(result.link);
-      
-      // Show success notification
-      successMessage(result.successMessage || result.message || "Link generated successfully!");
+
+      successMessage(
+        result.successMessage ||
+        result.message ||
+        `${entityConfig.label} link generated successfully!`
+      );
     } catch (error) {
       console.error("Generate link failed:", error);
-      errorMessage(error.errorMessage || error.message || "Failed to generate link");
+      errorMessage(
+        error.errorMessage ||
+        error.message ||
+        "Failed to generate link"
+      );
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // Send mail with quotation link
+  // Send mail with link
   const handleSendMail = async () => {
     if (!customerId) {
-      errorMessage("Customer ID not found");
+      errorMessage("Customer/Vendor ID not found");
       return;
     }
 
@@ -92,22 +120,36 @@ const LinkGenerator = ({ id, customerId }) => {
       return;
     }
 
+    if (!entityConfig.mailAction) {
+      errorMessage(`Mail functionality not available for ${entityConfig.label}`);
+      return;
+    }
+
     setIsSending(true);
 
     try {
       const formData = new FormData();
-      formData.append("quotation_id", id);
-      formData.append("customer_id", customerId);
-      console.log(formData);
 
-      const response = await dispatch(sendQuotationMail(formData)).unwrap();
+      // Adjust field names based on entity
+      if (entity === "quotation") {
+        formData.append("quotation_id", id);
+        formData.append("customer_id", customerId);
+      } else if (entity === "challan") {
+        formData.append("bill_id", id);
+        formData.append("customer_id", customerId);
+      } else if (entity === "purchase_order") {
+        formData.append("production_order_id", id);
+        formData.append("vendor_id", customerId);
+      }
 
-      // Show success message
-      // successMessage(response.successMessage || response.message || "Quotation sent successfully to customer!");
+      await dispatch(entityConfig.mailAction(formData)).unwrap();
       handleClose();
     } catch (error) {
-      // Show error message
-      errorMessage(error.errorMessage || error.message || "Failed to send quotation");
+      errorMessage(
+        error.errorMessage ||
+        error.message ||
+        `Failed to send ${entityConfig.label.toLowerCase()}`
+      );
     } finally {
       setIsSending(false);
     }
@@ -123,14 +165,11 @@ const LinkGenerator = ({ id, customerId }) => {
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
+  const hasMailSupport = !!entityConfig.mailAction;
 
   return (
     <>
-      <Tooltip title="Generate Public Link">
+      <Tooltip title={`Generate Public Link for ${entityConfig.label}`}>
         <IconButton color="info" onClick={handleGenerateableId}>
           <AiOutlineLink size={16} />
         </IconButton>
@@ -140,7 +179,9 @@ const LinkGenerator = ({ id, customerId }) => {
       <Dialog open={openGenerate} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h6">Generate Public Link</Typography>
+            <Typography variant="h6">
+              Generate Public Link - {entityConfig.label}
+            </Typography>
             <IconButton
               onClick={handleClose}
               size="small"
@@ -185,34 +226,61 @@ const LinkGenerator = ({ id, customerId }) => {
                     Public link available
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Your quotation customer link is ready to send
+                    Your {entityConfig.label.toLowerCase()} link is ready to share
                   </Typography>
                 </Box>
               </Box>
 
-              {/* Info Box */}
+              {/* Info Box - Only show if mail support exists */}
+              {hasMailSupport && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 1.5,
+                    p: 2,
+                    bgcolor: "info.50",
+                    borderRadius: 1,
+                    border: "1px solid",
+                    borderColor: "info.200",
+                  }}
+                >
+                  <EmailIcon
+                    color="info"
+                    sx={{
+                      mt: 0.2,
+                      fontSize: 20,
+                    }}
+                  />
+                  <Typography variant="body2" color="text.secondary">
+                    Click "Send Mail" to send this {entityConfig.label.toLowerCase()} link
+                    directly to the {entity === "purchase_order" ? "vendor's" : "customer's"} email address
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Link Display */}
               <Box
                 sx={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 1.5,
+                  mt: 2,
                   p: 2,
-                  bgcolor: "info.50",
+                  bgcolor: "grey.50",
                   borderRadius: 1,
                   border: "1px solid",
-                  borderColor: "info.200",
+                  borderColor: "grey.300",
                 }}
               >
-                <EmailIcon
-                  color="info"
+                <Typography variant="caption" color="text.secondary" gutterBottom>
+                  Link:
+                </Typography>
+                <Typography
+                  variant="body2"
                   sx={{
-                    mt: 0.2,
-                    fontSize: 20,
+                    wordBreak: "break-all",
+                    fontFamily: "monospace",
                   }}
-                />
-                <Typography variant="body2" color="text.secondary">
-                  Click "Send Mail" to send this quotation link directly to the
-                  customer's email address
+                >
+                  {prefix + currentLink}
                 </Typography>
               </Box>
             </Box>
@@ -227,6 +295,7 @@ const LinkGenerator = ({ id, customerId }) => {
               onChange={(e) => setExpiryDays(e.target.value)}
               inputProps={{ min: 1, max: 365 }}
               disabled={isGenerating}
+              helperText={`Link will be valid for ${expiryDays} day${expiryDays > 1 ? 's' : ''}`}
             />
           )}
         </DialogContent>
@@ -241,22 +310,38 @@ const LinkGenerator = ({ id, customerId }) => {
             Cancel
           </Button>
 
+
           {currentLink ? (
-            <Button
-              onClick={handleSendMail}
-              variant="contained"
-              color="primary"
-              disabled={isSending}
-              startIcon={
-                isSending ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  <EmailIcon />
-                )
-              }
-            >
-              {isSending ? "Sending..." : "Send Mail"}
-            </Button>
+            <>
+              {hasMailSupport && (
+                <Button
+                  onClick={handleSendMail}
+                  variant="contained"
+                  color="primary"
+                  disabled={isSending}
+                  startIcon={
+                    isSending ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <EmailIcon />
+                    )
+                  }
+                >
+                  {isSending ? "Sending..." : "Send Mail"}
+                </Button>
+              )}
+
+              <Button
+                onClick={() => {
+                  navigator.clipboard.writeText(prefix + currentLink);
+                  successMessage("Link copied to clipboard!");
+                }}
+                variant="contained"
+                color="primary"
+              >
+                Copy Link
+              </Button>
+            </>
           ) : (
             <Button
               variant="contained"
@@ -264,12 +349,15 @@ const LinkGenerator = ({ id, customerId }) => {
               onClick={handleExpirySubmit}
               disabled={isGenerating}
               startIcon={
-                isGenerating ? <CircularProgress size={18} color="inherit" /> : null
+                isGenerating ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : null
               }
             >
               {isGenerating ? "Generating..." : "Generate"}
             </Button>
           )}
+
         </DialogActions>
       </Dialog>
     </>

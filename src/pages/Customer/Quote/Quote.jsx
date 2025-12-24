@@ -309,7 +309,7 @@ const Quote = () => {
                   <LinkGenerator
                   id={row.original.id}
                   customerId={row.original.customer?.id}
-                  quotationData={row.original}
+                  entity="quotation"
                 />
                 )}
                 {hasPermission("quotations.read") && (

@@ -42,6 +42,7 @@ import stockReducer from '../pages/Billing/slice/stockSlice';
 import userPermissionsReducer from '../pages/Users/slices/userPermissionsSlice';
 import roleReducer from '../pages/settings/slices/roleSlice';
 import workShiftReducer from '../pages/settings/slices/workShiftSlice';
+import calendarReducer from '../pages/Users/Calendar/slice/calendarSlice';
 
 export const store = configureStore({
     reducer: {
@@ -88,5 +89,6 @@ export const store = configureStore({
         userPermissions: userPermissionsReducer,
         role: roleReducer,
         workShift: workShiftReducer,
+        calendar: calendarReducer,
     }
 })
