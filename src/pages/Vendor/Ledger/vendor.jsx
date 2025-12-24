@@ -322,7 +322,7 @@ console.log("vendorData", vendorData);
                     p: 1,
                   }}
                 >
-                  <Typography variant="h6">Vendor</Typography>
+                  <Typography variant="h6" className="page-title">Vendor</Typography>
                   <Box sx={{ display: "flex", gap: 1 }}>
                     <MRT_GlobalFilterTextField table={table} />
                     <MRT_ToolbarInternalButtons table={table} />

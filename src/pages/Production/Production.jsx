@@ -161,7 +161,7 @@ export default function Production() {
             alignItems: "center",
           }}
         >
-          <Typography variant="h6">Production</Typography>
+          <Typography variant="h6" className="page-title">Production</Typography>
           {isRefreshing && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <CircularProgress size={20} />

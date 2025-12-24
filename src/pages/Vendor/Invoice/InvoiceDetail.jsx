@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Grid, Button, Typography, Card, CardContent, CircularProgress, Box } from "@mui/material";
+import { Grid, Button, Typography, Card, CardContent, CircularProgress, Box, useMediaQuery, useTheme } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { AiOutlinePrinter } from "react-icons/ai";
 import { useReactToPrint } from "react-to-print";
@@ -12,6 +12,8 @@ const InvoiceDetail = () => {
   const dispatch = useDispatch();
   const contentRef = useRef(null);
   const { id } = useParams();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const { selected: invoice, loading: dataLoading } = useSelector(
     (state) => state.vendorInvoice
@@ -85,7 +87,7 @@ const InvoiceDetail = () => {
         sx={{ mb: 2 }}
       >
         <Grid item>
-          <Typography variant="h6">Invoice Detail</Typography>
+          <Typography variant="h6" className="page-title">Invoice Detail</Typography>
         </Grid>
         <Grid item>
           {invoice?.document && (
@@ -114,49 +116,118 @@ const InvoiceDetail = () => {
         </Grid>
       </Grid>
 
-      <div ref={contentRef} style={{ background: "#fff", padding: "20px" }}>
+      <div ref={contentRef} style={{ background: "#fff", padding: isMobile ? "10px" : "20px" }}>
         <Card>
           <CardContent>
             <Typography variant="body2" sx={{ lineHeight: 1.8, mb: 2 }}>
-              <strong>{invoice.vendor?.name || "-"}</strong>
+              <span style={{ fontSize: "18px", fontWeight: "500" }}>{invoice.vendor?.name || "-"}</span>
               <br />
               {invoice.vendor?.address || "-"}
               <br />
               GSTIN: {invoice.vendor?.gst || "-"}
             </Typography>
 
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th>Item Name</Th>
-                  <Th>Qty</Th>
-                  <Th>Size</Th>
-                  <Th>UOM</Th>
-                  <Th>Rate</Th>
-                  <Th>Total</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {items.length > 0 ? (
-                  items.map((item, index) => (
-                    <Tr key={item.id || index}>
-                      <Td>{item.name || "-"}</Td>
-                      <Td>{item.qty || 0}</Td>
-                      <Td>{item.size || "-"}</Td>
-                      <Td>{item.uom || "-"}</Td>
-                      <Td>{item.rate || 0}</Td>
-                      <Td>{item.total || 0}</Td>
-                    </Tr>
-                  ))
-                ) : (
+            {/* Desktop Table View */}
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <Table>
+                <Thead>
                   <Tr>
-                    <Td colSpan="7" style={{ textAlign: "center" }}>
-                      No items found
-                    </Td>
+                    <Th>Item Name</Th>
+                    <Th>Qty</Th>
+                    <Th>Size</Th>
+                    <Th>UOM</Th>
+                    <Th>Rate</Th>
+                    <Th>Total</Th>
                   </Tr>
-                )}
-              </Tbody>
-            </Table>
+                </Thead>
+                <Tbody>
+                  {items.length > 0 ? (
+                    items.map((item, index) => (
+                      <Tr key={item.id || index}>
+                        <Td>{item.name || "-"}</Td>
+                        <Td>{item.qty || 0}</Td>
+                        <Td>{item.size || "-"}</Td>
+                        <Td>{item.uom || "-"}</Td>
+                        <Td>{item.rate || 0}</Td>
+                        <Td>{item.total || 0}</Td>
+                      </Tr>
+                    ))
+                  ) : (
+                    <Tr>
+                      <Td colSpan="6" style={{ textAlign: "center" }}>
+                        No items found
+                      </Td>
+                    </Tr>
+                  )}
+                </Tbody>
+              </Table>
+            </Box>
+
+            {/* Mobile Card View */}
+            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+              {items.length > 0 ? (
+                items.map((item, index) => (
+                  <Card 
+                    key={item.id || index} 
+                    sx={{ 
+                      mb: 2, 
+                      border: '1px solid #e0e0e0',
+                      boxShadow: 1,
+                      backgroundColor: '#f7f7f7'
+                    }}
+                  >
+                    <CardContent>
+                      <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1.5 }}>
+                        {item.name || "-"}
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Quantity:</Typography>
+                          <Typography variant="body2" fontWeight="500">{item.qty || 0}</Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Size:</Typography>
+                          <Typography variant="body2" fontWeight="500">{item.size || "-"}</Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">UOM:</Typography>
+                          <Typography variant="body2" fontWeight="500">{item.uom || "-"}</Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Rate:</Typography>
+                          <Typography variant="body2" fontWeight="500">{item.rate || 0}</Typography>
+                        </Box>
+                        
+                        <Box 
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between',
+                            borderTop: '1px solid #e0e0e0',
+                            pt: 1,
+                            mt: 0.5
+                          }}
+                        >
+                          <Typography variant="body2" fontWeight="600">Total:</Typography>
+                          <Typography variant="body2" fontWeight="600" color="primary">
+                            {item.total || 0}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 3 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No items found
+                  </Typography>
+                </Box>
+              )}
+            </Box>
 
             <Grid size={12} sx={{ mt: 3 }}>
               <Box
@@ -164,8 +235,8 @@ const InvoiceDetail = () => {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 1,
-                  width: '300px',
-                  marginLeft: 'auto',
+                  width: { xs: '100%', sm: '300px' },
+                  marginLeft: { xs: 0, sm: 'auto' },
                 }}
               >
                 <Box
@@ -191,7 +262,7 @@ const InvoiceDetail = () => {
                 </Box>
 
                 <Box className="fs-15" sx={{ display: 'flex' }}>
-                  <span>GST ({parseInt(invoice.gst_per) || 0}%)</span>
+                  <strong>GST ({parseInt(invoice.gst_per) || 0}%)</strong>
                   <span style={{ marginLeft: 'auto' }}>{invoice.gst_amount || 0}</span>
                 </Box>
 
@@ -205,7 +276,7 @@ const InvoiceDetail = () => {
                     fontWeight: 600,
                   }}
                 >
-                  <span>Grand Total</span>
+                  <strong>Grand Total</strong>
                   <span style={{ marginLeft: 'auto' }}>{invoice.grand_total || 0}</span>
                 </Box>
               </Box>

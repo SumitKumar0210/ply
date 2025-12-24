@@ -262,7 +262,7 @@ const CustomerLedger = () => {
         sx={{ mb: 2 }}
       >
         <Grid item>
-          <Typography variant="h6">Ledger</Typography>
+          <Typography variant="h6" className="page-title">Ledger</Typography>
         </Grid>
         <Grid item>
           <Button

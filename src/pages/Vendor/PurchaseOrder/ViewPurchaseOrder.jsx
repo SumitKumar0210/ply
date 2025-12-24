@@ -27,10 +27,14 @@ import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { editPO, approvePO } from "../slice/purchaseOrderSlice";
 import { useNavigate } from "react-router-dom";
+import { useTheme, useMediaQuery } from "@mui/material";
+
 const ViewPurchaseOrder = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { id } = useParams();
   const dispatch = useDispatch();
-  const { selected:data = {}, loading = false } = useSelector((state) => state.purchaseOrder);
+  const { selected: data = {}, loading = false } = useSelector((state) => state.purchaseOrder);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,9 +49,9 @@ const ViewPurchaseOrder = () => {
 
   const handleApprove = async () => {
     const res = dispatch(approvePO(id));
-    if(res.error) return ;
+    if (res.error) return;
     navigate("/vendor/purchase-order");
-    
+
   }
 
   const isLoaded = !loading && Object.keys(data).length > 0;
@@ -61,6 +65,7 @@ const ViewPurchaseOrder = () => {
   }
   const items = data.material_items ? JSON.parse(data.material_items) : [];
 
+
   // Render your component with data here
   return (
     <>
@@ -72,7 +77,7 @@ const ViewPurchaseOrder = () => {
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Order Details</Typography>
+          <Typography variant="h6" className="page-title">Order Details</Typography>
         </Grid>
         <Grid>
           <Button
@@ -138,44 +143,166 @@ const ViewPurchaseOrder = () => {
 
                 </Stack>
               </Grid>
+              <Grid size={12} sx={{ mt: 3 }}>
+                {/* DESKTOP TABLE */}
+                {!isMobile && (
+                  <Box sx={{ overflowX: "auto" }}>
+                    <Table>
+                      <Thead>
+                        <Tr>
+                          <Th>Item Name</Th>
+                          <Th>Item Code</Th>
+                          <Th>Qty</Th>
+                          <Th>Size</Th>
+                          <Th>UOM</Th>
+                          <Th>Rate</Th>
+                          <Th>Total</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        {items && items.length > 0 ? (
+                          items.map((item) => (
+                            <Tr key={item.id || Math.random()}>
+                              <Td>{item.name}</Td>
+                              <Td>{item.code || "N/A"}</Td>
+                              <Td>{item.qty}</Td>
+                              <Td>{item.size}</Td>
+                              <Td>{item.uom}</Td>
+                              <Td>₹{item.rate?.toLocaleString("en-IN") || 0}</Td>
+                              <Td>₹{item.total?.toLocaleString("en-IN") || 0}</Td>
+                            </Tr>
+                          ))
+                        ) : (
+                          <Tr>
+                            <Td colSpan={7} style={{ textAlign: "center", padding: 20 }}>
+                              No items found
+                            </Td>
+                          </Tr>
+                        )}
+                      </Tbody>
+                    </Table>
+                  </Box>
+                )}
 
-              <Grid size={12} sx={{ mt: 3, overflowX: 'auto' }}>
-                <Table>
-                  <Thead>
-                    <Tr>
-                      <Th>Item Name</Th>
-                      <Th>HSN Code</Th>
-                      <Th>Qty</Th>
-                      <Th>Size</Th>
-                      <Th>UOM</Th>
-                      <Th>Rate</Th>
-                      <Th>Total</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
+                {/* MOBILE CARDS */}
+                {isMobile && (
+                  <Stack spacing={2}>
                     {items && items.length > 0 ? (
                       items.map((item) => (
-                        <Tr key={item.id || Math.random()}>
-                          <Td>{item.name}</Td>
-                          <Td>{item.hsn_code || "N/A"}</Td>
-                          <Td>{item.qty}</Td>
-                          <Td>{item.size}</Td>
-                          <Td>{item.uom}</Td>
-                          <Td>₹{item.rate?.toLocaleString('en-IN') || 0}</Td>
-                          <Td>₹{item.total?.toLocaleString('en-IN') || 0}</Td>
-                        </Tr>
+                        <Card
+                          key={item.id || Math.random()}
+                          variant="outlined"
+                          sx={{
+                            borderRadius: 2,
+                            borderColor: "divider",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+                            background: "#f7f7f7",
+                          }}
+                        >
+                          <CardContent sx={{ p: 2 }}>
+                            {/* Item title */}
+                            <Typography fontWeight={600} fontSize={15}>
+                              {item.name}
+                            </Typography>
+
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ display: "block", mb: 1 }}
+                            >
+                              Code: {item.code || "N/A"}
+                            </Typography>
+
+                            {/* Qty & Size */}
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                py: 0.5,
+                              }}
+                            >
+                              <Typography variant="body2" color="text.secondary">
+                                Qty
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {item.qty}
+                              </Typography>
+                            </Box>
+
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                py: 0.5,
+                              }}
+                            >
+                              <Typography variant="body2" color="text.secondary">
+                                Size
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {item.size}
+                              </Typography>
+                            </Box>
+
+                            {/* UOM & Rate */}
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                py: 0.5,
+                              }}
+                            >
+                              <Typography variant="body2" color="text.secondary">
+                                UOM
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                {item.uom}
+                              </Typography>
+                            </Box>
+
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                py: 0.5,
+                              }}
+                            >
+                              <Typography variant="body2" color="text.secondary">
+                                Rate
+                              </Typography>
+                              <Typography variant="body2" fontWeight={500}>
+                                ₹{item.rate?.toLocaleString("en-IN") || 0}
+                              </Typography>
+                            </Box>
+
+                            {/* Total */}
+                            <Box
+                              sx={{
+                                mt: 1.5,
+                                pt: 1,
+                                borderTop: "1px dashed",
+                                borderColor: "divider",
+                                display: "flex",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <Typography fontWeight={600}>Total</Typography>
+                              <Typography fontWeight={500} color="primary.main">
+                                ₹{item.total?.toLocaleString("en-IN") || 0}
+                              </Typography>
+                            </Box>
+                          </CardContent>
+                        </Card>
+
                       ))
                     ) : (
-                      <Tr>
-                        <Td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
-                          No items found
-                        </Td>
-                      </Tr>
+                      <Typography textAlign="center" color="text.secondary">
+                        No items found
+                      </Typography>
                     )}
-                  </Tbody>
-                </Table>
+                  </Stack>
+                )}
               </Grid>
-
               <Grid size={12} sx={{ mt: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '200px', textAlign: 'right' }}>
@@ -191,11 +318,11 @@ const ViewPurchaseOrder = () => {
                       <span>Charges:</span>
                       <span>₹{data.cariage_amount?.toLocaleString('en-IN') || 0}</span>
                     </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', pb: 0.5 }}>
                       <span>GST ({parseInt(data.gst_per) || 0}%):</span>
                       <span>₹{data.gst_amount?.toLocaleString('en-IN') || 0}</span>
                     </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #222', mt: 1, pt: 0.5, fontWeight: '600' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #222', pt: 0.5, fontWeight: '600' }}>
                       <span>Grand Total:</span>
                       <span>₹{data.grand_total?.toLocaleString('en-IN') || 0}</span>
                     </Box>

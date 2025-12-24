@@ -372,7 +372,7 @@ const Department = () => {
                     p: 1,
                   }}
                 >
-                  <Typography variant="h6" fontWeight={500}>
+                  <Typography variant="h6" className="page-title">
                     Department
                   </Typography>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

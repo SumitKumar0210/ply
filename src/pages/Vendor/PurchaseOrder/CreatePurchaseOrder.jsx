@@ -39,6 +39,9 @@ import { addDays, format } from "date-fns";
 import { successMessage, errorMessage } from "../../../toast";
 import VendorFormModal from "../../../components/Vendor/VendorFormModal";
 import MaterialFormModal from "../../../components/Material/MaterialFormModal";
+import { useTheme, useMediaQuery } from "@mui/material";
+
+
 
 // Validation Schema
 const validationSchema = Yup.object().shape({
@@ -67,7 +70,8 @@ const validationSchema = Yup.object().shape({
 const CreatePurchaseOrder = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
+  const theme = useTheme();
+  const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("md"));
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState(null);
   const [items, setItems] = useState([]);
@@ -317,7 +321,7 @@ const CreatePurchaseOrder = () => {
     <>
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
-          <Typography variant="h6">Create Purchase Order</Typography>
+          <Typography variant="h6" className="page-title">Create Purchase Order</Typography>
         </Grid>
       </Grid>
 
@@ -402,7 +406,13 @@ const CreatePurchaseOrder = () => {
                           </Box>
 
                           <LocalizationProvider dateAdapter={AdapterDateFns}>
-                            <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                gap: 2,
+                                // flexWrap: "wrap", // important for mobile
+                              }}
+                            >
                               <TextField
                                 label="Credit Days"
                                 type="number"
@@ -412,17 +422,28 @@ const CreatePurchaseOrder = () => {
                                 onChange={handleChange}
                                 error={touched.creditDays && !!errors.creditDays}
                                 helperText={touched.creditDays && errors.creditDays}
-                                sx={{ width: 150 }}
+                                sx={{
+                                  width: {
+                                    xs: "50%",
+                                    md: 150,
+                                  },
+                                }}
                                 inputProps={{ min: 0, max: 365 }}
                               />
+
                               <DatePicker
                                 label="EDD"
                                 value={values.eddDate}
                                 onChange={(newValue) => setFieldValue("eddDate", newValue)}
                                 slotProps={{
                                   textField: {
-                                    size: 'small',
-                                    sx: { width: 300 },
+                                    size: "small",
+                                    sx: {
+                                      width: {
+                                        xs: "50%",
+                                        md: 300,
+                                      },
+                                    },
                                     error: touched.eddDate && !!errors.eddDate,
                                     helperText: touched.eddDate && errors.eddDate,
                                   },
@@ -446,7 +467,18 @@ const CreatePurchaseOrder = () => {
                       )}
 
                       <Grid size={12} sx={{ pt: 2 }}>
-                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: {
+                              xs: 1,
+                              lg: 2,
+                            },
+                            alignItems: "flex-end",
+                          }}
+
+                        >
                           <Autocomplete
                             options={[{ id: "add_new", name: "➕ Add New Material" }, ...materials]}
                             value={selectedItemCode}
@@ -468,116 +500,293 @@ const CreatePurchaseOrder = () => {
                             renderInput={(params) => (
                               <TextField {...params} label="Select Material" variant="outlined" />
                             )}
-                            sx={{ width: 300 }}
-                            noOptionsText="No materials available"
+                            sx={{
+                              width: {
+                                xs: "100%",
+                                md: 300,
+                              },
+                            }}
                           />
+
                           <TextField
                             label="Qty"
                             name="qty"
                             size="small"
-                            onChange={(e) => setSelectedQty(e.target.value)}
                             type="number"
                             value={selectedQty}
-                            sx={{ width: 150 }}
+                            onChange={(e) => setSelectedQty(e.target.value)}
+                            sx={{
+                              width: {
+                                xs: "calc(50% - 6px)", // 👈 important
+                                md: 150,
+                              },
+                              height: 40,
+                            }}
                             inputProps={{ min: 1 }}
-                            placeholder="Enter quantity"
                           />
+
                           <Button
                             variant="contained"
-                            color="primary"
                             onClick={handleAddItem}
-                            sx={{ height: 40 }}
+                            sx={{
+                              width: {
+                                xs: "calc(50% - 6px)", // 👈 important
+                                md: 150,
+                              },
+                              height: 40,
+                            }}
                             disabled={isSubmitting}
                           >
                             Add Item
                           </Button>
                         </Box>
-                      </Grid>
 
-                      <Grid size={12} sx={{ mt: 3, overflowX: 'auto' }}>
-                        <Table>
-                          <Thead>
-                            <Tr>
-                              <Th>Material Name</Th>
-                              <Th>Qty</Th>
-                              <Th>Size</Th>
-                              <Th>HSN Code</Th>
-                              <Th>UOM</Th>
-                              <Th>Rate</Th>
-                              <Th>Total</Th>
-                              <Th style={{ textAlign: "right" }}>Action</Th>
-                            </Tr>
-                          </Thead>
-                          <Tbody>
+                      </Grid>
+                      <Grid size={12} sx={{ mt: 3 }}>
+                        {isMobileOrTablet ? (
+                          /* ================= MOBILE / TABLET CARDS ================= */
+                          <Stack spacing={2}>
                             {items.length > 0 ? (
                               items.map((item) => (
-                                <Tr key={item.id}>
-                                  <Td>{item.name}</Td>
-                                  <Td>
-                                    <TextField
-                                      type="number"
-                                      size="small"
-                                      value={item.qty}
-                                      onChange={(e) => handleQtyChange(item.id, e.target.value)}
-                                      inputProps={{ min: 1 }}
-                                      sx={{ width: '80px' }}
-                                    />
-                                  </Td>
-                                  <Td>{item.size}</Td>
-                                  <Td>{item.hsn_code}</Td>
-                                  <Td>{item.uom}</Td>
-                                  <Td>₹{item.rate.toLocaleString('en-IN')}</Td>
-                                  <Td>₹{item.total.toLocaleString('en-IN')}</Td>
-                                  <Td align="right">
-                                    <Tooltip title="Delete Item">
+                                <Card
+                                  key={item.id}
+                                  variant="outlined"
+                                  sx={{
+                                    borderRadius: 2,
+                                    borderColor: "divider",
+                                    boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+                                    background: "#f7f7f7",
+                                  }}
+                                >
+                                  <CardContent sx={{ p: 2 }}>
+                                    {/* Header */}
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        mb: 1,
+                                      }}
+                                    >
+                                      <Typography
+                                        sx={{
+                                          fontWeight: 600,
+                                          fontSize: "0.95rem",
+                                          maxWidth: "85%",
+                                          overflow: "hidden",
+                                          textOverflow: "ellipsis",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {item.name}
+                                      </Typography>
                                       <IconButton
-                                        color="error"
-                                        onClick={() => handleDeleteClick(item.id)}
                                         size="small"
+                                        onClick={() => handleDeleteClick(item.id)}
+                                        sx={{
+                                          ml: 1,
+                                          bgcolor: "error.light",
+                                          color: "#fff",
+                                          borderRadius: 1,
+                                          "&:hover": {
+                                            bgcolor: "error.dark",
+                                          },
+                                        }}
                                       >
                                         <RiDeleteBinLine size={18} />
                                       </IconButton>
-                                    </Tooltip>
-                                  </Td>
-                                </Tr>
+
+
+                                    </Box>
+
+                                    {/* Details */}
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: 0.5,
+                                        mb: 1,
+                                      }}
+                                    >
+                                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                          Size
+                                        </Typography>
+                                        <Typography variant="body2">{item.size}</Typography>
+                                      </Box>
+
+                                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                          UOM
+                                        </Typography>
+                                        <Typography variant="body2">{item.uom}</Typography>
+                                      </Box>
+
+                                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                          Rate
+                                        </Typography>
+                                        <Typography variant="body2">
+                                          ₹{item.rate.toLocaleString("en-IN")}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+
+
+                                    {/* Footer */}
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        // mt: 1.5,
+                                        pt: 1,
+                                        borderTop: "1px dashed",
+                                        borderColor: "divider",
+                                      }}
+                                    >
+                                      <TextField
+                                        label="Qty"
+                                        type="number"
+                                        size="small"
+                                        value={item.qty}
+                                        onChange={(e) => handleQtyChange(item.id, e.target.value)}
+                                        inputProps={{ min: 1 }}
+                                        sx={{ width: 90, mt: 1 }}
+                                      />
+
+                                      <Typography
+                                        sx={{
+                                          fontWeight: 600,
+                                          fontSize: "1rem",
+                                        }}
+                                      >
+                                        ₹{item.total.toLocaleString("en-IN")}
+                                      </Typography>
+                                    </Box>
+                                  </CardContent>
+                                </Card>
+
                               ))
                             ) : (
-                              <Tr>
-                                <Td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
-                                  No items added yet. Add items to continue.
-                                </Td>
-                              </Tr>
+                              <Typography align="center" color="text.secondary">
+                                No items added yet. Add items to continue.
+                              </Typography>
                             )}
-                          </Tbody>
-                        </Table>
+                          </Stack>
+                        ) : (
+                          /* ================= DESKTOP TABLE ================= */
+                          <Table>
+                            <Thead>
+                              <Tr>
+                                <Th>Material Name</Th>
+                                <Th>Qty</Th>
+                                <Th>Size</Th>
+                                <Th>UOM</Th>
+                                <Th>Rate</Th>
+                                <Th>Total</Th>
+                                <Th style={{ textAlign: "right" }}>Action</Th>
+                              </Tr>
+                            </Thead>
+                            <Tbody>
+                              {items.length > 0 ? (
+                                items.map((item) => (
+                                  <Tr key={item.id}>
+                                    <Td>{item.name}</Td>
+                                    <Td>
+                                      <TextField
+                                        type="number"
+                                        size="small"
+                                        value={item.qty}
+                                        onChange={(e) =>
+                                          handleQtyChange(item.id, e.target.value)
+                                        }
+                                        inputProps={{ min: 1 }}
+                                        sx={{ width: "80px" }}
+                                      />
+                                    </Td>
+                                    <Td>{item.size}</Td>
+                                    <Td>{item.uom}</Td>
+                                    <Td>₹{item.rate.toLocaleString("en-IN")}</Td>
+                                    <Td>₹{item.total.toLocaleString("en-IN")}</Td>
+                                    <Td align="right">
+                                      <IconButton
+                                        color="error"
+                                        size="small"
+                                        onClick={() => handleDeleteClick(item.id)}
+                                      >
+                                        <RiDeleteBinLine size={18} />
+                                      </IconButton>
+                                    </Td>
+                                  </Tr>
+                                ))
+                              ) : (
+                                <Tr>
+                                  <Td colSpan={7} style={{ textAlign: "center", padding: 20 }}>
+                                    No items added yet. Add items to continue.
+                                  </Td>
+                                </Tr>
+                              )}
+                            </Tbody>
+                          </Table>
+                        )}
                       </Grid>
-
                       <Grid size={12} sx={{ mt: 3 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%', gap: 2 }}>
                           {/* Fixed TextareaAutosize - now always uses values.orderTerms */}
-                          <TextareaAutosize
-                            minRows={3}
-                            maxRows={6}
-                            placeholder="Order Terms (max 500 characters)"
-                            name="orderTerms"
-                            value={values.orderTerms}
-                            onChange={handleChange}
-                            style={{
-                              width: '50%',
-                              padding: '8px',
-                              fontFamily: 'inherit',
-                              borderRadius: '4px',
-                              border: '1px solid #ccc'
+                          <Box
+                            sx={{
+                              width: {
+                                xs: "100%",
+                                md: "100%",
+                                lg: "50%",
+                              },
                             }}
-                          />
+                          >
+                            <TextareaAutosize
+                              minRows={3}
+                              maxRows={6}
+                              placeholder="Order Terms (max 500 characters)"
+                              name="orderTerms"
+                              value={values.orderTerms}
+                              onChange={handleChange}
+                              style={{
+                                width: "100%",
+                                padding: "8px",
+                                fontFamily: "inherit",
+                                borderRadius: "4px",
+                                border: "1px solid #ccc",
+                              }}
+                            />
+                          </Box>
 
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '20%' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', pb: 0.5 }}>
+
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 1,
+                              width: {
+                                xs: "100%",
+                                md: "100%",
+                                lg: "20%",
+                              },
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                borderBottom: "1px solid #ccc",
+                                pb: 0.5,
+                                mb: 1,
+                              }}
+                            >
                               <span>Sub Total</span>
-                              <span>₹{subTotal.toLocaleString('en-IN')}</span>
+                              <span>₹{subTotal.toLocaleString("en-IN")}</span>
                             </Box>
 
-                            {/* <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
                               <TextField
                                 label="Discount"
                                 type="number"
@@ -586,13 +795,16 @@ const CreatePurchaseOrder = () => {
                                 value={values.discount}
                                 onChange={handleChange}
                                 error={touched.discount && !!errors.discount}
-                                sx={{ width: '55%' }}
+                                sx={{
+                                  width: { xs: "60%", md: "55%" },
+                                  mb: 1,
+                                }}
                                 inputProps={{ min: 0 }}
                               />
-                              <span>₹{(subTotal - discountAmount).toLocaleString('en-IN')}</span>
-                            </Box> */}
+                              <span>₹{(subTotal - discountAmount).toLocaleString("en-IN")}</span>
+                            </Box>
 
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
                               <TextField
                                 label="Add Charges"
                                 type="number"
@@ -601,13 +813,16 @@ const CreatePurchaseOrder = () => {
                                 value={values.additionalCharges}
                                 onChange={handleChange}
                                 error={touched.additionalCharges && !!errors.additionalCharges}
-                                sx={{ width: '55%' }}
+                                sx={{
+                                  width: { xs: "60%", md: "55%" },
+                                  mb: 1,
+                                }}
                                 inputProps={{ min: 0 }}
                               />
-                              <span>₹{additionalChargesAmount.toLocaleString('en-IN')}</span>
+                              <span>₹{additionalChargesAmount.toLocaleString("en-IN")}</span>
                             </Box>
 
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center' }}>
+                            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
                               <TextField
                                 select
                                 label="GST %"
@@ -616,7 +831,10 @@ const CreatePurchaseOrder = () => {
                                 value={values.gstRate}
                                 onChange={handleChange}
                                 error={touched.gstRate && !!errors.gstRate}
-                                sx={{ width: '55%' }}
+                                sx={{
+                                  width: { xs: "60%", md: "55%" },
+                                  mb: 1,
+                                }}
                               >
                                 {gst.map((item) => (
                                   <MenuItem key={item.id} value={item.percentage}>
@@ -624,14 +842,24 @@ const CreatePurchaseOrder = () => {
                                   </MenuItem>
                                 ))}
                               </TextField>
-                              <span>₹{gstAmount.toLocaleString('en-IN')}</span>
+                              <span>₹{gstAmount.toLocaleString("en-IN")}</span>
                             </Box>
 
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #222', mt: 1, pt: 0.5, fontWeight: '600' }}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                borderTop: "2px solid #222",
+                                mt: 1,
+                                pt: 0.5,
+                                fontWeight: 600,
+                              }}
+                            >
                               <span>Grand Total</span>
-                              <span>₹{grandTotal.toLocaleString('en-IN')}</span>
+                              <span>₹{grandTotal.toLocaleString("en-IN")}</span>
                             </Box>
                           </Box>
+
                         </Box>
                       </Grid>
 

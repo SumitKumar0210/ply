@@ -8,6 +8,7 @@ import {
   Box,
   CircularProgress,
   Alert,
+  Divider
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { AiOutlinePrinter } from "react-icons/ai";
@@ -40,6 +41,14 @@ const { appDetails } = useAuth();
           body {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+          }
+          /* Force table to show on print */
+          .desktop-table-view {
+            display: block !important;
+          }
+          /* Hide mobile card view on print */
+          .mobile-card-view {
+            display: none !important;
           }
         }
       `,
@@ -94,7 +103,7 @@ const { appDetails } = useAuth();
         sx={{ mb: 2 }}
       >
         <Grid>
-          <Typography variant="h6">Purchase Order</Typography>
+          <Typography variant="h6" className="page-title">Purchase Order</Typography>
         </Grid>
         <Grid>
           <Button
@@ -118,7 +127,7 @@ const { appDetails } = useAuth();
           <div ref={contentRef} style={{ background: "#fff", padding: "20px" }}>
             <Card>
               <CardContent>
-                <Grid size={12} sx={{ pt: 2 }}>
+                <Grid size={12} sx={{ pt: 0 }}>
                   <Box
                     sx={{
                       display: 'flex',
@@ -128,7 +137,7 @@ const { appDetails } = useAuth();
                       flexWrap: 'wrap',
                     }}
                   >
-                    <Typography variant="h6" className="fs-15">Purchase Order</Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 500, mb: 2, fontSize: { xs: '1.2rem', md: '1.25rem' } }}>Purchase Order</Typography>
                   </Box>
                 </Grid>
                 <Grid size={12} sx={{ pb: 2 }} borderBottom={1}>
@@ -194,37 +203,97 @@ const { appDetails } = useAuth();
                     </Grid>
                   </Box>
                 </Grid>
-                <Grid size={12} sx={{ mt: 3 }}>
-                  <Typography variant="body1" sx={{ mb: 2 }} style={{ fontWeight: 600 }}>Material Detail</Typography>
-                  {items && items.length > 0 ? (
-                    <Table>
-                      <Thead>
-                        <Tr>
-                          <Th>Item Name</Th>
-                          <Th>Qty</Th>
-                          <Th>Size</Th>
-                          <Th>UOM</Th>
-                          <Th>Rate</Th>
-                          <Th>Total</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {items.map((item, index) => (
-                          <Tr key={item.material_id || index}>
-                            <Td>{item.name || 'N/A'}</Td>
-                            <Td>{item.qty || 0}</Td>
-                            <Td>{item.size || 'N/A'}</Td>
-                            <Td>{item.uom || 'N/A'}</Td>
-                            <Td>{item.rate || 0}</Td>
-                            <Td>{item.total || 0}</Td>
-                          </Tr>
-                        ))}
-                      </Tbody>
-                    </Table>
-                  ) : (
-                    <Alert severity="info">No items found in this purchase order</Alert>
-                  )}
-                </Grid>
+               <Grid size={12} sx={{ mt: 3 }}>
+  <Typography variant="body1" sx={{ mb: 2 }} style={{ fontWeight: 600 }}>
+    Material Detail
+  </Typography>
+  
+  {items && items.length > 0 ? (
+    <>
+      {/* Desktop Table View - Hidden on mobile */}
+      <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto' }} className="desktop-table-view">
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>Item Name</Th>
+              <Th>Qty</Th>
+              <Th>Size</Th>
+              <Th>UOM</Th>
+              <Th>Rate</Th>
+              <Th>Total</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {items.map((item, index) => (
+              <Tr key={item.material_id || index}>
+                <Td>{item.name || 'N/A'}</Td>
+                <Td>{item.qty || 0}</Td>
+                <Td>{item.size || 'N/A'}</Td>
+                <Td>{item.uom || 'N/A'}</Td>
+                <Td>{item.rate || 0}</Td>
+                <Td>{item.total || 0}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </Box>
+
+      {/* Mobile Card View - Hidden on desktop */}
+      <Box sx={{ display: { xs: 'block', md: 'none' } }} className="mobile-card-view">
+        {items.map((item, index) => (
+          <Card 
+            key={item.material_id || index} 
+            sx={{ 
+              mb: 2, 
+              border: '1px solid #e0e0e0',
+              boxShadow: 1,
+              backgroundColor: '#f7f7f7'
+            }}
+          >
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+                {item.name || 'N/A'}
+              </Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Quantity:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{item.qty || 0}</Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Size:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{item.size || 'N/A'}</Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">UOM:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{item.uom || 'N/A'}</Typography>
+                </Box>
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Rate:</Typography>
+                  <Typography variant="body2" fontWeight={500}>{item.rate || 0}</Typography>
+                </Box>
+                
+                <Divider />
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" color="text.secondary">Total:</Typography>
+                  <Typography variant="body1" fontWeight={500} color="success.main">
+                    {item.total || 0}
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+    </>
+  ) : (
+    <Alert severity="info">No items found in this purchase order</Alert>
+  )}
+</Grid>
                 <Grid size={12} sx={{ mt: 3 }}>
                   <Box
                     sx={{
@@ -243,22 +312,22 @@ const { appDetails } = useAuth();
                         pb: 0.5,
                       }}
                     >
-                      <span>Sub Total</span>
+                      <strong>Sub Total</strong>
                       <span style={{ marginLeft: 'auto' }}>{po.subtotal || 0}</span>
                     </Box>
 
                     <Box className="fs-15" sx={{ display: 'flex' }}>
-                      <span>Discount</span>
+                      <strong>Discount</strong>
                       <span style={{ marginLeft: 'auto' }}>{po.discount || 0}</span>
                     </Box>
 
                     <Box className="fs-15" sx={{ display: 'flex' }}>
-                      <span>Additional Charges</span>
+                      <strong>Additional Charges</strong>
                       <span style={{ marginLeft: 'auto' }}>{po.carriage_amount || 0}</span>
                     </Box>
 
                     <Box className="fs-15" sx={{ display: 'flex' }}>
-                      <span>GST ({parseInt(po.gst_per) || 0}%)</span>
+                      <strong>GST ({parseInt(po.gst_per) || 0}%)</strong>
                       <span style={{ marginLeft: 'auto' }}>{po.gst_amount || 0}</span>
                     </Box>
 
@@ -272,7 +341,7 @@ const { appDetails } = useAuth();
                         fontWeight: 600,
                       }}                
                     >
-                      <span>Grand Total</span>
+                      <strong>Grand Total</strong>
                       <span style={{ marginLeft: 'auto' }}>{po.grand_total || 0}</span>
                     </Box>
                   </Box>
@@ -291,11 +360,12 @@ const { appDetails } = useAuth();
                       variant="p"
                       sx={{
                         m: 0,
-                        width: "150px",
+                        width: "180px",
                         textAlign: "center",
                         lineHeight: "2 !important",
                         borderTop: 1,
-                        borderColor: "grey.500"
+                        borderColor: "grey.500",
+                        lineHeight: "1.25 !important",
                       }}
                     >
                       Approved By
@@ -304,11 +374,12 @@ const { appDetails } = useAuth();
                       variant="p"
                       sx={{
                         m: 0,
-                        width: "150px",
+                        width: "180px",
                         textAlign: "center",
-                        lineHeight: "2 !important",
+                        lineHeight: "1.25 !important",
                         borderTop: 1,
                         borderColor: "grey.500"
+
                       }}
                     >
                       Prepared By
@@ -317,9 +388,9 @@ const { appDetails } = useAuth();
                       variant="p"
                       sx={{
                         m: 0,
-                        width: "150px",
+                        width: "180px",
                         textAlign: "center",
-                        lineHeight: "2 !important",
+                        lineHeight: "1.25 !important",
                         borderTop: 1,
                         borderColor: "grey.500"
                       }}

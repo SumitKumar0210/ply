@@ -120,23 +120,27 @@ const VendorDashboard = () => {
     <>
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
-          <Typography variant="h6">Vendor Dashboard</Typography>
+          <Typography variant="h6" className="page-title">Vendor Dashboard</Typography>
         </Grid>
       </Grid>
-      
+
       {/* Summary Cards */}
       <Grid container spacing={2}>
         {loading ? (
           // Show skeletons when loading
           Array(6).fill(0).map((_, index) => (
-            <Grid key={`skeleton-${index}`} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+            <Grid key={`skeleton-${index}`} size={{ xs: 6, sm: 6, md: 4, lg: 2 }}>
               <SummaryCardSkeleton />
             </Grid>
           ))
         ) : (
           // Show actual cards when not loading
           summaryCards.map((item, i) => (
-            <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+            <Grid
+              key={i}
+              size={{ xs: 6, sm: 6, md: 4, lg: 2 }}
+              sx={{ display: "flex" }}
+            >
               <Card
                 sx={{
                   p: 1,
@@ -145,6 +149,11 @@ const VendorDashboard = () => {
                   boxShadow: "0px 2px 8px rgba(0,0,0,0.05)",
                   transition: "all 0.3s ease",
                   background: `linear-gradient(145deg, ${item.color}15, ${item.color}10)`,
+                  height: "100%",               // 👈 key
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
                   "&:hover": {
                     transform: "translateY(-5px)",
                     boxShadow: "0px 6px 16px rgba(0,0,0,0.1)",
@@ -157,24 +166,32 @@ const VendorDashboard = () => {
                       bgcolor: item.color,
                       width: 50,
                       height: 50,
-                      margin: "0 auto",
+                      mx: "auto",
                     }}
                   >
                     {item.icon}
                   </Avatar>
-                  <Typography variant="subtitle2" color="text.secondary">
+
+                  <Typography variant="subtitle2" color="text.secondary" sx={{
+                    mt: 1,
+                    fontSize: '1rem',
+                    lineHeight: 1.2
+                  }}
+                  >
                     {item.title}
                   </Typography>
+
                   <Typography
                     variant="h5"
-                    fontWeight="bold"
-                    sx={{ color: item.color, mt: 0.5 }}
+                    fontWeight="500"
+                    sx={{ color: item.color, mt: 0.5, fontSize: '1.5rem' }}
                   >
                     {item.value}
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
+
           ))
         )}
       </Grid>
@@ -267,12 +284,12 @@ const VendorDashboard = () => {
                   <XAxis type="number" />
                   <YAxis dataKey="name" type="category" width={75} />
                   <Tooltip cursor={{ fill: "transparent" }} />
-                  <Bar 
-                    dataKey="value" 
-                    fill="#54aca4d5" 
-                    barSize={28} 
-                    activeBar={false} 
-                    radius={[4, 4, 0, 0]} 
+                  <Bar
+                    dataKey="value"
+                    fill="#54aca4d5"
+                    barSize={28}
+                    activeBar={false}
+                    radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
               </ResponsiveContainer>

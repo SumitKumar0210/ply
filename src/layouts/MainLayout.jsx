@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, Toolbar, Container } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Box, Toolbar, Container, useMediaQuery, useTheme } from "@mui/material";
 import Header from "../components/Navigation/Header";
 import Sidebar from "../components/Navigation/Sidebar";
 import Footer from "../components/Navigation/Footer";
@@ -7,7 +7,16 @@ import Footer from "../components/Navigation/Footer";
 const drawerWidth = 220;
 
 const MainLayout = ({ children }) => {
-  const [mobileOpen, setMobileOpen] = useState(true);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
+  // Closed on mobile, open on desktop by default
+  const [mobileOpen, setMobileOpen] = useState(!isMobile);
+
+  // Update drawer state when screen size changes
+  useEffect(() => {
+    setMobileOpen(!isMobile);
+  }, [isMobile]);
 
   const handleToggleSidebar = () => setMobileOpen(!mobileOpen);
 
@@ -28,7 +37,7 @@ const MainLayout = ({ children }) => {
           transition: "all 0.3s ease",
           display: "flex",
           flexDirection: "column",
-          width: "100%",          //  ensure it never overflows
+          width: "100%",
           overflowX: "hidden", 
           background: "#eff1f9"
         }}

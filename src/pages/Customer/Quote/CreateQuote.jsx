@@ -393,7 +393,7 @@ const CreateQuote = () => {
         sx={{ mb: 2 }}
       >
         <Grid size={12}>
-          <Typography variant="h6">Create Quote</Typography>
+          <Typography variant="h6" className="page-title">Create Quote</Typography>
         </Grid>
       </Grid>
 

@@ -280,7 +280,7 @@ const Category = () => {
                   p: 1,
                 }}
               >
-                <Typography variant="h6">Category</Typography>
+                <Typography variant="h6" className="page-title">Category</Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <MRT_GlobalFilterTextField table={table} />
                   <MRT_ToolbarInternalButtons table={table} />

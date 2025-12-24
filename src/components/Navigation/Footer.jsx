@@ -21,18 +21,31 @@ const Footer = ({ mobileOpen }) => {
       <Box
         sx={{
           display: "flex",
+          flexDirection: { xs: "column", sm: "row" }, // stack on mobile
           justifyContent: "space-between",
           alignItems: "center",
           px: 2,
+          gap: { xs: 1, sm: 0 }, // spacing between rows on mobile
+          textAlign: { xs: "center", sm: "left" },
         }}
       >
         <Typography variant="body2">
           © {new Date().getFullYear()} {displayAppName}. All rights reserved.
         </Typography>
-        <Typography variant="body2" sx={{ textAlign: "right" }}>
-          Powered by <a href="https://techiesquad.com" target="_blank">Techie Squad &reg;</a>
+
+        <Typography variant="body2">
+          Powered by{" "}
+          <a
+            href="https://techiesquad.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ textDecoration: "none" }}
+          >
+            Techie Squad &reg;
+          </a>
         </Typography>
       </Box>
+
     </Box>
   );
 };

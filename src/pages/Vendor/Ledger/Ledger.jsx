@@ -25,6 +25,10 @@ import {
   TableRow,
   TableCell,
   TablePagination,
+  useMediaQuery,
+  useTheme,
+  Divider,
+  Paper
 } from "@mui/material";
 import {
   Table as ResponsiveTable,
@@ -47,7 +51,8 @@ const Ledger = () => {
   const dispatch = useDispatch();
   const { id } = useParams();
   const [open, setOpen] = useState(false);
-
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   // Redux State
   const { selected: data = {}, loading } = useSelector((state) => state.ledger);
   const { payments = [], paymentLoading = false } = useSelector(
@@ -91,23 +96,33 @@ const Ledger = () => {
   // Print handler
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: "Ledger Report",
+    documentTitle: "Purchase Order",
     pageStyle: `
-      @page {
-        size: A4;
-        margin: 5mm;
-      }
-      @media print {
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-      }
-    `,
+          @page {
+            size: A4;
+            margin: 5mm;
+          }
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            /* Force table to show on print */
+            .desktop-table-view {
+              display: block !important;
+            }
+            /* Hide mobile card view on print */
+            .mobile-card-view {
+              display: none !important;
+            }
+          }
+        `,
   });
 
   return (
+
     <>
+
       {/* Header */}
       <Grid
         container
@@ -117,7 +132,7 @@ const Ledger = () => {
         sx={{ mb: 2 }}
       >
         <Grid item>
-          <Typography variant="h6">Ledger</Typography>
+          <Typography variant="h6" className="page-title">Ledger</Typography>
         </Grid>
         <Grid item>
           <Button
@@ -144,8 +159,177 @@ const Ledger = () => {
               <br />
               GSTIN: {data?.gst || "N/A"}
             </Typography>
+            {isMobile ? (
+              // Mobile View - Cards
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }} className="mobile-card-view">
+                {items.length > 0 ? (
+                  items.map((item) => (
+                    <Card key={item.id} elevation={2}
 
-            <ResponsiveTable style={{ width: "100%", marginTop: "20px" }}>
+                      sx={{
+                        mb: 2,
+                        border: '1px solid #e0e0e0',
+                        boxShadow: 1,
+                        backgroundColor: '#f7f7f7'
+                      }}
+
+
+                    >
+                      <CardContent sx={{ py: 1 }}>
+                        {/* Invoice Number Header */}
+                        <Box sx={{ mb: 2, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Invoice No
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 500 }}>
+                            {item?.vendor_invoice_no || '-'}
+                          </Typography>
+                        </Box>
+
+                        {/* Invoice Date and Quantity */}
+                        <Grid container spacing={2} sx={{ mb: 2 }}>
+                          <Grid size={6}>
+                            <Typography variant="caption" color="text.secondary">
+                              Invoice Date
+                            </Typography>
+                            <Typography variant="body2">
+                              {item?.vendor_invoice_date || '-'}
+                            </Typography>
+                          </Grid>
+                          <Grid size={6}>
+                            <Typography variant="caption" color="text.secondary">
+                              Total Qty
+                            </Typography>
+                            <Typography variant="body2">
+                              {itemCount(item?.material_items)}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+
+                        {/* Debit and Credit */}
+                        <Grid container spacing={2} sx={{ mb: 2 }}>
+                          <Grid size={6}>
+                            <Typography variant="caption" color="text.secondary">
+                              Debit
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              ₹{Number(item?.grand_total || 0).toLocaleString('en-IN')}
+                            </Typography>
+                          </Grid>
+                          <Grid size={6}>
+                            <Typography variant="caption" color="text.secondary">
+                              Credit
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              ₹{item?.due_amount === null
+                                ? 0
+                                : Number((item?.grand_total || 0) - (item?.due_amount || 0)).toLocaleString('en-IN')}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                        <Divider sx={{ mb: 0 }} />
+                        {/* Balance - Clickable */}
+                        <Box
+                          onClick={() => handlePaymentHistory(item.id)}
+                          sx={{
+
+                            pt: 1,
+                            bgcolor: 'grey.100',
+                            borderRadius: 1,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            '&:hover': {
+                              bgcolor: 'grey.200'
+                            }
+                          }}
+                        >
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                            Balance
+                          </Typography>
+                          <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 500 }}>
+                            ₹{item?.due_amount === null
+                              ? Number(item?.grand_total || 0).toLocaleString('en-IN')
+                              : Number(item?.due_amount || 0).toLocaleString('en-IN')}
+                          </Typography>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <Box sx={{ textAlign: 'center', py: 5, color: 'text.secondary' }}>
+                    <Typography>
+                      {loading ? 'Loading...' : 'No records found'}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            ) : (
+              // Desktop View - Table
+              <Box className="desktop-table-view">
+
+
+                <TableContainer elevation={2} sx={{ mt: 2 }} >
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'grey.100' }}>
+                        <TableCell sx={{ fontWeight: 600 }}>Invoice Date</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Invoice No</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Total Qty</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Debit</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Credit</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>Balance</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {items.length > 0 ? (
+                        items.map((item) => (
+                          <TableRow
+                            key={item.id}
+                            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                          >
+                            <TableCell>{item?.vendor_invoice_date || '-'}</TableCell>
+                            <TableCell>{item?.vendor_invoice_no || '-'}</TableCell>
+                            <TableCell>{itemCount(item?.material_items)}</TableCell>
+                            <TableCell>
+                              ₹{Number(item?.grand_total || 0).toLocaleString('en-IN')}
+                            </TableCell>
+                            <TableCell>
+                              ₹{item?.due_amount === null
+                                ? 0
+                                : Number((item?.grand_total || 0) - (item?.due_amount || 0)).toLocaleString('en-IN')}
+                            </TableCell>
+                            <TableCell
+                              onClick={() => handlePaymentHistory(item.id)}
+                              sx={{
+                                cursor: 'pointer',
+                                color: 'primary.main',
+                                textDecoration: 'underline',
+                                '&:hover': {
+                                  color: 'primary.dark'
+                                }
+                              }}
+                            >
+                              ₹{item?.due_amount === null
+                                ? Number(item?.grand_total || 0).toLocaleString('en-IN')
+                                : Number(item?.due_amount || 0).toLocaleString('en-IN')}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} align="center" sx={{ py: 5, color: 'text.secondary' }}>
+                            {loading ? 'Loading...' : 'No records found'}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+            {/* <ResponsiveTable style={{ width: "100%", marginTop: "20px" }}>
               <Thead>
                 <Tr>
                   <Th>Invoice Date</Th>
@@ -200,7 +384,7 @@ const Ledger = () => {
                   </Tr>
                 )}
               </Tbody>
-            </ResponsiveTable>
+            </ResponsiveTable> */}
           </CardContent>
         </Card>
       </div>

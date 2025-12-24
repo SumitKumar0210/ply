@@ -13,7 +13,7 @@ import {
   useTheme,
   Skeleton,
 } from "@mui/material";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, Link } from "react-router-dom";
 
 // Icons
 import { SlArrowDown, SlArrowUp } from "react-icons/sl";
@@ -348,6 +348,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
     <>
       {/* Logo */}
       <Box display="flex" alignItems="center" justifyContent="center" sx={{ p: 2 }}>
+        <Link to="/dashboard" style={{ display: "inline-flex" }}>
         {/* Show skeleton while appDetails not available in either context or localStorage */}
         {(!displayLogo || displayLogo === "") ? (
           <Skeleton variant="rectangular" width={140} height={48} sx={{ borderRadius: 1 }} />
@@ -369,6 +370,7 @@ const Sidebar = ({ mobileOpen, onClose }) => {
             }}
           />
         )}
+        </Link>
       </Box>
 
       {/* Menu */}

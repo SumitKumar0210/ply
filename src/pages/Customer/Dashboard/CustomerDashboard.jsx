@@ -120,7 +120,7 @@ const CustomerDashboard = () => {
     <>
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
-          <Typography variant="h6">Customer Dashboard</Typography>
+          <Typography variant="h6" className="page-title">Customer Dashboard</Typography>
         </Grid>
       </Grid>
       

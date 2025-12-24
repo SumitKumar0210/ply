@@ -377,7 +377,7 @@ const OrderDetailsView = () => {
         sx={{ mb: 2 }}
       >
         <Grid item>
-          <Typography variant="h6">Order Details</Typography>
+          <Typography variant="h6" className="page-title">Order Details</Typography>
         </Grid>
         <Grid item>
           <Stack direction="row" spacing={2}>
