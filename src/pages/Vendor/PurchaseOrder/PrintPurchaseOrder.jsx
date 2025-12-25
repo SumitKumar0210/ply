@@ -362,7 +362,6 @@ const { appDetails } = useAuth();
                         m: 0,
                         width: "180px",
                         textAlign: "center",
-                        lineHeight: "2 !important",
                         borderTop: 1,
                         borderColor: "grey.500",
                         lineHeight: "1.25 !important",

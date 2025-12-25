@@ -669,14 +669,13 @@ const PurchaseOrder = () => {
           {loading && (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress />
-            >
+            
               <Typography variant="h6" className='page-title'>
                 Purchase Order
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <MRT_GlobalFilterTextField table={table} />
-                <MRT_ToolbarInternalButtons table={table} />
-                <Tooltip title="Print">
+                
+                {/* <Tooltip title="Print">
                   <IconButton onClick={handlePrint} size="small">
                     <FiPrinter size={20} />
                   </IconButton>
@@ -685,7 +684,7 @@ const PurchaseOrder = () => {
                   <IconButton onClick={downloadCSV} size="small">
                     <BsCloudDownload size={20} />
                   </IconButton>
-                </Tooltip>
+                </Tooltip> */}
               </Box>
             </Box>
           )}
