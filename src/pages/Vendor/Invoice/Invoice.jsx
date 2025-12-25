@@ -26,17 +26,30 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  Card,
+  CardContent,
+  Divider,
+  Pagination,
+  InputAdornment,
   CircularProgress,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import * as Yup from "yup";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
-import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { MdOutlineRemoveRedEye, MdCheckCircle } from "react-icons/md";
 import { GrCurrency } from "react-icons/gr";
+import { FiUser, FiCalendar, FiPackage, FiCreditCard, FiPlus } from 'react-icons/fi';
+import SearchIcon from "@mui/icons-material/Search";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { IoMdRefresh } from "react-icons/io";
+import { IoMdCheckmarkCircleOutline } from "react-icons/io";
+import { PiCurrencyInr } from "react-icons/pi";
+
+import { RiDeleteBinLine } from "react-icons/ri";
 import { Formik, Form } from "formik";
 import {
   MaterialReactTable,
@@ -102,8 +115,12 @@ const formatDate = (dateString) => {
 };
 
 const VendorInvoice = () => {
+
   const { hasPermission, hasAnyPermission } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const tableContainerRef = useRef(null);
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -361,7 +378,7 @@ const VendorInvoice = () => {
     }
 
     return baseColumns;
-    [handleViewClick,handleClickOpen,formatDate,getItemCount,getStatusChip,hasPermission,]
+    [handleViewClick, handleClickOpen, formatDate, getItemCount, getStatusChip, hasPermission,]
   });
 
   // CSV Export
@@ -423,7 +440,10 @@ const VendorInvoice = () => {
       console.error("Print error:", error);
     }
   }, []);
-
+  // Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
   return (
     <>
       {/* Header */}
@@ -449,87 +469,302 @@ const VendorInvoice = () => {
         </Grid>
       </Grid>
 
-      {/* Table */}
-      <Paper
-        elevation={0}
-        ref={tableContainerRef}
-        sx={{
-          width: "100%",
-          overflow: "hidden",
-          backgroundColor: "#fff",
-          px: 2,
-          py: 1,
-        }}
-      >
-        <MaterialReactTable
-          columns={columns}
-          data={tableData}
-          manualPagination
-          manualFiltering
-          rowCount={totalRows}
-          state={{
-            pagination,
-            isLoading: loading,
-            globalFilter,
-          }}
-          onPaginationChange={handlePaginationChange}
-          onGlobalFilterChange={handleGlobalFilterChange}
-          enableTopToolbar
-          enableColumnFilters={false}
-          enableSorting={false}
-          enableBottomToolbar
-          enableGlobalFilter
-          enableDensityToggle={false}
-          enableColumnActions={false}
-          enableColumnVisibilityToggle={false}
-          initialState={{ density: "compact" }}
-          muiTableContainerProps={{
-            sx: {
-              width: "100%",
-              backgroundColor: "#fff",
-              overflowX: "auto",
-              minWidth: "1200px",
-            },
-          }}
-          muiTablePaperProps={{
-            sx: { backgroundColor: "#fff", boxShadow: "none" },
-          }}
-          renderTopToolbar={({ table }) => (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                width: "100%",
-                p: 1,
-              }}
-            >
-              <Typography variant="h6" className='page-title'>
-                Vendor Invoices/Payments
-              </Typography>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <MRT_GlobalFilterTextField table={table} />
-                <MRT_ToolbarInternalButtons table={table} />
-                <Tooltip title="Refresh">
-                  <IconButton onClick={handleRefresh} size="small">
-                    <IoMdRefresh size={20} />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Print">
-                  <IconButton onClick={handlePrint} size="small">
-                    <FiPrinter size={20} />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Download CSV">
-                  <IconButton onClick={downloadCSV} size="small">
-                    <BsCloudDownload size={20} />
-                  </IconButton>
-                </Tooltip>
+      {isMobile ? (
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box sx={{ minHeight: '100vh' }}>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search purchase orders..."
+                value=""
+                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
+            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+              {/* Header Section - Blue Background */}
+              <Box
+                sx={{
+                  bgcolor: "primary.main",
+                  p: 1.5,
+                  color: "primary.contrastText",
+                }}
+              >
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                      PO-001
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <FiUser size={14} />
+                      <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                        ABC Suppliers Ltd.
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Chip
+                    label="Partially Paid"
+                    size="small"
+                    sx={{
+                      bgcolor: "white",
+                      color: "primary.main",
+                      fontWeight: 500,
+                      fontSize: "0.75rem",
+                    }}
+                  />
+                </Box>
               </Box>
+
+              {/* Body Section */}
+              <CardContent sx={{ p: 1.5 }}>
+                {/* Details Grid */}
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Order Date
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          Dec 15, 2024
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <IoMdCheckmarkCircleOutline size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          QC Items
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          20
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <PiCurrencyInr size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Vendor Invoice
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          INV - 000914
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Invoice Date
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          Dec 15, 2024
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+                <Divider sx={{ mb: 2 }} />
+                {/* Action Buttons */}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#fff3e0",
+                      color: "#ff9800",
+                      "&:hover": { bgcolor: "#ffe0b2" },
+                    }}
+                  >
+                    <MdOutlineRemoveRedEye size={20} />
+                  </IconButton>
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#e8f5e9",      // light green
+                      color: "#48c24eff",       // success dark
+                      "&:hover": { bgcolor: "#c8e6c9" },
+                    }}
+                  >
+                    <GrCurrency size={20} />
+                  </IconButton>
+                </Box>
+              </CardContent>
+            </Card>
+            {/* Mobile Pagination */}
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+              <Pagination
+                count={Math.ceil(10 / pagination.pageSize)}
+                page={pagination.pageIndex + 1}
+                onChange={handleMobilePageChange}
+                color="primary"
+              />
             </Box>
-          )}
-        />
-      </Paper>
+          </Box>
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
+
+        <Grid size={12}>
+          <Paper
+            elevation={0}
+            ref={tableContainerRef}
+            sx={{
+              width: "100%",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+              px: 2,
+              py: 1,
+            }}
+          >
+            <MaterialReactTable
+              columns={columns}
+              data={tableData}
+              manualPagination
+              manualFiltering
+              rowCount={totalRows}
+              state={{
+                pagination,
+                isLoading: loading,
+                globalFilter,
+              }}
+              onPaginationChange={handlePaginationChange}
+              onGlobalFilterChange={handleGlobalFilterChange}
+              enableTopToolbar
+              enableColumnFilters={false}
+              enableSorting={false}
+              enableBottomToolbar
+              enableGlobalFilter
+              enableDensityToggle={false}
+              enableColumnActions={false}
+              enableColumnVisibilityToggle={false}
+              initialState={{ density: "compact" }}
+              muiTableContainerProps={{
+                sx: {
+                  width: "100%",
+                  backgroundColor: "#fff",
+                  overflowX: "auto",
+                  minWidth: "1200px",
+                },
+              }}
+              muiTablePaperProps={{
+                sx: { backgroundColor: "#fff", boxShadow: "none" },
+              }}
+              renderTopToolbar={({ table }) => (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="h6" className='page-title'>
+                    Vendor Invoices/Payments
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
+                    <Tooltip title="Refresh">
+                      <IconButton onClick={handleRefresh} size="small">
+                        <IoMdRefresh size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Print">
+                      <IconButton onClick={handlePrint} size="small">
+                        <FiPrinter size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download CSV">
+                      <IconButton onClick={downloadCSV} size="small">
+                        <BsCloudDownload size={20} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              )}
+            />
+          </Paper>
+        </Grid>
+      )}
 
       {/* Payment Modal */}
       <Dialog
@@ -569,7 +804,7 @@ const VendorInvoice = () => {
                 <Grid container spacing={2}>
                   {/* Payment Form - Show when due_amount is null OR > 0 */}
                   {shouldShowForm && (
-                    <Grid item xs={12} md={shouldShowHistory ? 6 : 12}>
+                    <Grid size={12} md={shouldShowHistory ? 6 : 12}>
                       <Typography
                         variant="subtitle2"
                         sx={{ mb: 2, fontWeight: 600 }}
@@ -642,7 +877,7 @@ const VendorInvoice = () => {
 
                   {/* Payment History - Show when due_amount is NOT null */}
                   {shouldShowHistory && (
-                    <Grid item xs={12} md={shouldShowForm ? 6 : 12}>
+                    <Grid size={12} md={shouldShowForm ? 6 : 12}>
                       <Typography
                         variant="subtitle2"
                         sx={{ mb: 2, fontWeight: 600 }}
@@ -792,7 +1027,6 @@ const VendorInvoice = () => {
                   )}
                 </Grid>
               </DialogContent>
-
               <DialogActions sx={{ gap: 1, mb: 1 }}>
                 <Button
                   variant="outlined"

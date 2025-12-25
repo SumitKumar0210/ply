@@ -13,6 +13,14 @@ import {
   DialogContent,
   DialogActions,
   MenuItem,
+  Chip,
+  Card,
+  CardContent,
+  Divider,
+  Pagination,
+  InputAdornment,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
@@ -23,10 +31,10 @@ import {
   MRT_ToolbarInternalButtons,
   MRT_GlobalFilterTextField,
 } from "material-react-table";
-import AddIcon from "@mui/icons-material/Add";
 import { RiListOrdered } from "react-icons/ri";
-import { BiSolidEditAlt } from "react-icons/bi";
-import { RiDeleteBinLine } from "react-icons/ri";
+import SearchIcon from "@mui/icons-material/Search";
+import { GrCurrency } from "react-icons/gr";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { IoMdRefresh } from "react-icons/io";
@@ -38,6 +46,9 @@ import {
   fetchVendors,
 } from "../../settings/slices/vendorSlice";
 import { useAuth } from "../../../context/AuthContext";
+import { BsTelephone } from "react-icons/bs";
+import { MdAlternateEmail } from "react-icons/md";
+import { HiOutlineReceiptTax } from "react-icons/hi";
 
 import { fetchActiveCategories } from "../../settings/slices/categorySlice";
 
@@ -75,6 +86,8 @@ const Vendor = () => {
   const { hasPermission, hasAnyPermission } = useAuth();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const tableContainerRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -257,10 +270,172 @@ console.log("vendorData", vendorData);
       console.error("Print error:", error);
     }
   }, []);
-
+// Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
   return (
+    <>
+    <Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 2 }}
+      >
+        <Grid size="12">
+          <Typography variant="h6" className="page-title">Vendor</Typography>
+        </Grid>
+      </Grid>
     <ErrorBoundary>
-      <Grid container spacing={2}>
+      
+         {isMobile ? (
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box sx={{ minHeight: '100vh' }}>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search purchase orders..."
+                value=""
+                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
+            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+              {/* Header Section - Blue Background */}
+              <Box
+                sx={{
+                  bgcolor: "primary.main",
+                  p: 1.5,
+                  color: "primary.contrastText",
+                }}
+              >
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 500, color: "white", mb: 0.5 }}>
+                      SteelMart Industries
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <HiOutlineReceiptTax size={14} />
+                      <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                        29AACCS9876K1Z9
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Chip
+                    label="Raw Materials"
+                    size="small"
+                    sx={{
+                      bgcolor: "white",
+                      color: "primary.main",
+                      fontWeight: 500,
+                      fontSize: "0.75rem",
+                    }}
+                  />
+                </Box>
+              </Box>
+
+              {/* Body Section */}
+              <CardContent sx={{ p: 1.5 }}>
+                {/* Details Grid */}
+                <Grid container spacing={1} sx={{ mb: 2 }}>
+                  <Grid size={12}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <BsTelephone size={16} />
+                      </Box>
+                      <Box>
+                        {/* <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Order Date
+                        </Typography> */}
+                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                          9988776655
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={12}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <MdAlternateEmail size={16} />
+                      </Box>
+                      <Box>
+                        {/* <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          QC Items
+                        </Typography> */}
+                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                         info@steelmart.co.in
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  
+                </Grid>
+                <Divider sx={{ mb: 1 }} />
+                {/* Action Buttons */}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+                 
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#e8f5e9",      // light green
+                      color: "#48c24eff",       // success dark
+                      "&:hover": { bgcolor: "#c8e6c9" },
+                    }}
+                  >
+                    <RiListOrdered size={20} />
+                  </IconButton>
+                </Box>
+              </CardContent>
+            </Card>
+            {/* Mobile Pagination */}
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+              <Pagination
+                count={Math.ceil(10 / pagination.pageSize)}
+                page={pagination.pageIndex + 1}
+                onChange={handleMobilePageChange}
+                color="primary"
+              />
+            </Box>
+          </Box>
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
         <Grid size={12}>
           <Paper
             elevation={0}
@@ -347,8 +522,9 @@ console.log("vendorData", vendorData);
             />
           </Paper>
         </Grid>
-      </Grid>
+         )}   
     </ErrorBoundary>
+    </>
   );
 };
 

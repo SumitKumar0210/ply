@@ -14,6 +14,14 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  Chip,
+  Card,
+  CardContent,
+  TextField,
+  Pagination,
+  InputAdornment,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 import {
@@ -26,18 +34,26 @@ import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
-
+import SearchIcon from "@mui/icons-material/Search";
+import { HiOutlineReceiptTax } from "react-icons/hi";
+import { BsTelephone } from "react-icons/bs";
+import { MdAlternateEmail } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProducts, deleteProduct, statusUpdate } from "../settings/slices/productSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import Profile from "../../assets/images/profile.jpg";
 import ProductFormDialog from "../../components/Product/ProductFormDialog";
 import { useAuth } from "../../context/AuthContext";
+import { MdOutlineQrCode2, MdStraighten } from "react-icons/md";
 
 const ProductStocks = () => {
   const { hasPermission, hasAnyPermission } = useAuth();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
   const dispatch = useDispatch();
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const { data: data = [], loading } = useSelector((state) => state.product);
 
   const tableContainerRef = useRef(null);
@@ -102,7 +118,7 @@ const ProductStocks = () => {
       { accessorKey: "size", header: "Size", size: 100 },
       { accessorKey: "product_type", header: "Product Type", size: 150 },
       { accessorKey: "available_qty", header: "Available Qty", size: 150 },
-      
+
     ];
 
 
@@ -154,13 +170,174 @@ const ProductStocks = () => {
     window.location.reload();
   };
 
+
   return (
     <>
-      <Grid container spacing={1}>
+<Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 2 }}
+      >
+        <Grid item>
+          <Typography variant="h6" className="page-title">
+            Product Stocks
+          </Typography>
+        </Grid>
+        <Grid item>
+           {hasPermission('product.create') && (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleAddProduct}
+                sx={{mt: 0}}
+              >
+                Add Product
+              </Button>
+            )}
+        </Grid>
+      </Grid>
+      {isMobile ? (
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box sx={{ minHeight: '100vh' }}>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search purchase orders..."
+                value=""
+                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
+            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+              {/* Header Section - Blue Background */}
+              <Box
+                sx={{
+                  bgcolor: "primary.main",
+                  p: 1.5,
+                  color: "primary.contrastText",
+                }}
+              >
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 500, color: "white", mb: 0.5 }}>
+                      Decorative Laminate Sheet
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      
+                      <Chip
+                    label="Hardware"
+                    size="small"
+                    sx={{
+                      bgcolor: "white",
+                      color: "primary.main",
+                      fontWeight: 500,
+                      fontSize: "0.75rem",
+                    }}
+                  />
+                  <Chip
+                        label="Qty: 45"
+                        size="small"
+                        sx={{
+                          fontSize: "0.75rem",
+                          fontWeight: 500,
+                          bgcolor: "success.light",
+                          color: "success.contrastText"
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                  
+                </Box>
+              </Box>
+
+              {/* Body Section */}
+              <CardContent sx={{ px: 1.5 }}>
+                {/* Details Grid */}
+                <Grid container spacing={0} sx={{ mb: 0 }}>
+                  <Grid size={12}>
+                    {/* Products Section */}
+                    <Box sx={{ mt: 0 }}>
+                      {/* Single Product Item */}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1.5,
+                        }}
+                      >
+                        {/* Product Image */}
+                        <Box
+                          component="img"
+                          src="https://pihpl.com/wp-content/uploads/Plywood-core.jpg"
+                          alt="Decorative Laminate Sheet"
+                          sx={{
+                            width: 46,
+                            height: 46,
+                            borderRadius: 1,
+                            objectFit: "cover",
+                            border: "1px solid #eee",
+                          }}
+                        />
+                        {/* Product Details */}
+                        
+
+<Box sx={{ flex: 1 }}>
+  {/* Model */}
+  <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
+    <MdOutlineQrCode2 size={14} color="#666" />
+    <Typography
+      variant="body2"
+      sx={{ fontWeight: 500, lineHeight: 1.2 }}
+    >
+      DL-503
+    </Typography>
+  </Box>
+
+  {/* Size / Dimension */}
+  <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mt: 0.5 }}>
+    <MdStraighten size={14} color="#666" />
+    <Typography
+      variant="caption"
+      sx={{ color: "text.secondary" }}
+    >
+      8×4 ft
+    </Typography>
+  </Box>
+</Box>
+
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+            {/* Mobile Pagination */}
+            {/* <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+                    <Pagination
+                      count={Math.ceil(10 / pagination.pageSize)}
+                      page={pagination.pageIndex + 1}
+                      onChange={handleMobilePageChange}
+                      color="primary"
+                    />
+                  </Box> */}
+          </Box>
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
         <Grid size={12}>
           <Paper
             elevation={0}
-            sx={{ width: "100%", overflowX: "auto", backgroundColor: "#fff", px:3 }}
+            sx={{ width: "100%", overflowX: "auto", backgroundColor: "#fff", px: 3 }}
             ref={tableContainerRef}
           >
             <MaterialReactTable
@@ -220,22 +397,15 @@ const ProductStocks = () => {
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-                    {hasPermission('product.create') && (
-                      <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={handleAddProduct}
-                      >
-                        Add Product
-                      </Button>
-                    )}
+                    
                   </Box>
                 </Box>
               )}
             />
           </Paper>
         </Grid>
-      </Grid>
+      )}
+
 
       {/* Product Form Dialog - Handles both Add and Edit */}
       <ProductFormDialog

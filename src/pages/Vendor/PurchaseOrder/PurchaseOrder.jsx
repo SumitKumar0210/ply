@@ -123,7 +123,7 @@ const PurchaseOrderCard = ({ order, onView, onEdit, onDelete, hasPermission }) =
       <CardContent sx={{ p: 2 }}>
         {/* Details Grid */}
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={6}>
+          <Grid size={6}>
             <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
               <Box
                 sx={{
@@ -152,7 +152,7 @@ const PurchaseOrderCard = ({ order, onView, onEdit, onDelete, hasPermission }) =
             </Box>
           </Grid>
 
-          <Grid item xs={6}>
+          <Grid size={6}>
             <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
               <Box
                 sx={{
@@ -181,7 +181,7 @@ const PurchaseOrderCard = ({ order, onView, onEdit, onDelete, hasPermission }) =
             </Box>
           </Grid>
 
-          <Grid item xs={6}>
+          <Grid size={6}>
             <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
               <Box
                 sx={{
@@ -210,7 +210,7 @@ const PurchaseOrderCard = ({ order, onView, onEdit, onDelete, hasPermission }) =
             </Box>
           </Grid>
 
-          <Grid item xs={6}>
+          <Grid size={6}>
             <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
               <Box
                 sx={{

@@ -61,7 +61,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           "&:last-child": {
-            paddingBottom: "auto", // must be string
+            paddingBottom: "12px", // must be string
           },
         },
       },
