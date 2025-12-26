@@ -65,6 +65,7 @@ const PermissionGroupManager = lazy(() => import("../pages/Users/userPermission"
 const ProductStocks = lazy(() => import("../pages/Production/ProductStock"));
 const RRPManagement = lazy(() => import("../pages/Production/RRPManagement"));
 const Calendar = lazy(() => import("../pages/Users/Calendar/Calendar"));
+const MaterialInventory = lazy(() => import("../pages/Vendor/Material/Inventory"));
 
 
 const Error404 = lazy(() => import("../pages/error/404"));
@@ -135,6 +136,7 @@ const AppRoutes = () => {
         <Route path="/vendor/purchase-order/approve" element={<SecurePage permission="purchase_order.approve"><ApprovePurchaseOrder /></SecurePage>} />
         <Route path="/vendor/purchase-order/quality-check/:id" element={<SecurePage permission="qc_po.read"><PurchaseOrderQC /></SecurePage>} />
         <Route path="/vendor/purchase-order/print/:id" element={<SecurePage permission="qc_po.read"><PrintPurchaseOrder /></SecurePage>} />
+        <Route path="/material-inventory" element={<SecurePage ><MaterialInventory /></SecurePage>} />
 
         <Route path="/vendor/invoice" element={<SecurePage permission="vendor_invoices.read"><VendorInvoice /></SecurePage>} />
         <Route path="/vendor/invoice/view/:id" element={<SecurePage permission="vendor_invoices.read"><InvoiceDetail /></SecurePage>} />

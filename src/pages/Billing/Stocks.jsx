@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Typography,
-  Grid,
   Paper,
   Box,
   IconButton,
   Tooltip,
   Skeleton,
 } from "@mui/material";
+import Grid from "@mui/material/Grid";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -15,6 +15,7 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import { IoMdRefresh } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchStock } from "./slice/stockSlice";
 
@@ -47,14 +48,78 @@ class ErrorBoundary extends React.Component {
 const StockInOut = () => {
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
+  const searchTimerRef = useRef(null);
 
-  const { data: stockData = [], loading, error } = useSelector(
-    (state) => state.stock
-  );
+  const { 
+    data: stockData = [], 
+    loading, 
+    error,
+    pagination: reduxPagination,
+  } = useSelector((state) => state.stock);
 
+  // Initialize state (no URL params)
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  
+  const [globalFilter, setGlobalFilter] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounced search effect
   useEffect(() => {
-    dispatch(fetchStock());
-  }, [dispatch]);
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(globalFilter);
+      // Reset to first page when search changes
+      if (globalFilter !== debouncedSearch) {
+        setPagination(prev => ({ ...prev, pageIndex: 0 }));
+      }
+    }, 300); // Reduced to 300ms for snappier feel
+
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, [globalFilter]);
+
+  // Fetch data when pagination or debounced search changes
+  useEffect(() => {
+    const params = {
+      page: pagination.pageIndex + 1,
+      perPage: pagination.pageSize,
+      searchQuery: debouncedSearch,
+    };
+
+    console.log('Fetching data with params:', params);
+    dispatch(fetchStock(params));
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
+
+  // Handle pagination change
+  const handlePaginationChange = useCallback((updater) => {
+    setPagination((prev) => {
+      const newPagination = typeof updater === 'function' ? updater(prev) : updater;
+      return newPagination;
+    });
+  }, []);
+
+  // Handle search change (immediate UI update, debounced fetch)
+  const handleGlobalFilterChange = useCallback((value) => {
+    setGlobalFilter(value || "");
+  }, []);
+
+  // Refresh data
+  const handleRefresh = useCallback(() => {
+    dispatch(fetchStock({
+      page: pagination.pageIndex + 1,
+      perPage: pagination.pageSize,
+      searchQuery: debouncedSearch,
+    }));
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
   const columns = useMemo(
     () => [
@@ -72,7 +137,6 @@ const StockInOut = () => {
           return row.original.product?.name || "-";
         },
       },
-
       {
         accessorKey: "in_stock",
         header: "Stock In",
@@ -113,12 +177,11 @@ const StockInOut = () => {
           const inStock = row.original.in_stock;
           const outStock = row.original.out_stock;
 
-          // Determine color based on stock movement
           let color = "text.primary";
           if (inStock !== null && inStock !== undefined && inStock > 0) {
-            color = "success.main"; // Green if stock came in
+            color = "success.main";
           } else if (outStock !== null && outStock !== undefined && outStock > 0) {
-            color = "error.main"; // Red if stock went out
+            color = "error.main";
           }
 
           return value !== null && value !== undefined ? (
@@ -137,7 +200,6 @@ const StockInOut = () => {
           if (loading) return <Skeleton variant="text" width="80%" />;
           const date = cell.getValue();
           if (!date) return "-";
-          // Format date to readable format
           return new Date(date).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
@@ -151,54 +213,65 @@ const StockInOut = () => {
     [loading]
   );
 
-  // Function to download CSV from data
-  const downloadCSV = () => {
-    const headers = [
-      "ID",
-      "Product Name",
-      "Stock In",
-      "Stock Out",
-      "Available Qty",
-      "Created"
-    ];
+  const downloadCSV = useCallback(() => {
+    try {
+      const headers = [
+        "ID",
+        "Product Name",
+        "Stock In",
+        "Stock Out",
+        "Available Qty",
+        "Created"
+      ];
 
-    const rows = stockData.map((row) => {
-      const inStock = row.in_stock || 0;
-      const outStock = row.out_stock || 0;
+      const rows = stockData.map((row) => [
+        row.id || "",
+        row.product?.name || "",
+        row.in_stock !== null ? row.in_stock : "",
+        row.out_stock !== null ? row.out_stock : "",
+        row.available_qty !== null ? row.available_qty : "",
+        row.created_at || ""
+      ]);
 
-      return [
-        row.id,
-        row.product?.name || "-",
-        row.in_stock !== null ? row.in_stock : "-",
-        row.out_stock !== null ? row.out_stock : "-",
-        row.available_qty !== null ? row.available_qty : "-",
-        row.created_at
-      ].map(val => `"${val}"`).join(",");
-    });
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((row) =>
+          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+        ),
+      ].join("\n");
 
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `Stock_InOut_${new Date().toISOString().split("T")[0]}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("CSV download error:", error);
+    }
+  }, [stockData]);
 
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "stock_inout_data.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Print handler
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
+    try {
+      const printWindow = window.open("", "", "height=600,width=1200");
+      if (!printWindow) return;
+      printWindow.document.write(tableContainerRef.current.innerHTML);
+      printWindow.document.close();
+      printWindow.print();
+    } catch (error) {
+      console.error("Print error:", error);
+    }
+  }, []);
 
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
-  };
+  // Calculate total records from Redux state
+  const totalRecords = reduxPagination?.total || 0;
 
   return (
     <ErrorBoundary>
@@ -206,20 +279,33 @@ const StockInOut = () => {
         <Grid size={12}>
           <Paper
             elevation={0}
-            sx={{ width: "100%", overflowX: "auto", backgroundColor: "#fff" }}
             ref={tableContainerRef}
+            sx={{
+              width: "100%",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+              px: 2,
+              py: 1,
+            }}
           >
             <MaterialReactTable
               columns={columns}
               data={stockData}
               getRowId={(row) => row.id}
+              manualPagination
+              manualFiltering
+              rowCount={totalRecords}
               state={{
                 isLoading: loading,
-                showLoadingOverlay: loading,
+                pagination: pagination,
+                globalFilter,
+                showProgressBars: loading,
               }}
+              onPaginationChange={handlePaginationChange}
+              onGlobalFilterChange={handleGlobalFilterChange}
               enableTopToolbar
-              enableColumnFilters
-              enableSorting
+              enableColumnFilters={false}
+              enableSorting={false}
               enablePagination
               enableBottomToolbar
               enableGlobalFilter
@@ -228,10 +314,20 @@ const StockInOut = () => {
               enableColumnVisibilityToggle={false}
               initialState={{ density: "compact" }}
               muiTableContainerProps={{
-                sx: { width: "100%", backgroundColor: "#fff", px: 3 },
+                sx: {
+                  width: "100%",
+                  backgroundColor: "#fff",
+                  overflowX: "auto",
+                  minWidth: "800px",
+                },
               }}
               muiTablePaperProps={{
-                sx: { backgroundColor: "#fff" },
+                sx: { backgroundColor: "#fff", boxShadow: "none" },
+              }}
+              muiPaginationProps={{
+                rowsPerPageOptions: [5, 10, 20, 50, 100],
+                showFirstButton: true,
+                showLastButton: true,
               }}
               renderTopToolbar={({ table }) => (
                 <Box
@@ -241,25 +337,26 @@ const StockInOut = () => {
                     justifyContent: "space-between",
                     width: "100%",
                     p: 1,
-                    px: 3
                   }}
                 >
                   <Typography variant="h6" className='page-title'>
                     Stock In/Out
                   </Typography>
-
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <MRT_GlobalFilterTextField table={table} />
                     <MRT_ToolbarInternalButtons table={table} />
-
+                    <Tooltip title="Refresh">
+                      <IconButton onClick={handleRefresh} size="small" disabled={loading}>
+                        <IoMdRefresh size={20} />
+                      </IconButton>
+                    </Tooltip>
                     <Tooltip title="Print">
-                      <IconButton color="default" onClick={handlePrint}>
+                      <IconButton onClick={handlePrint} size="small">
                         <FiPrinter size={20} />
                       </IconButton>
                     </Tooltip>
-
                     <Tooltip title="Download CSV">
-                      <IconButton color="default" onClick={downloadCSV}>
+                      <IconButton onClick={downloadCSV} size="small">
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
