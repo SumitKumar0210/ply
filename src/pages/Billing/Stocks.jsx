@@ -340,7 +340,7 @@ const StockInOut = () => {
                   }}
                 >
                   <Typography variant="h6" className='page-title'>
-                    Stock In/Out
+                    Stock Movement In/Out
                   </Typography>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <MRT_GlobalFilterTextField table={table} />

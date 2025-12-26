@@ -987,11 +987,11 @@ const Labours = () => {
       {/* Header */}
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
-          <Typography variant="h6" className="page-title">Labours</Typography>
+          <Typography variant="h6" className="page-title">Foreman</Typography>
         </Grid>
         <Grid>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>
-            Add Labour
+            Add Foreman
           </Button>
         </Grid>
       </Grid>
@@ -1230,7 +1230,7 @@ const Labours = () => {
                 }}
               >
                 <Typography variant="h6" className='page-title'>
-                  Labours List
+                  Foreman List
                 </Typography>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <MRT_GlobalFilterTextField table={table} />

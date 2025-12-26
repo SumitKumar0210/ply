@@ -78,14 +78,20 @@ BootstrapDialogTitle.propTypes = {
 };
 
 //  Status colors
-const getStatusChip = (status) => {
+const getStatusChip = (status, count = 0) => {
   switch (status) {
     case 0:
       return <Chip label="Pending" color="warning" size="small" />;
     case 3:
       return <Chip label="Completed" color="success" size="small" />;
     default:
-      return <Chip label="In Production" color="info" size="small" />;
+      return (
+        <Chip
+          label={`In Production (${count})`}
+          color="info"
+          size="small"
+        />
+      );
   }
 };
 
@@ -132,7 +138,7 @@ const Order = () => {
 
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(globalFilter);
-      
+
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }, 500);
 
@@ -273,11 +279,7 @@ const Order = () => {
       {
         accessorKey: "status",
         header: "Status",
-        Cell: ({ row }) =>
-          getStatusChip(
-            row.original?.status,
-            row.original?.production_product_count
-          ),
+        Cell: ({ row }) => getStatusChip(row.original?.status, row.original?.production_product_count),
       },
     ];
 

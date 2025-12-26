@@ -44,6 +44,7 @@ import roleReducer from '../pages/settings/slices/roleSlice';
 import workShiftReducer from '../pages/settings/slices/workShiftSlice';
 import calendarReducer from '../pages/Users/Calendar/slice/calendarSlice';
 import inventoryReducer from '../pages/Vendor/Material/slice/inventorySlice';
+import attendanceReducer from '../pages/Users/Attendance/slice/attendanceSlice';
 
 export const store = configureStore({
     reducer: {
@@ -92,5 +93,6 @@ export const store = configureStore({
         workShift: workShiftReducer,
         calendar: calendarReducer,
         inventory: inventoryReducer,
+        attendance: attendanceReducer,
     }
 })

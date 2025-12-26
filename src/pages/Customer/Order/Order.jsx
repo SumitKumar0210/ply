@@ -81,6 +81,8 @@ const getStatusChip = (status, count = 0) => {
   switch (status) {
     case 0:
       return <Chip label="Pending" color="warning" size="small" />;
+    case 3:
+          return <Chip label="Completed" color="success" size="small" />;
 
     default:
       return (

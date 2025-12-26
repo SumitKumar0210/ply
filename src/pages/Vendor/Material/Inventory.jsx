@@ -59,13 +59,15 @@ const Inventory = () => {
     data: inventoryData = [],
     loading, 
     error,
+    viewType = 'logs', // 'logs' or 'summary'
     filters,
     pagination: reduxPagination,
   } = useSelector((state) => state.inventory);
 
-  const { data:materials = [] }  = useSelector((state) => state.material);
+  const { data: materials = [] } = useSelector((state) => state.material);
   
   console.log("Inventory Data:", inventoryData);
+  console.log("View Type:", viewType);
 
   // Local state
   const [pagination, setPagination] = useState({
@@ -76,6 +78,10 @@ const Inventory = () => {
   const [selectedMaterial, setSelectedMaterial] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Check if showing summary with all materials
+  const isShowingSummary = viewType === 'summary';
+  const isShowingAllMaterials = isShowingSummary && !selectedMaterial;
 
   // Initial fetch
   useEffect(() => {
@@ -93,10 +99,15 @@ const Inventory = () => {
       perPage: pagination.pageSize,
     };
 
-    if (selectedMaterial) params.materialId = selectedMaterial;
+    // User can choose to filter by material or show all
+    if (selectedMaterial) {
+      params.materialId = selectedMaterial;
+    }
+    
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
+    // Update filters in Redux
     dispatch(setMaterialFilter(selectedMaterial));
     dispatch(setDateRange({ startDate, endDate }));
     dispatch(fetchInventory(params));
@@ -116,7 +127,9 @@ const Inventory = () => {
         perPage: newPagination.pageSize,
       };
 
-      if (selectedMaterial) params.materialId = selectedMaterial;
+      if (selectedMaterial) {
+        params.materialId = selectedMaterial;
+      }
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
 
@@ -133,7 +146,9 @@ const Inventory = () => {
       perPage: pagination.pageSize,
     };
 
-    if (selectedMaterial) params.materialId = selectedMaterial;
+    if (selectedMaterial) {
+      params.materialId = selectedMaterial;
+    }
     if (startDate) params.startDate = startDate;
     if (endDate) params.endDate = endDate;
 
@@ -153,7 +168,77 @@ const Inventory = () => {
     setPagination(prev => ({ ...prev, pageIndex: 0 }));
   }, [dispatch, pagination.pageSize]);
 
-  const columns = useMemo(
+  // Summary columns (shown when date range is selected)
+  const summaryColumns = useMemo(
+    () => [
+      {
+        accessorKey: "material_name",
+        header: "Material Name",
+        size: 200,
+        Cell: ({ cell }) => loading ? <Skeleton variant="text" width="80%" /> : (
+          <Typography fontWeight="600">{cell.getValue() || "-"}</Typography>
+        ),
+      },
+      {
+        accessorKey: "opening_stock",
+        header: "Opening Stock",
+        size: 150,
+        Cell: ({ cell }) => {
+          if (loading) return <Skeleton variant="text" width="80%" />;
+          return (
+            <Typography fontWeight="600" color="text.primary">
+              {cell.getValue() || 0}
+            </Typography>
+          );
+        },
+      },
+      {
+        accessorKey: "total_in",
+        header: "Total IN",
+        size: 130,
+        Cell: ({ cell }) => {
+          if (loading) return <Skeleton variant="text" width="80%" />;
+          const value = cell.getValue() || 0;
+          return (
+            <Typography color="success.main" fontWeight="600">
+              +{value}
+            </Typography>
+          );
+        },
+      },
+      {
+        accessorKey: "total_out",
+        header: "Total OUT",
+        size: 130,
+        Cell: ({ cell }) => {
+          if (loading) return <Skeleton variant="text" width="80%" />;
+          const value = cell.getValue() || 0;
+          return (
+            <Typography color="error.main" fontWeight="600">
+              -{value}
+            </Typography>
+          );
+        },
+      },
+      {
+        accessorKey: "closing_stock",
+        header: "Closing Stock",
+        size: 150,
+        Cell: ({ cell }) => {
+          if (loading) return <Skeleton variant="text" width="80%" />;
+          return (
+            <Typography fontWeight="700" color="primary.main" fontSize="1.1rem">
+              {cell.getValue() || 0}
+            </Typography>
+          );
+        },
+      },
+    ],
+    [loading]
+  );
+
+  // Transaction logs columns (default view)
+  const logsColumns = useMemo(
     () => [
       {
         accessorKey: "material_name",
@@ -206,49 +291,61 @@ const Inventory = () => {
           );
         },
       },
-    //   {
-    //     accessorKey: "previous_qty",
-    //     header: "Previous Stock",
-    //     size: 130,
-    //     Cell: ({ cell }) => {
-    //       if (loading) return <Skeleton variant="text" width="80%" />;
-    //       const value = cell.getValue();
-    //       return (
-    //         <Typography color="text.secondary">
-    //           {value !== null && value !== undefined ? value : 0}
-    //         </Typography>
-    //       );
-    //     },
-    //   },
-    //   {
-    //     accessorKey: "new_qty",
-    //     header: "New Stock",
-    //     size: 130,
-    //     Cell: ({ cell }) => {
-    //       if (loading) return <Skeleton variant="text" width="80%" />;
-    //       const value = cell.getValue();
-    //       return (
-    //         <Typography color="primary.main" fontWeight="700" fontSize="1.1rem">
-    //           {value !== null && value !== undefined ? value : 0}
-    //         </Typography>
-    //       );
-    //     },
-    //   },
-    //   {
-    //     accessorKey: "reference_type",
-    //     header: "Reference",
-    //     size: 150,
-    //     Cell: ({ cell, row }) => {
-    //       if (loading) return <Skeleton variant="text" width="80%" />;
-    //       const refType = cell.getValue();
-    //       const refId = row.original.reference_id;
-    //       return (
-    //         <Typography variant="body2">
-    //           {refType ? `${refType} #${refId}` : "-"}
-    //         </Typography>
-    //       );
-    //     },
-    //   },
+      // {
+      //   accessorKey: "previous_qty",
+      //   header: "Previous Stock",
+      //   size: 130,
+      //   Cell: ({ cell }) => {
+      //     if (loading) return <Skeleton variant="text" width="80%" />;
+      //     return (
+      //       <Typography color="text.secondary">
+      //         {cell.getValue() !== null ? cell.getValue() : "-"}
+      //       </Typography>
+      //     );
+      //   },
+      // },
+      // {
+      //   accessorKey: "new_qty",
+      //   header: "New Stock",
+      //   size: 130,
+      //   Cell: ({ cell }) => {
+      //     if (loading) return <Skeleton variant="text" width="80%" />;
+      //     return (
+      //       <Typography fontWeight="600" color="primary.main">
+      //         {cell.getValue() !== null ? cell.getValue() : "-"}
+      //       </Typography>
+      //     );
+      //   },
+      // },
+      // {
+      //   accessorKey: "reference_type",
+      //   header: "Reference",
+      //   size: 150,
+      //   Cell: ({ cell, row }) => {
+      //     if (loading) return <Skeleton variant="text" width="80%" />;
+      //     const refType = cell.getValue();
+      //     const refId = row.original.reference_id;
+      //     if (!refType) return "-";
+      //     return (
+      //       <Typography variant="body2" color="text.secondary">
+      //         {refType} #{refId}
+      //       </Typography>
+      //     );
+      //   },
+      // },
+      // {
+      //   accessorKey: "remarks",
+      //   header: "Remarks",
+      //   size: 200,
+      //   Cell: ({ cell }) => {
+      //     if (loading) return <Skeleton variant="text" width="80%" />;
+      //     return (
+      //       <Typography variant="body2" color="text.secondary">
+      //         {cell.getValue() || "-"}
+      //       </Typography>
+      //     );
+      //   },
+      // },
       {
         accessorKey: "created_at",
         header: "Date",
@@ -270,30 +367,46 @@ const Inventory = () => {
     [loading]
   );
 
+  // Select columns based on view type
+  const columns = viewType === 'summary' ? summaryColumns : logsColumns;
+
   // Download CSV
   const downloadCSV = useCallback(() => {
     try {
-      const headers = [
-        "Material Name",
-        "Type",
-        "Quantity",
-        "Previous Stock",
-        "New Stock",
-        "Reference",
-        "Remarks",
-        "Date"
-      ];
+      let headers, rows;
 
-      const rows = inventoryData.map((row) => [
-        row.material_name || "",
-        row.type || "",
-        row.qty !== null ? row.qty : 0,
-        row.previous_qty !== null ? row.previous_qty : 0,
-        row.new_qty !== null ? row.new_qty : 0,
-        row.reference_type ? `${row.reference_type} #${row.reference_id}` : "",
-        row.remarks || "",
-        row.created_at || ""
-      ]);
+      if (viewType === 'summary') {
+        headers = ["Material Name", "Opening Stock", "Total IN", "Total OUT", "Closing Stock"];
+        rows = inventoryData.map((row) => [
+          row.material_name || "",
+          row.opening_stock || 0,
+          row.total_in || 0,
+          row.total_out || 0,
+          row.closing_stock || 0,
+        ]);
+      } else {
+        headers = [
+          "Material Name",
+          "Type",
+          "Quantity",
+          "Previous Stock",
+          "New Stock",
+          "Reference",
+          "Remarks",
+          "Date"
+        ];
+
+        rows = inventoryData.map((row) => [
+          row.material_name || "",
+          row.type || "",
+          row.qty !== null ? row.qty : 0,
+          row.previous_qty !== null ? row.previous_qty : 0,
+          row.new_qty !== null ? row.new_qty : 0,
+          row.reference_type ? `${row.reference_type} #${row.reference_id}` : "",
+          row.remarks || "",
+          row.created_at || ""
+        ]);
+      }
 
       const csvContent = [
         headers.join(","),
@@ -306,10 +419,10 @@ const Inventory = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute(
-        "download",
-        `Material_Logs_${new Date().toISOString().split("T")[0]}.csv`
-      );
+      const filename = viewType === 'summary' 
+        ? `Material_Summary_${new Date().toISOString().split("T")[0]}.csv`
+        : `Material_Logs_${new Date().toISOString().split("T")[0]}.csv`;
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -317,7 +430,7 @@ const Inventory = () => {
     } catch (error) {
       console.error("CSV download error:", error);
     }
-  }, [inventoryData]);
+  }, [inventoryData, viewType]);
 
   // Print handler
   const handlePrint = useCallback(() => {
@@ -326,23 +439,38 @@ const Inventory = () => {
       const printWindow = window.open("", "", "height=600,width=1200");
       if (!printWindow) return;
       
+      const title = viewType === 'summary' ? 'Material Summary Report' : 'Material Transaction Logs';
+      const materialInfo = selectedMaterial && viewType === 'summary'
+        ? `<p><strong>Material:</strong> ${materials.find(m => m.id === parseInt(selectedMaterial))?.name || 'Selected Material'}</p>`
+        : isShowingAllMaterials 
+        ? '<p><strong>Showing:</strong> All Materials</p>'
+        : '';
+      const dateInfo = viewType === 'summary' && startDate && endDate 
+        ? `<p><strong>Period:</strong> ${startDate} to ${endDate}</p>`
+        : '';
+      
       const printContent = `
         <html>
           <head>
-            <title>Material Logs Report</title>
+            <title>${title}</title>
             <style>
               body { font-family: Arial, sans-serif; padding: 20px; }
               h1 { text-align: center; margin-bottom: 20px; }
-              table { width: 100%; border-collapse: collapse; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
               th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
               th { background-color: #f5f5f5; font-weight: bold; }
               .success { color: green; }
               .error { color: red; }
+              .info { margin-bottom: 15px; }
             </style>
           </head>
           <body>
-            <h1>Material Logs Report</h1>
-            <p>Date: ${new Date().toLocaleDateString()}</p>
+            <h1>${title}</h1>
+            <div class="info">
+              <p><strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
+              ${materialInfo}
+              ${dateInfo}
+            </div>
             ${tableContainerRef.current.innerHTML}
           </body>
         </html>
@@ -354,7 +482,7 @@ const Inventory = () => {
     } catch (error) {
       console.error("Print error:", error);
     }
-  }, []);
+  }, [viewType, startDate, endDate, selectedMaterial, materials, isShowingAllMaterials]);
 
   const totalRecords = reduxPagination?.total || 0;
   const hasActiveFilters = selectedMaterial || startDate || endDate;
@@ -373,23 +501,52 @@ const Inventory = () => {
               mb: 2,
             }}
           >
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", mb: 2, flexWrap: "wrap", gap: 1 }}>
               <MdFilterList size={24} style={{ marginRight: 8 }} />
               <Typography variant="h6">Filters</Typography>
               {hasActiveFilters && (
                 <Box
                   sx={{
-                    ml: 2,
                     px: 1,
                     py: 0.5,
-                    bgcolor: "primary.light",
-                    color: "primary.dark",
+                    bgcolor: viewType === 'summary' ? "info.light" : "primary.light",
+                    color: viewType === 'summary' ? "info.dark" : "primary.dark",
                     borderRadius: 1,
                     fontSize: "0.75rem",
                     fontWeight: 600,
                   }}
                 >
-                  Active
+                  {viewType === 'summary' ? 'Summary View' : 'Logs View'}
+                </Box>
+              )}
+              {isShowingAllMaterials && (
+                <Box
+                  sx={{
+                    px: 1,
+                    py: 0.5,
+                    bgcolor: "success.light",
+                    color: "success.dark",
+                    borderRadius: 1,
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                  }}
+                >
+                  All Materials
+                </Box>
+              )}
+              {selectedMaterial && viewType === 'summary' && (
+                <Box
+                  sx={{
+                    px: 1,
+                    py: 0.5,
+                    bgcolor: "warning.light",
+                    color: "warning.dark",
+                    borderRadius: 1,
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                  }}
+                >
+                  Single Material
                 </Box>
               )}
             </Box>
@@ -404,7 +561,7 @@ const Inventory = () => {
                     label="Select Material"
                   >
                     <MenuItem value="">
-                      <em>All Materials</em>
+                      <em>Select Materials</em>
                     </MenuItem>
                     {materials.map((material) => (
                       <MenuItem key={material.id} value={material.id}>
@@ -413,6 +570,12 @@ const Inventory = () => {
                     ))}
                   </Select>
                 </FormControl>
+                {startDate && endDate && (
+                  <></>
+                  // <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  //   {selectedMaterial ? 'Showing single material summary' : 'Showing all materials summary'}
+                  // </Typography>
+                )}
               </Grid>
 
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -448,6 +611,7 @@ const Inventory = () => {
                     startIcon={<MdFilterList />}
                     fullWidth
                     disabled={loading}
+                    sx={{ mt: 0 }}
                   >
                     Apply
                   </Button>
@@ -457,6 +621,7 @@ const Inventory = () => {
                     startIcon={<MdClear />}
                     fullWidth
                     disabled={!hasActiveFilters || loading}
+                    sx={{ mt: 0 }}
                   >
                     Clear
                   </Button>
@@ -525,15 +690,20 @@ const Inventory = () => {
                     justifyContent: "space-between",
                     width: "100%",
                     p: 1,
+                    flexWrap: "wrap",
+                    gap: 1,
                   }}
                 >
                   <Box>
                     <Typography variant="h6" className='page-title'>
-                      Material Transaction Logs
+                      {viewType === 'summary' ? 'Material Summary Report' : 'Material Transaction Logs'}
                     </Typography>
                     {hasActiveFilters && (
                       <Typography variant="caption" color="text.secondary">
-                        Filtered results
+                        {viewType === 'summary' && startDate && endDate
+                          ? `Period: ${startDate} to ${endDate}${isShowingAllMaterials ? ' (All Materials)' : selectedMaterial ? ' (Single Material)' : ''}`
+                          : 'Filtered results'
+                        }
                       </Typography>
                     )}
                   </Box>

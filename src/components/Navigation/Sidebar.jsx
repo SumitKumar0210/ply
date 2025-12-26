@@ -99,6 +99,9 @@ const menuSections = [
           {
             text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
           },
+          {
+            text: "Inventory", to: "/material-inventory", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
+          },
         ],
       },
       {
@@ -261,7 +264,13 @@ const menuSections = [
             ]
           },
           {
-            text: "Attendance", to: "/attendance-calendar", icon: <IoPeopleOutline  />, anyPermissions: [
+            text: "Mark Attendance", to: "/attendance-calendar", icon: <IoPeopleOutline  />, anyPermissions: [
+              "labour_worksheet.update",
+              "labour_worksheet.read",
+            ]
+          },
+          {
+            text: "Attendance List", to: "/attendance-lists", icon: <IoPeopleOutline  />, anyPermissions: [
               "labour_worksheet.update",
               "labour_worksheet.read",
             ]
