@@ -224,14 +224,15 @@ const ProductFormDialog = ({
         {({ values, errors, touched, handleChange, setFieldValue }) => (
           <Form>
             <DialogContent dividers>
-              <Grid container spacing={2}>
+              <Grid container spacing={2} sx={{ my: 1.5 }}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
                     id="name"
                     name="name"
                     label="Name"
-                    variant="standard"
+                    variant="outlined"
+                    size="small"
                     value={values.name}
                     onChange={handleChange}
                     error={touched.name && Boolean(errors.name)}
@@ -245,7 +246,8 @@ const ProductFormDialog = ({
                     id="model"
                     name="model"
                     label="Model"
-                    variant="standard"
+                    variant="outlined"
+                    size="small"
                     value={values.model}
                     onChange={handleChange}
                     error={touched.model && Boolean(errors.model)}
@@ -259,7 +261,8 @@ const ProductFormDialog = ({
                     id="size"
                     name="size"
                     label="Size"
-                    variant="standard"
+                    variant="outlined"
+                    size="small"
                     value={values.size}
                     onChange={handleChange}
                     error={touched.size && Boolean(errors.size)}
@@ -273,7 +276,8 @@ const ProductFormDialog = ({
                     id="color"
                     name="color"
                     label="Color"
-                    variant="standard"
+                    variant="outlined"
+                    size="small"
                     value={values.color}
                     onChange={handleChange}
                     error={touched.color && Boolean(errors.color)}
@@ -287,7 +291,8 @@ const ProductFormDialog = ({
                     id="hsn_code"
                     name="hsn_code"
                     label="HSN Code"
-                    variant="standard"
+                    variant="outlined"
+                    size="small"
                     value={values.hsn_code}
                     onChange={handleChange}
                     error={touched.hsn_code && Boolean(errors.hsn_code)}
@@ -302,7 +307,8 @@ const ProductFormDialog = ({
                     name="rrp"
                     label="RRP"
                     type="number"
-                    variant="standard"
+                    variant="outlined"
+                    size="small"
                     value={values.rrp}
                     onChange={handleChange}
                     error={touched.rrp && Boolean(errors.rrp)}
@@ -317,7 +323,8 @@ const ProductFormDialog = ({
                     id="product_type"
                     name="product_type"
                     label="Product Type"
-                    variant="standard"
+                    variant="outlined"
+                    size="small"
                     value={values.product_type}
                     onChange={handleChange}
                     error={touched.product_type && Boolean(errors.product_type)}
@@ -339,7 +346,8 @@ const ProductFormDialog = ({
                     id="group_id"
                     name="group_id"
                     label="Group"
-                    variant="standard"
+                    variant="outlined"
+                    size="small"
                     value={values.group_id}
                     onChange={handleChange}
                     error={touched.group_id && Boolean(errors.group_id)}
@@ -353,7 +361,7 @@ const ProductFormDialog = ({
                   </TextField>
                 </Grid>
 
-                <Grid size={{ xs: 12, md: 6 }} sx={{ mb: 3 }}>
+                <Grid size={{ xs: 12, md: 6 }} sx={{ mb: 1 }}>
                   <Grid container spacing={1} alignItems="center">
                     <Grid size={{ xs: 8 }}>
                       <Button
@@ -409,7 +417,8 @@ const ProductFormDialog = ({
                     id="narations"
                     name="narations"
                     label="Narations"
-                    variant="standard"
+                    variant="outlined"
+                    size="small"
                     value={values.narations}
                     onChange={handleChange}
                     error={touched.narations && Boolean(errors.narations)}

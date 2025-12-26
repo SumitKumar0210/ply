@@ -3,7 +3,7 @@ body {
   overflow-y: auto !important;
   position: relative;
   background-color: #eff1f9;
-  font-family: "Open Sans", sans-serif !important;
+  /* font-family: "Open Sans", sans-serif !important; */
 }
 
 * {

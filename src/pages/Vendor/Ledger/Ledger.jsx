@@ -147,7 +147,7 @@ const Ledger = () => {
       </Grid>
 
       {/* Ledger Content */}
-      <div ref={contentRef} style={{ background: "#fff", padding: "20px" }}>
+      <div ref={contentRef} style={{ background: "#fff", padding: "10px" }}>
         <Card>
           <CardContent>
             <Typography variant="body2" sx={{ lineHeight: 1.8 }}>
@@ -268,8 +268,6 @@ const Ledger = () => {
             ) : (
               // Desktop View - Table
               <Box className="desktop-table-view">
-
-
                 <TableContainer elevation={2} sx={{ mt: 2 }} >
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
