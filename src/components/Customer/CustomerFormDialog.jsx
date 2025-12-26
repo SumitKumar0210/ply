@@ -124,7 +124,7 @@ const CustomerFormDialog = ({
   states = [], 
   isEdit = false,
   submitting = false,
-  maxWidth = "md"
+  maxWidth = "sm"
 }) => {
   return (
     <BootstrapDialog open={open} onClose={onClose} fullWidth maxWidth={maxWidth}>
@@ -137,8 +137,8 @@ const CustomerFormDialog = ({
       >
         {({ handleChange, handleSubmit, values, touched, errors, setFieldValue, isSubmitting }) => (
           <Form onSubmit={handleSubmit}>
-            <DialogContent dividers>
-              <Grid container rowSpacing={2} columnSpacing={3}>
+            <DialogContent dividers >
+              <Grid container rowSpacing={2} columnSpacing={3} sx={{ mt: 1 }}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     name="name"
@@ -285,7 +285,7 @@ const CustomerFormDialog = ({
                 </Grid>
               </Grid>
             </DialogContent>
-            <DialogActions>
+            <DialogActions sx={{mb:1.25}}>
               <Button 
                 onClick={onClose} 
                 variant="outlined" 

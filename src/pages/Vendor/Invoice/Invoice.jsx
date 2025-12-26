@@ -681,7 +681,6 @@ const VendorInvoice = () => {
         </>
       ) : (
         // 🔹 DESKTOP VIEW (Table)
-
         <Grid size={12}>
           <Paper
             elevation={0}
