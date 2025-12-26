@@ -15,6 +15,16 @@ import {
   DialogTitle,
   Box,
   Tooltip,
+  InputAdornment,
+Chip,
+  useMediaQuery,
+  useTheme,
+  Pagination,
+  Card,
+  CardContent,
+  Divider,
+  Switch,
+  Avatar,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
@@ -23,6 +33,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
+
+import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
 import {
   MaterialReactTable,
@@ -33,6 +45,8 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import Profile from "../../assets/images/profile.jpg";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
+
+import { PiCurrencyInr } from "react-icons/pi";
 
 import { successMessage, errorMessage } from "../../toast";
 import { useDispatch, useSelector } from "react-redux";
@@ -222,8 +236,13 @@ const createValidationSchema = (isEdit = false) => {
 
   return Yup.object(baseSchema);
 };
-
+ // Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
 const Labours = () => {
+   const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [open, setOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -252,19 +271,19 @@ const Labours = () => {
   );
   const { data: departments = [] } = useSelector((state) => state.department);
   const { data: shifts = [] } = useSelector((state) => state.workShift);
-  
-  
+
+
   const {
     data: rowData = [],
   } = searchResults;
-  
+
   const {
     data: tableData = [],
     total = 0,
   } = rowData;
-  
+
   const dispatch = useDispatch();
-  
+
   // Fetch labours with pagination and search
   useEffect(() => {
     // Clear existing timeout
@@ -816,7 +835,7 @@ const Labours = () => {
       </Grid>
 
       <Grid size={{ xs: 12, md: 6 }}>
-        <Grid container spacing={2} alignItems="center" mt={1}>
+        <Grid container spacing={1} alignItems="center">
           <Grid size={6}>
             <Button
               variant="contained"
@@ -912,14 +931,19 @@ const Labours = () => {
 
 
       <Grid size={{ xs: 12, md: 6 }}>
-        <Grid container spacing={2} alignItems="center" mt={1}>
-          <Grid size={documentPreviewUrl ? 6 : 8}>
+        <Grid container spacing={1} alignItems="center">
+          <Grid size={documentPreviewUrl ? 8 : 8}>
             <Button
               variant="outlined"
               component="label"
               startIcon={<FileUploadOutlinedIcon />}
               fullWidth
               disabled={compressingDocument}
+              sx={{
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}
             >
               {compressingDocument ? "Compressing..." : "Upload Document"}
               <input
@@ -935,7 +959,7 @@ const Labours = () => {
               </Typography>
             )}
           </Grid>
-          <Grid size={documentPreviewUrl ? 6 : 4}>
+          <Grid size={documentPreviewUrl ? 4 : 4}>
             {values.document_file && (
               <Box>
                 {documentPreviewUrl ? (
@@ -963,7 +987,7 @@ const Labours = () => {
       {/* Header */}
       <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Grid>
-          <Typography variant="h6">Labours</Typography>
+          <Typography variant="h6" className="page-title">Labours</Typography>
         </Grid>
         <Grid>
           <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>
@@ -972,7 +996,193 @@ const Labours = () => {
         </Grid>
       </Grid>
 
-      {/* Table */}
+      {isMobile ? (
+              // 🔹 MOBILE VIEW (Cards)
+              <>
+                <Box sx={{ minHeight: '100vh' }}>
+                  {/* Mobile Search */}
+                  <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Search labours..."
+                      value=""
+                      // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  </Paper>
+                  <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+                    {/* Header Section - Blue Background */}
+                    <Box
+                      sx={{
+                        bgcolor: "primary.main",
+                        p: 1.25,
+                        color: "primary.contrastText",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                          <Avatar
+                            src="/path-to-image.jpg"
+                            alt="Aman"
+                            sx={{ width: 40, height: 40 }}
+                          />
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                            Aman
+                          </Typography>
+                        </Box>
+                  <Chip
+                    label="Quality Check"
+                    size="small"
+                    sx={{
+                      bgcolor: "white",
+                      color: "primary.main",
+                      fontWeight: 500,
+                      fontSize: "0.75rem",
+                    }}
+                  />
+                      </Box>
+                    </Box>
+      
+                    {/* Body Section */}
+                    <CardContent sx={{ p: 1.5 }}>
+                      {/* Details Grid */}
+                      <Grid container spacing={1} sx={{ mb: 2 }}>
+                  <Grid size={12}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      {/* Icon */}
+                      <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                        <PiCurrencyInr size={16} />
+                      </Box>
+
+                      {/* Text */}
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "text.secondary", fontSize: "0.875rem", minWidth: '114px'}}
+                        >
+                          Per Hour Cost :
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 500, fontSize: "0.875rem" }}
+                        >
+                          5,000
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={12}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      {/* Icon */}
+                      <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                        <PiCurrencyInr size={16} />
+                      </Box>
+
+                      {/* Text */}
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "text.secondary", fontSize: "0.875rem", minWidth: '114px'}}
+                        >
+                          Over Time Rate :
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 500, fontSize: "0.875rem" }}
+                        >
+                          200
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+      
+                      <Divider sx={{ mb: 1.5 }} />
+                      {/* Action Buttons */}
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Switch
+                          defaultChecked
+                          sx={{
+                            width: 36,
+                            height: 20,
+                            padding: 0,
+                            '& .MuiSwitch-switchBase': {
+                              padding: 0,
+                              margin: '2px',
+                              transitionDuration: '300ms',
+                              '&.Mui-checked': {
+                                transform: 'translateX(16px)',
+                                color: '#fff',
+                                '& + .MuiSwitch-track': {
+                                  backgroundColor: '#0d6efd',
+                                  opacity: 1,
+                                  border: 0,
+                                },
+                              },
+                              '&.Mui-disabled + .MuiSwitch-track': {
+                                opacity: 0.5,
+                              },
+                            },
+                            '& .MuiSwitch-thumb': {
+                              boxSizing: 'border-box',
+                              width: 16,
+                              height: 16,
+                              boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.2)',
+                            },
+                            '& .MuiSwitch-track': {
+                              borderRadius: 10,
+                              backgroundColor: '#d9e0e6ff',
+                              opacity: 1,
+                              transition: 'background-color 0.3s',
+                            },
+                          }}
+                        />
+                        <Box sx={{ display: "flex", gap: 1.5 }}>
+                          <IconButton
+                            size="medium"
+                            sx={{
+                              bgcolor: "#e3f2fd",
+                              color: "#1976d2",
+                              "&:hover": { bgcolor: "#bbdefb" },
+                            }}
+                          >
+                            <BiSolidEditAlt size={20} />
+                          </IconButton>
+                          <IconButton
+                            size="medium"
+                            sx={{
+                              bgcolor: "#ffebee",
+                              color: "#d32f2f",
+                              "&:hover": { bgcolor: "#ffcdd2" },
+                            }}
+                          >
+                            <RiDeleteBinLine size={20} />
+                          </IconButton>
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                  {/* Mobile Pagination */}
+                  <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+                    <Pagination
+                      count={Math.ceil(10 / pagination.pageSize)}
+                      page={pagination.pageIndex + 1}
+                      onChange={handleMobilePageChange}
+                      color="primary"
+                    />
+                  </Box>
+                </Box>
+              </>
+            ) : (
+              // 🔹 DESKTOP VIEW (Table)
       <Grid size={12}>
         <Paper
           elevation={0}
@@ -1041,9 +1251,9 @@ const Labours = () => {
           />
         </Paper>
       </Grid>
-
+)}
       {/* Add Modal */}
-      <BootstrapDialog onClose={handleCloseAdd} open={open} fullWidth maxWidth="md">
+      <BootstrapDialog onClose={handleCloseAdd} open={open} fullWidth maxWidth="sm">
         <BootstrapDialogTitle onClose={handleCloseAdd}>
           Add Labour
         </BootstrapDialogTitle>
@@ -1078,7 +1288,7 @@ const Labours = () => {
       </BootstrapDialog>
 
       {/* Edit Modal */}
-      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="md">
+      <BootstrapDialog onClose={handleEditClose} open={editOpen} fullWidth maxWidth="sm">
         <BootstrapDialogTitle onClose={handleEditClose}>
           Edit Labour
         </BootstrapDialogTitle>

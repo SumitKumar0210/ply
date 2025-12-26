@@ -357,59 +357,59 @@ const ProductRequest = () => {
               </Box>
 
               {/* Body Section */}
-              <CardContent sx={{ p: 1.5}}>
+              <CardContent sx={{ p: 1.5 }}>
                 {/* Details Grid */}
-              <Grid container spacing={1} sx={{ mb: 2 }}>
-  <Grid size={12}>
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      {/* Icon */}
-      <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
-        <FiCalendar size={16} />
-      </Box>
+                <Grid container spacing={1} sx={{ mb: 2 }}>
+                  <Grid size={12}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      {/* Icon */}
+                      <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                        <FiCalendar size={16} />
+                      </Box>
 
-      {/* Text */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-        <Typography
-          variant="body2"
-          sx={{ color: "text.secondary", fontSize: "0.875rem" }}
-        >
-          Request Date:
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{ fontWeight: 500, fontSize: "0.875rem" }}
-        >
-          Dec 15, 2024
-        </Typography>
-      </Box>
-    </Box>
-  </Grid>
+                      {/* Text */}
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "text.secondary", fontSize: "0.875rem" }}
+                        >
+                          Request Date:
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 500, fontSize: "0.875rem" }}
+                        >
+                          Dec 15, 2024
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
 
-  <Grid size={12}>
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      {/* Icon */}
-      <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
-        <FiPackage size={16} />
-      </Box>
+                  <Grid size={12}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      {/* Icon */}
+                      <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                        <FiPackage size={16} />
+                      </Box>
 
-      {/* Text */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-        <Typography
-          variant="body2"
-          sx={{ color: "text.secondary", fontSize: "0.875rem" }}
-        >
-          Materials Requested:
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{ fontWeight: 500, fontSize: "0.875rem" }}
-        >
-          12 items
-        </Typography>
-      </Box>
-    </Box>
-  </Grid>
-</Grid>
+                      {/* Text */}
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "text.secondary", fontSize: "0.875rem" }}
+                        >
+                          Materials Requested:
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 500, fontSize: "0.875rem" }}
+                        >
+                          12 items
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
 
                 <Divider sx={{ mb: 1.5 }} />
                 {/* Action Buttons */}

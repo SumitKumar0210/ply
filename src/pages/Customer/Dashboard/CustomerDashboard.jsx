@@ -136,15 +136,20 @@ const CustomerDashboard = () => {
         ) : (
           // Show actual cards when not loading
           summaryCards.map((item, i) => (
-            <Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 2 }}>
+            <Grid key={i} size={{ xs: 6, sm: 6, md: 4, lg: 2 }}>
               <Card
                 sx={{
-                  p: 1,
+                   p: 1,
                   borderRadius: 2,
                   textAlign: "center",
                   boxShadow: "0px 2px 8px rgba(0,0,0,0.05)",
                   transition: "all 0.3s ease",
                   background: `linear-gradient(145deg, ${item.color}15, ${item.color}10)`,
+                  height: "100%",               // 👈 key
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
                   "&:hover": {
                     transform: "translateY(-5px)",
                     boxShadow: "0px 6px 16px rgba(0,0,0,0.1)",
@@ -162,13 +167,18 @@ const CustomerDashboard = () => {
                   >
                     {item.icon}
                   </Avatar>
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2" color="text.secondary"
+                  
+                    sx={{ mt: 1 ,  
+                    fontSize: '1rem',
+                    lineHeight: 1.2,
+                    }}>
                     {item.title}
                   </Typography>
                   <Typography
                     variant="h5"
-                    fontWeight="bold"
-                    sx={{ color: item.color, mt: 0.5 }}
+                    fontWeight="500"
+                    sx={{ color: item.color, mt: 0.5, fontSize: '1.5rem' }}
                   >
                     {item.value}
                   </Typography>

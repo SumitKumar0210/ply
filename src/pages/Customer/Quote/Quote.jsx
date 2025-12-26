@@ -14,6 +14,14 @@ import {
   Box,
   Tooltip,
   Chip,
+   Card,
+    CardContent,
+    Divider,
+    Pagination,
+    InputAdornment,
+    CircularProgress,
+    useMediaQuery,
+    useTheme
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Link, useSearchParams } from "react-router-dom";
@@ -23,7 +31,10 @@ import { AiOutlineLink, AiOutlineCheck } from "react-icons/ai";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import TaskAltIcon from "@mui/icons-material/TaskAlt";
+import { PiCurrencyInr } from "react-icons/pi";
+import { GrCurrency } from "react-icons/gr";
 import { RiDeleteBinLine } from "react-icons/ri";
+import { IoMdCheckmarkCircleOutline } from "react-icons/io";
 import AddIcon from "@mui/icons-material/Add";
 import { MdOutlineRemoveRedEye, MdOutlineVisibilityOff } from "react-icons/md";
 import { IoMdRefresh } from "react-icons/io";
@@ -36,6 +47,8 @@ import {
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
+import { FiUser, FiCalendar, FiPackage, FiCreditCard, FiPlus } from 'react-icons/fi';
+import SearchIcon from "@mui/icons-material/Search";
 import { fetchQuotation, deleteQuotation } from "../slice/quotationSlice";
 import { useDispatch, useSelector } from "react-redux";
 import LinkGenerator from "../../../components/Links/LinkGenerator";
@@ -98,6 +111,9 @@ const getStatusChip = (status) => {
 };
 
 const Quote = () => {
+  const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
   const { hasPermission, hasAnyPermission } = useAuth();
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
@@ -410,16 +426,19 @@ const Quote = () => {
       console.error("Print error:", error);
     }
   }, []);
-
+ // Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
   return (
     <>
       {/* Header Row */}
       <Grid
         container
-        spacing={2}
+        spacing={0}
         alignItems="center"
         justifyContent="space-between"
-        sx={{ mb: 2 }}
+        sx={{ mb: {xs: 1, md: 2} }}
       >
         <Grid>
           <Typography variant="h6" className="page-title">Quotation</Typography>
@@ -450,7 +469,218 @@ const Quote = () => {
         </Grid>
       </Grid>
 
-      {/* Invoice Table */}
+      {isMobile ? (
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box sx={{ minHeight: '100vh' }}>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search purchase orders..."
+                value=""
+                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
+            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+              {/* Header Section - Blue Background */}
+              <Box
+                sx={{
+                  bgcolor: "primary.main",
+                  p: 1.5,
+                  color: "primary.contrastText",
+                }}
+              >
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                      PO-001
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <FiUser size={14} />
+                      <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                        ABC Suppliers Ltd.
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Chip
+                    label="Partially Paid"
+                    size="small"
+                    sx={{
+                      bgcolor: "white",
+                      color: "primary.main",
+                      fontWeight: 500,
+                      fontSize: "0.75rem",
+                    }}
+                  />
+                </Box>
+              </Box>
+
+              {/* Body Section */}
+              <CardContent sx={{ p: 1.5 }}>
+                {/* Details Grid */}
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Order Date
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          Dec 15, 2024
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <IoMdCheckmarkCircleOutline size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          QC Items
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          20
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <PiCurrencyInr size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Vendor Invoice
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          INV - 000914
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Invoice Date
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          Dec 15, 2024
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+                <Divider sx={{ mb: 2 }} />
+                {/* Action Buttons */}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#fff3e0",
+                      color: "#ff9800",
+                      "&:hover": { bgcolor: "#ffe0b2" },
+                    }}
+                  >
+                    <MdOutlineRemoveRedEye size={20} />
+                  </IconButton>
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      bgcolor: "#e8f5e9",      // light green
+                      color: "#48c24eff",       // success dark
+                      "&:hover": { bgcolor: "#c8e6c9" },
+                    }}
+                  >
+                    <GrCurrency size={20} />
+                  </IconButton>
+                </Box>
+              </CardContent>
+            </Card>
+            {/* Mobile Pagination */}
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+              <Pagination
+                count={Math.ceil(10 / pagination.pageSize)}
+                page={pagination.pageIndex + 1}
+                onChange={handleMobilePageChange}
+                color="primary"
+              />
+            </Box>
+          </Box>
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
       <Grid size={12}>
         <Paper
           elevation={0}
@@ -541,7 +771,7 @@ const Quote = () => {
           />
         </Paper>
       </Grid>
-
+      )}
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>{"Delete this quotation?"}</DialogTitle>
