@@ -25,15 +25,15 @@ const Footer = ({ mobileOpen }) => {
           justifyContent: "space-between",
           alignItems: "center",
           px: 2,
-          gap: { xs: 1, sm: 0 }, // spacing between rows on mobile
+          gap: { xs: 0, sm: 0 }, // spacing between rows on mobile
           textAlign: { xs: "center", sm: "left" },
         }}
       >
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
           © {new Date().getFullYear()} {displayAppName}. All rights reserved.
         </Typography>
 
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
           Powered by{" "}
           <a
             href="https://techiesquad.com"

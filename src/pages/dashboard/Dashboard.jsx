@@ -122,13 +122,13 @@ export default function Dashboard() {
       <Grid container spacing={2}>
         {loading ? (
           Array(6).fill(0).map((_, index) => (
-            <Grid size={2} key={`kpi-skeleton-${index}`}>
+            <Grid size={{ xs: 6, sm: 4, md: 2 }} key={`kpi-skeleton-${index}`}>
               <KpiCardSkeleton />
             </Grid>
           ))
         ) : (
           kpis.map((k, i) => (
-            <Grid size={2} key={i}>
+            <Grid size={{ xs: 6, sm: 4, md: 2 }} key={i}>
               <Paper sx={{ p: 2, textAlign: "center", bgcolor: k.color, height: "100%" }}>
                 <Typography color="white" fontSize={14}>{k.title}</Typography>
                 <Typography color="white" fontSize={18} fontWeight={500}>{k.value}</Typography>
@@ -141,7 +141,7 @@ export default function Dashboard() {
       {/* ROW 1 */}
       <Grid container spacing={2} mt={2}>
         {/* PRODUCTION */}
-        <Grid size={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
             <Typography color="white" mb={2} fontWeight={500}>Production Output</Typography>
             {loading ? (
@@ -167,7 +167,7 @@ export default function Dashboard() {
         </Grid>
 
         {/* MACHINE UTILIZATION */}
-        <Grid size={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
             <Typography color="white" mb={2}>Machine Utilization</Typography>
             {loading ? (
@@ -187,7 +187,7 @@ export default function Dashboard() {
         </Grid>
 
         {/* QC CHART */}
-        <Grid size={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
             <Typography color="white" mb={2}>QC Trends</Typography>
             {loading ? (
@@ -213,7 +213,7 @@ export default function Dashboard() {
       {/* ROW 2 */}
       <Grid container spacing={2} mt={2}>
         {/* RAW MATERIAL */}
-        <Grid size={4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
             <Typography color="white" fontWeight={500} mb={2}>Raw Materials</Typography>
             {loading ? (
@@ -235,7 +235,7 @@ export default function Dashboard() {
         </Grid>
 
         {/* DISPATCH */}
-        <Grid size={4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
             <Typography color="white" fontWeight={500}>Dispatch Tracker</Typography>
             {loading ? (
@@ -269,7 +269,7 @@ export default function Dashboard() {
         </Grid>
 
         {/* ATTENDANCE */}
-        <Grid size={4}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <Paper sx={{ p: 2, bgcolor: "#374153", height: "100%" }}>
             <Typography color="white" fontWeight={500}>Attendance</Typography>
             {loading ? (
