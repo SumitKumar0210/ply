@@ -7,16 +7,15 @@ export const fetchInventory = createAsyncThunk(
     "inventory/fetchInventory",
     async ({ materialId = "", startDate = "", endDate = "", page = 1, perPage = 10 } = {}, { rejectWithValue }) => {
         try {
-            const params = { 
-                page, 
-                per_page: perPage 
+            const params = {
+                page,
+                per_page: perPage
             };
 
             if (materialId) params.material_id = materialId;
             if (startDate) params.start_date = startDate;
             if (endDate) params.end_date = endDate;
 
-            // Send as query params in POST request
             const res = await api.post("/admin/material/material-logs", null, { params });
 
             return {
@@ -25,6 +24,7 @@ export const fetchInventory = createAsyncThunk(
                 currentPage: res.data.current_page || 1,
                 lastPage: res.data.last_page || 1,
                 perPage: res.data.per_page || perPage,
+                viewType: res.data.view_type || 'logs',
             };
         } catch (error) {
             const errMsg = getErrorMessage(error);
@@ -34,14 +34,13 @@ export const fetchInventory = createAsyncThunk(
     }
 );
 
-
-
 const inventorySlice = createSlice({
     name: "inventory",
     initialState: {
         data: [],
         loading: false,
         error: null,
+        viewType: 'logs', // 'logs' or 'summary'
         filters: {
             materialId: "",
             startDate: "",
@@ -71,6 +70,7 @@ const inventorySlice = createSlice({
                 endDate: "",
             };
             state.pagination.currentPage = 1;
+            state.viewType = 'logs';
         },
         resetPagination: (state) => {
             state.pagination.currentPage = 1;
@@ -84,11 +84,11 @@ const inventorySlice = createSlice({
                 lastPage: 1,
             };
             state.error = null;
+            state.viewType = 'logs';
         },
     },
     extraReducers: (builder) => {
         builder
-            // Fetch inventory
             .addCase(fetchInventory.pending, (state) => {
                 state.loading = true;
                 state.error = null;
@@ -96,6 +96,7 @@ const inventorySlice = createSlice({
             .addCase(fetchInventory.fulfilled, (state, action) => {
                 state.loading = false;
                 state.data = action.payload.data;
+                state.viewType = action.payload.viewType;
                 state.pagination = {
                     currentPage: action.payload.currentPage,
                     perPage: action.payload.perPage,
@@ -107,6 +108,7 @@ const inventorySlice = createSlice({
             .addCase(fetchInventory.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
+                state.data = [];
             });
     },
 });

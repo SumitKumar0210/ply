@@ -18,15 +18,17 @@ import {
   Backdrop,
   Chip,
   TextField,
+  Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
+  TableContainer,
+  Paper,
 } from "@mui/material";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
-import { AiOutlinePrinter, AiOutlineSetting, AiOutlineEye } from "react-icons/ai";
-import { RiDeleteBinLine } from "react-icons/ri";
+import { Table as ResponsiveTable, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
+import { AiOutlineSetting, AiOutlineEye } from "react-icons/ai";
 import AddIcon from "@mui/icons-material/Add";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { MdOutlineCheckCircle } from "react-icons/md";
@@ -35,7 +37,8 @@ import {
   approveAllProduct,
   approveSingleProduct,
   editOrder,
-  getPreviousPO
+  getPreviousPO,
+  getProductProductionLog
 } from "../slice/orderSlice";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { format } from "date-fns";
@@ -61,6 +64,7 @@ const STATUS_CONFIG = {
 const PRODUCTION_STATUS = {
   NOT_STARTED: 0,
   IN_PROGRESS: 1,
+  COMPLETED: 2,
 };
 
 // Utility functions
@@ -70,6 +74,16 @@ const formatDate = (dateString) => {
     return format(new Date(dateString), "dd MMM yyyy");
   } catch (error) {
     console.error("Date formatting error:", error);
+    return "N/A";
+  }
+};
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return "N/A";
+  try {
+    return format(new Date(dateString), "dd MMM yyyy, hh:mm a");
+  } catch (error) {
+    console.error("DateTime formatting error:", error);
     return "N/A";
   }
 };
@@ -91,6 +105,7 @@ const OrderDetailsView = () => {
 
   // State management
   const [loading, setLoading] = useState(false);
+  const [loadingLogs, setLoadingLogs] = useState(false);
   const [orderData, setOrderData] = useState(null);
   const [items, setItems] = useState([]);
   const [products, setProducts] = useState([]);
@@ -158,7 +173,7 @@ const OrderDetailsView = () => {
     } catch (error) {
       console.error("Error loading order details:", error);
       alert("Failed to load order details. Please try again.");
-      navigate("/customer/orders"); // Navigate back on error
+      navigate("/customer/orders");
     } finally {
       setLoading(false);
     }
@@ -284,35 +299,28 @@ const OrderDetailsView = () => {
   );
 
   // Handle view production stages
-  const handleViewStages = useCallback((productId, group) => {
-    // TODO: Fetch actual logs from API
-    const mockLogs = [
-      {
-        id: 1,
-        po_id: 4,
-        production_product_id: productId,
-        status: 1,
-        from_stage: "Production Chain Initiated",
-        to_stage: "Raw Material Gathering",
-        remark: "Started raw material collection",
-        action_by: 101,
-        created_at: "2025-11-12 10:30:00",
-      },
-      {
-        id: 2,
-        po_id: 4,
-        production_product_id: productId,
-        status: 1,
-        from_stage: "Raw Material Gathering",
-        to_stage: "Assembly",
-        remark: "All materials gathered, moving to assembly",
-        action_by: 101,
-        created_at: "2025-11-12 11:00:00",
-      },
-    ];
-    setSelectedProductLogs(mockLogs);
+  const handleViewStages = useCallback(async (ppId) => {
+    setLoadingLogs(true);
     setOpenStagesModal(true);
-  }, []);
+    setSelectedProductLogs([]);
+
+    try {
+      const response = await dispatch(getProductProductionLog(ppId)).unwrap();
+      const logsData = response.data || response || [];
+
+      // Sort logs by created_at in ascending order (oldest first)
+      const sortedLogs = [...logsData].sort((a, b) =>
+        new Date(a.created_at) - new Date(b.created_at)
+      );
+
+      setSelectedProductLogs(sortedLogs);
+    } catch (error) {
+      console.error("Error fetching production logs:", error);
+      setSelectedProductLogs([]);
+    } finally {
+      setLoadingLogs(false);
+    }
+  }, [dispatch]);
 
   // Get status badge component
   const StatusBadge = useCallback(({ status }) => {
@@ -513,7 +521,7 @@ const OrderDetailsView = () => {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Order Items
                 </Typography>
-                <Table>
+                <ResponsiveTable>
                   <Thead>
                     <Tr>
                       <Th>#</Th>
@@ -621,14 +629,15 @@ const OrderDetailsView = () => {
                             <Td>{item.end_date}</Td>
                             <Td>
                               <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                {/* Show buttons only when PRODUCT status is 0 (NOT_STARTED) */}
+                                {/* Show buttons when product status is NOT_STARTED (0) */}
                                 {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.NOT_STARTED && (
                                   <>
-                                    {/* Start Production Button - show only when multiple items */}
+                                    {/* Start Production Button - show only when there are multiple items */}
                                     {items.length > 1 && (
                                       <Tooltip title="Start Production">
                                         <IconButton
                                           color="warning"
+                                          size="small"
                                           onClick={() =>
                                             handleApproveSingle(
                                               matchedProduct.po_id,
@@ -642,8 +651,21 @@ const OrderDetailsView = () => {
                                       </Tooltip>
                                     )}
 
-                                    {/* Edit Production Qty or Save/Cancel */}
-                                    {isEditing ? (
+                                    {/* Edit Production Qty Button - show only when quotation_id exists */}
+                                    {!isEditing && orderData.quotation_id && (
+                                      <Tooltip title="Edit Production Qty">
+                                        <IconButton
+                                          color="primary"
+                                          size="small"
+                                          onClick={() => handleEditClick(item.id)}
+                                        >
+                                          <BiSolidEditAlt size={16} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
+
+                                    {/* Save/Cancel Buttons - show when editing */}
+                                    {isEditing && (
                                       <>
                                         <Button
                                           size="small"
@@ -661,34 +683,26 @@ const OrderDetailsView = () => {
                                           Cancel
                                         </Button>
                                       </>
-                                    ) : (
-                                      <Tooltip title="Edit Production Qty">
-                                        <IconButton
-                                          color="primary"
-                                          onClick={() => handleEditClick(item.id)}
-                                        >
-                                          <BiSolidEditAlt size={16} />
-                                        </IconButton>
-                                      </Tooltip>
                                     )}
                                   </>
                                 )}
 
-                                {/* Show View Stages button when production is IN_PROGRESS (status = 1) */}
-                                {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.IN_PROGRESS && (
-                                  <Tooltip title="View Production Stages">
-                                    <IconButton
-                                      color="info"
-                                      onClick={() =>
-                                        handleViewStages(matchedProduct.product_id, matchedProduct.group)
-                                      }
-                                    >
-                                      <AiOutlineEye size={18} />
-                                    </IconButton>
-                                  </Tooltip>
-                                )}
+                                {/* View Production Stages Button - show when production is IN_PROGRESS (1) or COMPLETED (2) */}
+                                {matchedProduct &&
+                                  (matchedProduct.status === PRODUCTION_STATUS.IN_PROGRESS ||
+                                    matchedProduct.status === PRODUCTION_STATUS.COMPLETED) && (
+                                    <Tooltip title="View Production Stages">
+                                      <IconButton
+                                        color="info"
+                                        size="small"
+                                        onClick={() => handleViewStages(matchedProduct.id)}
+                                      >
+                                        <AiOutlineEye size={18} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
 
-                                {/* Show message when no matched product */}
+                                {/* Show dash when no matched product found */}
                                 {!matchedProduct && (
                                   <Typography variant="caption" color="text.secondary">
                                     —
@@ -701,7 +715,7 @@ const OrderDetailsView = () => {
                       })
                     )}
                   </Tbody>
-                </Table>
+                </ResponsiveTable>
               </Box>
 
               {/* Summary Section */}
@@ -770,56 +784,121 @@ const OrderDetailsView = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Production Stages Modal */}
+      {/* Production Stages Modal - OPTIMIZED */}
       <Dialog
         open={openStagesModal}
         onClose={() => setOpenStagesModal(false)}
-        maxWidth="md"
+        maxWidth="lg"
         fullWidth
       >
-        <DialogTitle>Production Stages (Logs)</DialogTitle>
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Typography variant="h6">Production Stage History</Typography>
+            {selectedProductLogs.length > 0 && (
+              <Chip
+                label={`${selectedProductLogs.length} Transitions`}
+                color="primary"
+                size="small"
+              />
+            )}
+          </Box>
+        </DialogTitle>
         <DialogContent dividers>
-          {selectedProductLogs.length > 0 ? (
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>#</TableCell>
-                  <TableCell>From Stage</TableCell>
-                  <TableCell>To Stage</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Remark</TableCell>
-                  <TableCell>Action By</TableCell>
-                  <TableCell>Created At</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {selectedProductLogs.map((log, index) => (
-                  <TableRow key={log.id}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{log.from_stage}</TableCell>
-                    <TableCell>{log.to_stage}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={log.status === 1 ? "Completed" : "Pending"}
-                        color={log.status === 1 ? "success" : "warning"}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>{log.remark}</TableCell>
-                    <TableCell>{log.action_by}</TableCell>
-                    <TableCell>{new Date(log.created_at).toLocaleString()}</TableCell>
+          {loadingLogs ? (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 5 }}>
+              <CircularProgress />
+            </Box>
+          ) : selectedProductLogs.length > 0 ? (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small" sx={{ minWidth: 650 }}>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableCell sx={{ fontWeight: 600 }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>From Stage</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>To Stage</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Remark</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Action By</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Date & Time</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {selectedProductLogs.map((log, index) => (
+                    <TableRow
+                      key={log.id}
+                      sx={{
+                        '&:hover': { backgroundColor: '#f9f9f9' },
+                        '&:last-child td': { borderBottom: 0 }
+                      }}
+                    >
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>
+                        <Chip
+                          // label={log.from_stage?.name || "N/A"}
+                          label={
+                            log.from_stage?.name
+                              ? log.from_stage.name
+                              : log.status === 0
+                                ? "Order Created"
+                                : "N/A"
+                          }
+                          size="small"
+                          color="default"
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={
+                            log.to_stage?.name
+                              ? log.to_stage.name
+                              : log.status === 0
+                                ? "In Production"
+                                : log.status === 2
+                                  ? "Out from Production"
+                                  : "N/A"
+                          }
+                          size="small"
+                          color="primary"
+                          variant="filled"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {log.remark || "—"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {log.user?.name || "Unknown"}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            ID: {log.action_by}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {formatDateTime(log.created_at)}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           ) : (
-            <Typography textAlign="center" color="text.secondary">
-              No production logs found.
-            </Typography>
+            <Box sx={{ textAlign: "center", py: 5 }}>
+              <Typography variant="body1" color="text.secondary">
+                No production logs found for this product.
+              </Typography>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenStagesModal(false)}>Close</Button>
+          <Button onClick={() => setOpenStagesModal(false)} variant="outlined">
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </>

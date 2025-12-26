@@ -65,6 +65,7 @@ const PermissionGroupManager = lazy(() => import("../pages/Users/userPermission"
 const ProductStocks = lazy(() => import("../pages/Production/ProductStock"));
 const RRPManagement = lazy(() => import("../pages/Production/RRPManagement"));
 const Calendar = lazy(() => import("../pages/Users/Calendar/Calendar"));
+const Attendance = lazy(() => import("../pages/Users/Attendance/Attendance"));
 const MaterialInventory = lazy(() => import("../pages/Vendor/Material/Inventory"));
 
 
@@ -126,6 +127,7 @@ const AppRoutes = () => {
         <Route path="/customers" element={<SecurePage permission="customers.read"><Customers /></SecurePage>} />
         <Route path="/labours" element={<SecurePage permission="labours.read"><Labours /></SecurePage>} />
         <Route path="/attendance-calendar" element={<SecurePage permission="labour_worksheet.read"><Calendar /></SecurePage>} />
+        <Route path="/attendance-lists" element={<SecurePage permission="labour_worksheet.read"><Attendance /></SecurePage>} />
  
         {/* Vendor group */}
         <Route path="/vendor/dashboard" element={<SecurePage ><VendorDashboard /></SecurePage>} />
