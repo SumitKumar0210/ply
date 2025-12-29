@@ -14,14 +14,14 @@ import {
   Box,
   Tooltip,
   Chip,
-   Card,
-    CardContent,
-    Divider,
-    Pagination,
-    InputAdornment,
-    CircularProgress,
-    useMediaQuery,
-    useTheme
+  Card,
+  CardContent,
+  Divider,
+  Pagination,
+  InputAdornment,
+  CircularProgress,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Link, useSearchParams } from "react-router-dom";
@@ -112,8 +112,8 @@ const getStatusChip = (status) => {
 
 const Quote = () => {
   const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const { hasPermission, hasAnyPermission } = useAuth();
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
@@ -323,41 +323,41 @@ const Quote = () => {
               <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                 {hasPermission("quotations.generate_public_link") && (
                   <LinkGenerator
-                  id={row.original.id}
-                  customerId={row.original.customer?.id}
-                  entity="quotation"
-                />
+                    id={row.original.id}
+                    customerId={row.original.customer?.id}
+                    entity="quotation"
+                  />
                 )}
                 {hasPermission("quotations.read") && (
-                <Tooltip title="View">
-                  <IconButton
-                    color="warning"
-                    onClick={() => handleViewClick(row.original.id)}
-                  >
-                    <MdOutlineRemoveRedEye size={16} />
-                  </IconButton>
-                </Tooltip>
+                  <Tooltip title="View">
+                    <IconButton
+                      color="warning"
+                      onClick={() => handleViewClick(row.original.id)}
+                    >
+                      <MdOutlineRemoveRedEye size={16} />
+                    </IconButton>
+                  </Tooltip>
                 )}
                 {hasPermission("quotations.update") && (
-                <Tooltip title="Edit">
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleEditClick(row.original.id)}
-                  >
-                    <BiSolidEditAlt size={16} />
-                  </IconButton>
-                </Tooltip>
+                  <Tooltip title="Edit">
+                    <IconButton
+                      color="primary"
+                      onClick={() => handleEditClick(row.original.id)}
+                    >
+                      <BiSolidEditAlt size={16} />
+                    </IconButton>
+                  </Tooltip>
                 )}
                 {hasPermission("quotations.delete") && (
-                <Tooltip title="Delete">
-                  <IconButton
-                    aria-label="delete"
-                    color="error"
-                    onClick={() => handlDelete(row.original)}
-                  >
-                    <RiDeleteBinLine size={16} />
-                  </IconButton>
-                </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton
+                      aria-label="delete"
+                      color="error"
+                      onClick={() => handlDelete(row.original)}
+                    >
+                      <RiDeleteBinLine size={16} />
+                    </IconButton>
+                  </Tooltip>
                 )}
               </Box>
             ),
@@ -426,7 +426,7 @@ const Quote = () => {
       console.error("Print error:", error);
     }
   }, []);
- // Mobile pagination handlers
+  // Mobile pagination handlers
   const handleMobilePageChange = (event, value) => {
     setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
   };
@@ -438,7 +438,7 @@ const Quote = () => {
         spacing={0}
         alignItems="center"
         justifyContent="space-between"
-        sx={{ mb: {xs: 1, md: 2} }}
+        sx={{ mb: { xs: 1, md: 2 } }}
       >
         <Grid>
           <Typography variant="h6" className="page-title">Quotation</Typography>
@@ -446,24 +446,24 @@ const Quote = () => {
         <Grid>
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             {hasPermission("quotations.approved_data") && (
-            <Button
-              variant={showApproved ? "contained" : "outlined"}
-              startIcon={showApproved ?<MdOutlineRemoveRedEye /> : <MdOutlineVisibilityOff />}
-              onClick={handleToggleApproved}
-              color={showApproved ? "success" : "primary"}
-            >
-              {showApproved ? "Showing Approved" : "Approved Quotes"}
-            </Button>
+              <Button
+                variant={showApproved ? "contained" : "outlined"}
+                startIcon={showApproved ? <MdOutlineRemoveRedEye /> : <MdOutlineVisibilityOff />}
+                onClick={handleToggleApproved}
+                color={showApproved ? "success" : "primary"}
+              >
+                {showApproved ? "Showing Approved" : "Approved Quotes"}
+              </Button>
             )}
             {hasPermission("quotations.create") && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              component={Link}
-              to="/customer/quote/create"
-            >
-              Create Quote
-            </Button>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                component={Link}
+                to="/customer/quote/create"
+              >
+                Create Quote
+              </Button>
             )}
           </Box>
         </Grid>
@@ -472,7 +472,7 @@ const Quote = () => {
       {isMobile ? (
         // 🔹 MOBILE VIEW (Cards)
         <>
-          <Box sx={{ minHeight: '100vh' }}>
+          <Box>
             {/* Mobile Search */}
             <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
               <TextField
@@ -502,17 +502,17 @@ const Quote = () => {
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
                   <Box>
                     <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
-                      PO-001
+                      Q_002
                     </Typography>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                       <FiUser size={14} />
                       <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
-                        ABC Suppliers Ltd.
+                        Satish Sharma
                       </Typography>
                     </Box>
                   </Box>
                   <Chip
-                    label="Partially Paid"
+                    label="Requested to edit"
                     size="small"
                     sx={{
                       bgcolor: "white",
@@ -548,10 +548,10 @@ const Quote = () => {
                             mb: 0.3,
                           }}
                         >
-                          Order Date
+                          Quote Date
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                          Dec 15, 2024
+                          08-12-2025
                         </Typography>
                       </Box>
                     </Box>
@@ -576,7 +576,7 @@ const Quote = () => {
                             mb: 0.3,
                           }}
                         >
-                          QC Items
+                          Total Items
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
                           20
@@ -584,88 +584,92 @@ const Quote = () => {
                       </Box>
                     </Box>
                   </Grid>
-                  <Grid size={6}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.2,
-                        }}
-                      >
-                        <PiCurrencyInr size={16} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          Vendor Invoice
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                          INV - 000914
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
 
-                  <Grid size={6}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.2,
-                        }}
-                      >
-                        <FiCalendar size={16} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          Invoice Date
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                          Dec 15, 2024
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
                 </Grid>
+                {/* Total Section */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    bgcolor: "#f0f7ff",
+                    px: 1,
+                    py: 1,
+                    borderRadius: 1,
+                    mb: 2,
+                    border: "1px solid #e3f2fd",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {/* <MdCurrencyRupee size={20} color="primary.main" /> */}
+                    <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
+                      Quote Total
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 500, color: "primary.main", fontSize: "1rem" }}
+                  >
+                    ₹45,750.00
+                  </Typography>
+                </Box>
                 <Divider sx={{ mb: 2 }} />
                 {/* Action Buttons */}
                 <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+                  {/* Link / Generate */}
                   <IconButton
                     size="medium"
                     sx={{
-                      bgcolor: "#fff3e0",
-                      color: "#ff9800",
+                      width: "36px", height: "36px",
+                      bgcolor: "#e3f2fd",          // light blue
+                      color: "#1976d2",            // info blue
+                      "&:hover": { bgcolor: "#bbdefb" },
+                    }}
+                  >
+                    <LinkGenerator size={20} />
+                  </IconButton>
+
+                  {/* Edit */}
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      width: "36px", height: "36px",
+                      bgcolor: "#fff3e0",          // light orange
+                      color: "#ff9800",            // warning
                       "&:hover": { bgcolor: "#ffe0b2" },
                     }}
                   >
+
                     <MdOutlineRemoveRedEye size={20} />
                   </IconButton>
+
+                  {/* View */}
                   <IconButton
                     size="medium"
                     sx={{
-                      bgcolor: "#e8f5e9",      // light green
-                      color: "#48c24eff",       // success dark
-                      "&:hover": { bgcolor: "#c8e6c9" },
+                      width: "36px", height: "36px",
+                      bgcolor: "#e8eaf6",          // light indigo
+                      color: "#3f51b5",            // primary
+                      "&:hover": { bgcolor: "#c5cae9" },
                     }}
                   >
-                    <GrCurrency size={20} />
+                    <BiSolidEditAlt size={20} />
+                  </IconButton>
+
+                  {/* Delete */}
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      width: "36px", height: "36px",
+                      bgcolor: "#ffebee",          // light red
+                      color: "#d32f2f",            // error
+                      "&:hover": { bgcolor: "#ffcdd2" },
+                    }}
+                  >
+                    <RiDeleteBinLine size={20} />
                   </IconButton>
                 </Box>
+
               </CardContent>
             </Card>
             {/* Mobile Pagination */}
@@ -681,96 +685,96 @@ const Quote = () => {
         </>
       ) : (
         // 🔹 DESKTOP VIEW (Table)
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          ref={tableContainerRef}
-          sx={{
-            width: "100%",
-            overflow: "hidden",
-            backgroundColor: "#fff",
-            px: 2,
-            py: 1,
-          }}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={tableData}
-            manualPagination
-            manualFiltering
-            rowCount={totalRecords}
-            state={{
-              isLoading: loading,
-              pagination: pagination,
-              globalFilter,
+        <Grid size={12}>
+          <Paper
+            elevation={0}
+            ref={tableContainerRef}
+            sx={{
+              width: "100%",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+              px: 2,
+              py: 1,
             }}
-            onPaginationChange={handlePaginationChange}
-            onGlobalFilterChange={handleGlobalFilterChange}
-            enableTopToolbar
-            enableColumnFilters={false}
-            enableSorting={false}
-            enablePagination
-            enableBottomToolbar
-            enableGlobalFilter
-            enableDensityToggle={false}
-            enableColumnActions={false}
-            enableColumnVisibilityToggle={false}
-            initialState={{ density: "compact" }}
-            muiTableContainerProps={{
-              sx: {
-                width: "100%",
-                backgroundColor: "#fff",
-                overflowX: "auto",
-                minWidth: "1200px",
-              },
-            }}
-            muiTablePaperProps={{
-              sx: { backgroundColor: "#fff", boxShadow: "none" },
-            }}
-            muiTableBodyRowProps={({ row }) => ({
-              hover: false,
-              sx:
-                row.original.status === "inactive"
-                  ? { "&:hover": { backgroundColor: "transparent" } }
-                  : {},
-            })}
-            renderTopToolbar={({ table }) => (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+          >
+            <MaterialReactTable
+              columns={columns}
+              data={tableData}
+              manualPagination
+              manualFiltering
+              rowCount={totalRecords}
+              state={{
+                isLoading: loading,
+                pagination: pagination,
+                globalFilter,
+              }}
+              onPaginationChange={handlePaginationChange}
+              onGlobalFilterChange={handleGlobalFilterChange}
+              enableTopToolbar
+              enableColumnFilters={false}
+              enableSorting={false}
+              enablePagination
+              enableBottomToolbar
+              enableGlobalFilter
+              enableDensityToggle={false}
+              enableColumnActions={false}
+              enableColumnVisibilityToggle={false}
+              initialState={{ density: "compact" }}
+              muiTableContainerProps={{
+                sx: {
                   width: "100%",
-                  p: 1,
-                }}
-              >
-                <Typography variant="h6" className='page-title'>
-                  {showApproved ? "Approved Quote List" : "Quote List"}
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Refresh">
-                    <IconButton onClick={handleRefresh} size="small">
-                      <IoMdRefresh size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Print">
-                    <IconButton onClick={handlePrint} size="small">
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download CSV">
-                    <IconButton onClick={downloadCSV} size="small">
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
+                  backgroundColor: "#fff",
+                  overflowX: "auto",
+                  minWidth: "1200px",
+                },
+              }}
+              muiTablePaperProps={{
+                sx: { backgroundColor: "#fff", boxShadow: "none" },
+              }}
+              muiTableBodyRowProps={({ row }) => ({
+                hover: false,
+                sx:
+                  row.original.status === "inactive"
+                    ? { "&:hover": { backgroundColor: "transparent" } }
+                    : {},
+              })}
+              renderTopToolbar={({ table }) => (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="h6" className='page-title'>
+                    {showApproved ? "Approved Quote List" : "Quote List"}
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
+                    <Tooltip title="Refresh">
+                      <IconButton onClick={handleRefresh} size="small">
+                        <IoMdRefresh size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Print">
+                      <IconButton onClick={handlePrint} size="small">
+                        <FiPrinter size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download CSV">
+                      <IconButton onClick={downloadCSV} size="small">
+                        <BsCloudDownload size={20} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                 </Box>
-              </Box>
-            )}
-          />
-        </Paper>
-      </Grid>
+              )}
+            />
+          </Paper>
+        </Grid>
       )}
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>

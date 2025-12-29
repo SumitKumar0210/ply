@@ -18,6 +18,7 @@ import {
   TextField,
   MenuItem,
   CircularProgress,
+  useMediaQuery, useTheme
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
@@ -108,6 +109,8 @@ const quoteValidationSchema = Yup.object({
 });
 
 const CreateQuote = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [creationDate, setCreationDate] = useState(new Date());
   const [deliveryDate, setDeliveryDate] = useState(null);
   const [priority, setPriority] = useState("Normal");
@@ -405,65 +408,84 @@ const CreateQuote = () => {
               <Box
                 sx={{
                   display: "flex",
-                  alignItems: "center",
                   justifyContent: "space-between",
-                  flexWrap: "wrap",
+                  flexDirection: { xs: "column", md: "row" },
                   gap: 2,
                   mb: 2,
+                  pt: 2,
                 }}
               >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                {/* Customer Section */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    // flexDirection: { xs: "column", md: "row" },
+                    alignItems: { md: "center" },
+                    gap: 1,
+                    width: "100%",
+                    flexWrap: "nowrap",
+                  }}
+                >
                   <Autocomplete
                     options={customerData}
                     size="small"
+                    fullWidth
+                    sx={{ width: { xs: "100%", md: 200 } }}
                     getOptionLabel={(option) => option?.name || ""}
                     value={selectedCustomer}
                     onChange={(e, value) => setSelectedCustomer(value)}
                     renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Select Customer"
-                        variant="outlined"
-                        sx={{ width: 300 }}
-                        required
-                      />
+                      <TextField {...params} label="Select Customer" required />
                     )}
                   />
 
                   <Tooltip title="Add New Customer">
-                    <IconButton color="primary" onClick={openCustomerModal}>
+                    <IconButton
+                      color="primary"
+                      onClick={openCustomerModal}
+                    // sx={{ alignSelf: { xs: "flex-end", md: "center" } }}
+                    >
                       <BiSolidUserPlus size={22} />
                     </IconButton>
                   </Tooltip>
                 </Box>
 
+                {/* Date + Priority Section */}
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                   <Box
-                  sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "end",
-                  flexWrap: "wrap",
-                  gap: 2,
-                  mb: 2,
-                }}
+                    sx={{
+                      display: "flex",
+                      flexDirection: { xs: "column", md: "row" },
+                      gap: 2,
+                      justifyContent: { md: "flex-end" },
+                    }}
                   >
                     <DatePicker
                       label="Quote Date"
                       value={creationDate}
-                      onChange={(newValue) => setCreationDate(newValue)}
+                      onChange={setCreationDate}
                       slotProps={{
-                        textField: { size: "small", sx: { width: 250 } },
+                        textField: {
+                          size: "small",
+                          fullWidth: true,
+                          sx: { width: { xs: "100%", md: 200 } },
+                        },
                       }}
                     />
+
                     <DatePicker
                       label="Delivery Date"
                       value={deliveryDate}
-                      onChange={(newValue) => setDeliveryDate(newValue)}
+                      onChange={setDeliveryDate}
                       slotProps={{
-                        textField: { size: "small", sx: { width: 250 } },
+                        textField: {
+                          size: "small",
+                          fullWidth: true,
+                          sx: { width: { xs: "100%", md: 200 } },
+                        },
                       }}
                     />
+
                     <Autocomplete
                       options={["Normal", "High", "Low"]}
                       size="small"
@@ -473,18 +495,20 @@ const CreateQuote = () => {
                         <TextField
                           {...params}
                           label="Priority"
-                          variant="outlined"
-                          sx={{ width: 150 }}
+                          fullWidth
+                          sx={{ width: { xs: "100%", md: 200 } }}
                         />
                       )}
+                      sx={{ width: { xs: "100%", md: 200 } }}
                     />
                   </Box>
+
                 </LocalizationProvider>
               </Box>
 
               {/* Customer Details */}
               {selectedCustomer && (
-                <Typography variant="body2" sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ mb: { xs: 0, md: 2 } }}>
                   <strong>{selectedCustomer.name}</strong>
                   <br />
                   {selectedCustomer.address}
@@ -525,7 +549,7 @@ const CreateQuote = () => {
                         flexWrap: "wrap",
                         gap: 2,
                         mb: 3,
-                        mt: 3,
+                        mt: { xs: 2, md: 3 },
                       }}
                     >
                       <Autocomplete
@@ -602,31 +626,40 @@ const CreateQuote = () => {
                         size="small"
                         value={selectedProduct?.name || ""}
                         disabled
-                        sx={{ minWidth: 200 }}
+                        sx={{ minWidth: 200, width: { xs: "100%", md: 200 } }}
                       />
 
-                      <TextField
-                        label="Qty"
-                        variant="outlined"
-                        size="small"
-                        type="number"
-                        name="quantity"
-                        value={values.quantity}
-                        onChange={handleChange}
-                        error={touched.quantity && Boolean(errors.quantity)}
-                        helperText={touched.quantity && errors.quantity}
-                        sx={{ width: 100 }}
-                        inputProps={{ min: 1 }}
-                      />
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1.5,
+                          flexWrap: "nowrap",
+                        }}
+                      >
+                        <TextField
+                          label="Qty"
+                          variant="outlined"
+                          size="small"
+                          type="number"
+                          name="quantity"
+                          value={values.quantity}
+                          onChange={handleChange}
+                          error={touched.quantity && Boolean(errors.quantity)}
+                          helperText={touched.quantity && errors.quantity}
+                          sx={{ width: { xs: "50%", md: 200 } }}
+                          inputProps={{ min: 1 }}
+                        />
 
-                      <TextField
-                        label="Size"
-                        variant="outlined"
-                        size="small"
-                        value={selectedProduct?.size || ""}
-                        disabled
-                        sx={{ minWidth: 100 }}
-                      />
+                        <TextField
+                          label="Size"
+                          variant="outlined"
+                          size="small"
+                          value={selectedProduct?.size || ""}
+                          disabled
+                          sx={{ width: { xs: "50%", md: 200 } }}
+                        />
+                      </Box>
+
 
                       <TextareaAutosize
                         minRows={1}
@@ -702,59 +735,124 @@ const CreateQuote = () => {
                       >
                         {group}
                       </Typography>
-                      <Table>
-                        <Thead>
-                          <Tr>
-                            <Th>Item Name</Th>
-                            <Th>Item Code</Th>
-                            <Th>Qty</Th>
-                            <Th>Size</Th>
-                            <Th>Unit Price</Th>
-                            <Th>Total Cost</Th>
-                            <Th>Documents</Th>
-                            <Th>Narration</Th>
-                            <Th>Action</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
+                      {isMobile ? (
+                        // 🔹 MOBILE VIEW (Cards)
+                        // Mobile Card View
+                        <Box sx={{ p: 0 }}>
                           {items
                             .filter((item) => item.group === group)
                             .map((item) => (
-                              <Tr key={item.id}>
-                                <Td>{item.name}</Td>
-                                <Td>{item.model}</Td>
-                                <Td>{item.qty}</Td>
-                                <Td>{item.size}</Td>
-                                <Td>
-                                  ₹{item.unitPrice.toLocaleString("en-IN")}
-                                </Td>
-                                <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
-                                <Td>
-                                  {item.document ? (
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                      }}
-                                    >
-                                      <ImagePreviewDialog
-                                        imageUrl={item.document}
-                                        alt={item.documentName || "Document"}
-                                      />
-                                      <Typography variant="caption">
-                                        {item.documentName || "Document"}
+                              <Box
+                                key={item.id}
+                                sx={{
+                                  mb: 2,
+                                  backgroundColor: "#f7f7f7",
+                                  p: 2,
+                                  borderRadius: 1,
+                                }}
+                              >
+                                {/* Item Name & Code */}
+                                <Typography
+                                  variant="h6"
+                                  sx={{ mb: 1, fontWeight: 600, fontSize: "1rem" }}
+                                >
+                                  {item.name}
+                                </Typography>
+
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{ mb: 2 }}
+                                >
+                                  Code: {item.model}
+                                </Typography>
+
+                                {/* Details */}
+                                <Box sx={{ display: "grid", gap: 1.5, mb: 2 }}>
+                                  {/* Quantity */}
+                                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                    <Typography variant="body2" fontWeight={500}>
+                                      Quantity:
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      {item.qty}
+                                    </Typography>
+                                  </Box>
+
+                                  {/* Size */}
+                                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                    <Typography variant="body2" fontWeight={500}>
+                                      Size:
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      {item.size}
+                                    </Typography>
+                                  </Box>
+
+                                  {/* Unit Price */}
+                                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                    <Typography variant="body2" fontWeight={500}>
+                                      Unit Price:
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      ₹{item.unitPrice.toLocaleString("en-IN")}
+                                    </Typography>
+                                  </Box>
+
+                                  {/* Total Cost */}
+                                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                    <Typography variant="body2" fontWeight={500}>
+                                      Total Cost:
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                      ₹{(item.qty * item.unitPrice).toLocaleString("en-IN")}
+                                    </Typography>
+                                  </Box>
+
+                                  {/* Narration */}
+                                  {item.narration && (
+                                    <Box>
+                                      <Typography variant="body2" fontWeight={500} sx={{ mb: 0.5 }}>
+                                        Narration:
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary">
+                                        {item.narration}
                                       </Typography>
                                     </Box>
-                                  ) : (
-                                    "-"
                                   )}
-                                </Td>
-                                <Td>{item.narration || "-"}</Td>
-                                <Td>
+
+                                  {/* Document */}
+                                  {item.document && (
+                                    <Box>
+                                      <Typography variant="body2" fontWeight={500} sx={{ mb: 0.5 }}>
+                                        Document:
+                                      </Typography>
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <ImagePreviewDialog
+                                          imageUrl={item.document}
+                                          alt={item.documentName || "Document"}
+                                        />
+                                        <Typography variant="caption">
+                                          {item.documentName || "Document"}
+                                        </Typography>
+                                      </Box>
+                                    </Box>
+                                  )}
+                                </Box>
+
+                                {/* Action */}
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    justifyContent: "flex-end",
+                                    pt: 1,
+                                    borderTop: "1px solid #e0e0e0",
+                                  }}
+                                >
                                   <Tooltip title="Delete">
                                     <IconButton
                                       color="error"
+                                      size="small"
                                       onClick={() =>
                                         setDeleteDialog({
                                           open: true,
@@ -765,11 +863,81 @@ const CreateQuote = () => {
                                       <RiDeleteBinLine size={16} />
                                     </IconButton>
                                   </Tooltip>
-                                </Td>
-                              </Tr>
+                                </Box>
+                              </Box>
                             ))}
-                        </Tbody>
-                      </Table>
+                        </Box>
+
+                      ) : (
+                        <Table>
+                          <Thead>
+                            <Tr>
+                              <Th>Item Name</Th>
+                              <Th>Item Code</Th>
+                              <Th>Qty</Th>
+                              <Th>Size</Th>
+                              <Th>Unit Price</Th>
+                              <Th>Total Cost</Th>
+                              <Th>Documents</Th>
+                              <Th>Narration</Th>
+                              <Th>Action</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {items
+                              .filter((item) => item.group === group)
+                              .map((item) => (
+                                <Tr key={item.id}>
+                                  <Td>{item.name}</Td>
+                                  <Td>{item.model}</Td>
+                                  <Td>{item.qty}</Td>
+                                  <Td>{item.size}</Td>
+                                  <Td>
+                                    ₹{item.unitPrice.toLocaleString("en-IN")}
+                                  </Td>
+                                  <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
+                                  <Td>
+                                    {item.document ? (
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: 1,
+                                        }}
+                                      >
+                                        <ImagePreviewDialog
+                                          imageUrl={item.document}
+                                          alt={item.documentName || "Document"}
+                                        />
+                                        <Typography variant="caption">
+                                          {item.documentName || "Document"}
+                                        </Typography>
+                                      </Box>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </Td>
+                                  <Td>{item.narration || "-"}</Td>
+                                  <Td>
+                                    <Tooltip title="Delete">
+                                      <IconButton
+                                        color="error"
+                                        onClick={() =>
+                                          setDeleteDialog({
+                                            open: true,
+                                            itemId: item.id,
+                                          })
+                                        }
+                                      >
+                                        <RiDeleteBinLine size={16} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Td>
+                                </Tr>
+                              ))}
+                          </Tbody>
+                        </Table>
+                      )}
                     </Box>
                   ))}
                 </>
@@ -844,8 +1012,8 @@ const CreateQuote = () => {
                               sx={{
                                 display: "flex",
                                 justifyContent: "space-between",
-                                gap: 1,
                                 alignItems: "center",
+                                mb: 1,
                               }}
                             >
                               <TextField
@@ -874,6 +1042,7 @@ const CreateQuote = () => {
                                 justifyContent: "space-between",
                                 gap: 1,
                                 alignItems: "center",
+                                mb: 1
                               }}
                             >
                               <TextField
@@ -908,6 +1077,7 @@ const CreateQuote = () => {
                                 justifyContent: "space-between",
                                 gap: 1,
                                 alignItems: "center",
+
                               }}
                             >
                               <TextField
@@ -958,7 +1128,7 @@ const CreateQuote = () => {
                         direction="row"
                         spacing={2}
                         justifyContent="flex-end"
-                        sx={{ mt: 4 }}
+                        sx={{ mt: 4, mb: 3 }}
                       >
                         <Button
                           variant="contained"

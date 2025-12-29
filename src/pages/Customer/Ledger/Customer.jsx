@@ -6,6 +6,16 @@ import {
   Box,
   IconButton,
   Tooltip,
+  TextField,
+
+  Chip,
+  Card,
+  CardContent,
+  Divider,
+  Pagination,
+  InputAdornment,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 import {
   MaterialReactTable,
@@ -20,6 +30,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchAllCustomersWithSearch } from "../../Users/slices/customerSlice";
 import { useAuth } from "../../../context/AuthContext";
+import { BsTelephone } from "react-icons/bs";
+import { MdAlternateEmail } from "react-icons/md";
+import { HiOutlineReceiptTax } from "react-icons/hi";
+import SearchIcon from "@mui/icons-material/Search";
+import { IoLocationOutline } from "react-icons/io5";
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -50,6 +65,8 @@ class ErrorBoundary extends React.Component {
 }
 
 const Customer = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -165,7 +182,7 @@ const Customer = () => {
         enableColumnFilter: false,
         muiTableHeadCellProps: { align: "right" },
         muiTableBodyCellProps: { align: "right" },
-        Cell: ({ row }) => (                            
+        Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Ledger">
               <IconButton color="primary" onClick={() => handleLedger(row.original.id)}>
@@ -227,97 +244,246 @@ const Customer = () => {
       console.error("Print error:", error);
     }
   }, []);
-
+  // Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
   return (
-    <ErrorBoundary>
-      <Grid container spacing={2}>
-        <Grid size={12}>
-          <Paper
-            elevation={0}
-            sx={{
-              width: "100%",
-              overflow: "hidden",
-              backgroundColor: "#fff",
-              borderRadius: "12px",
-              px: 2,
-              py: 2,
-              boxShadow: "0px 1px 3px rgba(0,0,0,0.04), 0px 4px 10px rgba(0,0,0,0.06)",
-            }}
-            ref={tableContainerRef}
-          >
-            <MaterialReactTable
-              columns={columns}
-              data={customerData || []}
-              getRowId={(row) => row.id}
-              manualPagination
-              manualFiltering
-              rowCount={totalRows}
-              state={{
-                pagination,
-                isLoading: loading,
-                globalFilter,
-              }}
-              onPaginationChange={handlePaginationChange}
-              onGlobalFilterChange={handleGlobalFilterChange}
-              enableTopToolbar
-              enableColumnFilters={false}
-              enableSorting={false}
-              enablePagination
-              enableBottomToolbar
-              enableGlobalFilter
-              enableDensityToggle={false}
-              enableColumnActions={false}
-              enableColumnVisibilityToggle={false}
-              initialState={{ density: "compact" }}
-              muiTableContainerProps={{
-                sx: {
-                  width: "100%",
-                  backgroundColor: "#fff",
-                  overflowX: "auto",
-                },
-              }}
-              muiTableBodyCellProps={{
-                sx: { whiteSpace: "nowrap" },
-              }}
-              muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-              muiTableBodyRowProps={{ hover: true }}
-              renderTopToolbar={({ table }) => (
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    width: "100%",
-                    p: 1,
-                  }}
-                >
-                  <Typography variant="h6" className="page-title">Customer</Typography>
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <MRT_GlobalFilterTextField table={table} />
-                    <MRT_ToolbarInternalButtons table={table} />
-                    <Tooltip title="Refresh">
-                      <IconButton onClick={handleRefresh} size="small">
-                        <IoMdRefresh size={20} />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Print">
-                      <IconButton onClick={handlePrint} size="small">
-                        <FiPrinter size={20} />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Download CSV">
-                      <IconButton onClick={downloadCSV} size="small">
-                        <BsCloudDownload size={20} />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </Box>
-              )}
-            />
-          </Paper>
+    <>
+      <Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 2 }}
+      >
+        <Grid size="12">
+          <Typography variant="h6" className="page-title">Customer List</Typography>
         </Grid>
       </Grid>
-    </ErrorBoundary>
+      <ErrorBoundary>
+        {isMobile ? (
+          // 🔹 MOBILE VIEW (Cards)
+          <>
+            <Box sx={{ minHeight: '100vh' }}>
+              {/* Mobile Search */}
+              <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Search purchase orders..."
+                  value=""
+                  // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Paper>
+              <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+                {/* Header Section - Blue Background */}
+                <Box
+                  sx={{
+                    bgcolor: "primary.main",
+                    p: 1.5,
+                    color: "primary.contrastText",
+                  }}
+                >
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 500, color: "white", mb: 0.5 }}>
+                        Rohit Sharma
+                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <HiOutlineReceiptTax size={14} />
+                        <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                          29AACCS9876K1Z9
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Body Section */}
+                <CardContent sx={{ p: 1.5 }}>
+                  {/* Details Grid */}
+                  <Grid container spacing={1} sx={{ mb: 2 }}>
+                    <Grid size={12}>
+                      <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                        <Box
+                          sx={{
+                            color: "text.secondary",
+                            mt: 0.2,
+                          }}
+                        >
+                          <BsTelephone size={16} />
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                            9988776655
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                    <Grid size={12}>
+                      <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                        <Box
+                          sx={{
+                            color: "text.secondary",
+                            mt: 0.2,
+                          }}
+                        >
+                          <MdAlternateEmail size={16} />
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                            info@steelmart.co.in
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                    <Grid size={12}>
+                      <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                        <Box
+                          sx={{
+                            color: "text.secondary",
+                            mt: 0.2,
+                          }}
+                        >
+                          <IoLocationOutline size={16} />
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                            Patna, Bihar
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+
+                  </Grid>
+                  <Divider sx={{ mb: 1 }} />
+                  {/* Action Buttons */}
+                  <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+
+                    <IconButton
+                      size="medium"
+                      sx={{
+                        bgcolor: "#e3f2fd",      // light green
+                        color: "#1976d2",       // success dark
+                        "&:hover": { bgcolor: "#bbdefb" },
+                      }}
+                    >
+                      <RiListOrdered size={20} />
+                    </IconButton>
+                  </Box>
+                </CardContent>
+              </Card>
+              {/* Mobile Pagination */}
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+                <Pagination
+                  count={Math.ceil(10 / pagination.pageSize)}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
+              </Box>
+            </Box>
+          </>
+        ) : (
+          // 🔹 DESKTOP VIEW (Table)
+          <Grid container spacing={2}>
+            <Grid size={12}>
+              <Paper
+                elevation={0}
+                sx={{
+                  width: "100%",
+                  overflow: "hidden",
+                  backgroundColor: "#fff",
+                  borderRadius: "12px",
+                  px: 2,
+                  py: 2,
+                  boxShadow: "0px 1px 3px rgba(0,0,0,0.04), 0px 4px 10px rgba(0,0,0,0.06)",
+                }}
+                ref={tableContainerRef}
+              >
+                <MaterialReactTable
+                  columns={columns}
+                  data={customerData || []}
+                  getRowId={(row) => row.id}
+                  manualPagination
+                  manualFiltering
+                  rowCount={totalRows}
+                  state={{
+                    pagination,
+                    isLoading: loading,
+                    globalFilter,
+                  }}
+                  onPaginationChange={handlePaginationChange}
+                  onGlobalFilterChange={handleGlobalFilterChange}
+                  enableTopToolbar
+                  enableColumnFilters={false}
+                  enableSorting={false}
+                  enablePagination
+                  enableBottomToolbar
+                  enableGlobalFilter
+                  enableDensityToggle={false}
+                  enableColumnActions={false}
+                  enableColumnVisibilityToggle={false}
+                  initialState={{ density: "compact" }}
+                  muiTableContainerProps={{
+                    sx: {
+                      width: "100%",
+                      backgroundColor: "#fff",
+                      overflowX: "auto",
+                    },
+                  }}
+                  muiTableBodyCellProps={{
+                    sx: { whiteSpace: "nowrap" },
+                  }}
+                  muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
+                  muiTableBodyRowProps={{ hover: true }}
+                  renderTopToolbar={({ table }) => (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                        p: 1,
+                      }}
+                    >
+                      <Typography variant="h6" className="page-title">Customer</Typography>
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        <MRT_GlobalFilterTextField table={table} />
+                        <MRT_ToolbarInternalButtons table={table} />
+                        <Tooltip title="Refresh">
+                          <IconButton onClick={handleRefresh} size="small">
+                            <IoMdRefresh size={20} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Print">
+                          <IconButton onClick={handlePrint} size="small">
+                            <FiPrinter size={20} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Download CSV">
+                          <IconButton onClick={downloadCSV} size="small">
+                            <BsCloudDownload size={20} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                  )}
+                />
+              </Paper>
+            </Grid>
+          </Grid>
+        )}
+      </ErrorBoundary>
+    </>
   );
 };
 

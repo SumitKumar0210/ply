@@ -15,7 +15,14 @@ import {
   Tooltip,
   Chip,
   TextField,
+  Card,
+  CardContent,
+  Divider,
+  Pagination,
   InputAdornment,
+  CircularProgress,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Link } from "react-router-dom";
@@ -36,7 +43,8 @@ import { BsCloudDownload } from "react-icons/bs";
 import { fetchOrder, deleteOrder } from "../slice/orderSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { useAuth } from "../../../context/AuthContext";
-
+import { FiUser, FiCalendar, FiPackage, FiCreditCard, FiPlus } from 'react-icons/fi';
+import { IoMdCheckmarkCircleOutline } from "react-icons/io";
 //  Styled Dialog
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -97,6 +105,8 @@ const getStatusChip = (status, count = 0) => {
 
 
 const Order = () => {
+   const theme = useTheme();
+      const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { hasPermission, hasAnyPermission } = useAuth();
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
@@ -351,7 +361,10 @@ const Order = () => {
     document.body.innerHTML = originalContents;
     window.location.reload();
   };
-
+// Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
   return (
     <>
       {/* Header Row */}
@@ -380,7 +393,226 @@ const Order = () => {
         </Grid>
       </Grid>
 
-      {/* Order Table */}
+      {isMobile ? (
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search purchase orders..."
+                value=""
+                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
+            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+              {/* Header Section - Blue Background */}
+              <Box
+                sx={{
+                  bgcolor: "primary.main",
+                  p: 1.5,
+                  color: "primary.contrastText",
+                }}
+              >
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                     PO_009
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <FiUser size={14} />
+                      <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                        Satish Sharma
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Chip
+                    label="Completed"
+                    size="small"
+                    sx={{
+                      bgcolor: "white",
+                      color: "primary.main",
+                      fontWeight: 500,
+                      fontSize: "0.75rem",
+                    }}
+                  />
+                </Box>
+              </Box>
+
+              {/* Body Section */}
+              <CardContent sx={{ p: 1.5 }}>
+                {/* Details Grid */}
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Order Date
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          08-12-2025
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <IoMdCheckmarkCircleOutline size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Item Ordered
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          20
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Commencement Date
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          08-12-2025
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={6}>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                      <Box
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.2,
+                        }}
+                      >
+                        <FiCalendar size={16} />
+                      </Box>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "text.secondary",
+                            display: "block",
+                            fontSize: "0.85rem",
+                            mb: 0.3,
+                          }}
+                        >
+                          Delivered Date
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                          08-12-2025
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+                <Divider sx={{ mb: 2 }} />
+                {/* Action Buttons */}
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+                 
+
+                  {/* Edit */}
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      width: "36px", height: "36px",
+                      bgcolor: "#fff3e0",          // light orange
+                      color: "#ff9800",            // warning
+                      "&:hover": { bgcolor: "#ffe0b2" },
+                    }}
+                  >
+                    
+                    <MdOutlineRemoveRedEye size={20} />
+                  </IconButton>
+
+                  {/* View */}
+                  <IconButton
+                    size="medium"
+                    sx={{
+                      width: "36px", height: "36px",
+                      bgcolor: "#e8eaf6",          // light indigo
+                      color: "#3f51b5",            // primary
+                      "&:hover": { bgcolor: "#c5cae9" },
+                    }}
+                  >
+                    <BiSolidEditAlt size={20} />
+                  </IconButton>
+                </Box>
+              </CardContent>
+            </Card>
+            {/* Mobile Pagination */}
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+              <Pagination
+                count={Math.ceil(10 / pagination.pageSize)}
+                page={pagination.pageIndex + 1}
+                onChange={handleMobilePageChange}
+                color="primary"
+              />
+            </Box>
+          </Box>
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
+      
       <Grid size={12}>
         <Paper
           elevation={0}
@@ -504,7 +736,7 @@ const Order = () => {
           />
         </Paper>
       </Grid>
-
+)}
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>{"Delete this order?"}</DialogTitle>
