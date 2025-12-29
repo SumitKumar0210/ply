@@ -108,6 +108,7 @@ const ProductFormDialog = ({
       product_type: editData.product_type || "",
       group_id: editData.group_id || "",
       narations: editData.narations || "",
+      minimum_qty: editData.minimum_qty || "",
       image: null,
     }
     : {
@@ -120,13 +121,14 @@ const ProductFormDialog = ({
       product_type: "",
       group_id: "",
       narations: "",
+      minimum_qty: "",
       image: null,
     };
 
-    useEffect( ()=>{
-      dispatch(fetchActiveGroup());
-      dispatch(fetchActiveProductTypes());
-    },[])
+  useEffect(() => {
+    dispatch(fetchActiveGroup());
+    dispatch(fetchActiveProductTypes());
+  }, [])
 
   // Handle image compression
   const handleImageChange = async (event, setFieldValue) => {
@@ -269,6 +271,24 @@ const ProductFormDialog = ({
                     helperText={touched.size && errors.size}
                   />
                 </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    id="minimum_qty"
+                    name="minimum_qty"
+                    label="Minimum Quantity"
+                    variant="outlined"
+                    size="small"
+                    inputProps={{ min: 0 }}
+                    value={values.minimum_qty}
+                    onChange={handleChange}
+                    error={touched.minimum_qty && Boolean(errors.minimum_qty)}
+                    helperText={touched.minimum_qty && errors.minimum_qty}
+                  />
+                </Grid>
+
 
                 <Grid size={{ xs: 12, md: 6 }}>
                   <TextField

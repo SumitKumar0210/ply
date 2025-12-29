@@ -527,11 +527,12 @@ const OrderDetailsView = () => {
                       <Th>#</Th>
                       <Th>Group</Th>
                       <Th>Product Name</Th>
-                      <Th>Model</Th>
+                      {/* <Th>Model</Th> */}
                       <Th>Unique Code</Th>
                       <Th>Original Qty</Th>
                       {previousPOData.length > 0 && <Th>Qty in Production</Th>}
                       <Th>Production Qty</Th>
+                      {previousPOData.length > 0 && <Th>Completed Product</Th>}
                       <Th>Size</Th>
                       <Th>Document</Th>
                       <Th>Start Date</Th>
@@ -555,9 +556,22 @@ const OrderDetailsView = () => {
                             (p.group ?? "").trim() === (item.group ?? "").trim() && p.product_id == item.product_id
                         );
 
+                        // const prevMatch = previousPOData.find(
+                        //   (p) =>
+                        //     p.product_id == item.product_id && (p.group ?? "").trim() === (item.group ?? "").trim()
+                        // );
+
                         const prevMatch = previousPOData.find(
                           (p) =>
-                            p.product_id == item.product_id && (p.group ?? "").trim() === (item.group ?? "").trim()
+                            p.status === 1 &&
+                            p.product_id == item.product_id &&
+                            (p.group ?? "").trim() === (item.group ?? "").trim()
+                        );
+                        const compeletedMatch = previousPOData.find(
+                          (p) =>
+                            p.status === 2 &&
+                            p.product_id == item.product_id &&
+                            (p.group ?? "").trim() === (item.group ?? "").trim()
                         );
 
                         const isEditing = editingItemId === item.id;
@@ -566,12 +580,13 @@ const OrderDetailsView = () => {
                           <Tr key={item.id}>
                             <Td>{item.id}</Td>
                             <Td>{item.group}</Td>
-                            <Td>{item.name}</Td>
-                            <Td>{item.model}</Td>
+                            <Td>{item.name} ({item.model})</Td>
+                            {/* <Td>{item.model}</Td> */}
                             <Td>{item.unique_code}</Td>
                             <Td>{item.original_qty}</Td>
                             {previousPOData.length > 0 && (
                               <Td style={{ textAlign: "center" }}>
+                                {/* show in production product means status = 1 */}
                                 {prevMatch ? (
                                   <Chip
                                     label={prevMatch.total_qty}
@@ -612,6 +627,23 @@ const OrderDetailsView = () => {
                                 />
                               )}
                             </Td>
+                            {previousPOData.length > 0 && (
+                              <Td style={{ textAlign: "center" }}>
+                                {/* show completed product means status = 2 */}
+                                {compeletedMatch ? (
+                                  <Chip
+                                    label={compeletedMatch.total_qty}
+                                    color="info"
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    0
+                                  </Typography>
+                                )}
+                              </Td>
+                            )}
                             <Td>{item.size}</Td>
                             <Td>
                               {item.document ? (

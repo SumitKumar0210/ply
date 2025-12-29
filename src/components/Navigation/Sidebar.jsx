@@ -97,9 +97,6 @@ const menuSections = [
           { text: "Vendor list", to: "/vendor/list", icon: <LuTable />, anyPermissions: ["vendor_lists.read"] },
           { text: "Movement", to: "/stocks", icon: <BsBoxSeam />, anyPermissions: ["stocks.read"] },
           {
-            text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
-          },
-          {
             text: "Inventory", to: "/material-inventory", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
           },
         ],
@@ -204,6 +201,7 @@ const menuSections = [
           "dispatch_product.view_challan",
           "dispatch_product.mark_delivered",
           "dispatch_product.collect_payment",
+          "product_stocks.read",
         ],
         children: [
           {
@@ -224,6 +222,9 @@ const menuSections = [
               "dispatch_product.mark_delivered",
               "dispatch_product.collect_payment",
             ]
+          },
+          {
+            text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
           },
         ],
       },

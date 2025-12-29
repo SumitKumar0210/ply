@@ -213,12 +213,14 @@ const Challan = () => {
         }
     };
 
+
     const handleCloseShippingModal = () => {
         if (isSubmitting) return;
 
         // Don't allow closing without submission if vehicle_no is null
         if (!quotationDetails?.vehicle_no && !shippingDetailsSubmitted) {
-            errorMessage("Please provide shipping details before proceeding");
+            navigate("/bills")
+            // errorMessage("Please provide shipping details before proceeding");
             return;
         }
 
