@@ -360,13 +360,13 @@ const Sidebar = ({ mobileOpen, onClose }) => {
         <Link to="/dashboard" style={{ display: "inline-flex" }}>
         {/* Show skeleton while appDetails not available in either context or localStorage */}
         {(!displayLogo || displayLogo === "") ? (
-          <Skeleton variant="rectangular" width={140} height={48} sx={{ borderRadius: 1 }} />
+          <Skeleton variant="rectangular" width={auto} height={48} sx={{ borderRadius: 1 }} />
         ) : (
           <img
             src={displayLogo}
             alt={displayAppName || "logo"}
             style={{
-              width: "140px",
+              width: "100%",
               height: "48px",
               objectFit: "contain",
               display: imageLoaded ? "block" : "none",
