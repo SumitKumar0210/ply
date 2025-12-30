@@ -19,6 +19,7 @@ import PersonAdd from "@mui/icons-material/PersonAdd";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import User from "../../assets/images/user.jpg";
+import { TbLockPassword } from "react-icons/tb";
 
 const drawerWidth = 220;
 
@@ -55,7 +56,7 @@ const Header = ({ mobileOpen, onToggleSidebar }) => {
       <Toolbar>
         <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
           {/* Left Side (Menu Icon) */}
-         <Box display="flex" alignItems="center">
+          <Box display="flex" alignItems="center">
             {/* Toggle/Menu Icon */}
             <IconButton edge="start" onClick={onToggleSidebar} sx={{ mr: 1 }}>
               <HiOutlineMenu size={22} />
@@ -70,7 +71,7 @@ const Header = ({ mobileOpen, onToggleSidebar }) => {
           <Box>
             <Tooltip title="Account settings">
               <IconButton onClick={handleClick} size="small" sx={{ ml: 2 }}>
-                <Avatar sx={{ width: 40, height: 40 }} src={user?.profileImage??User} alt="User" />
+                <Avatar sx={{ width: 40, height: 40 }} src={user?.profileImage ?? User} alt="User" />
               </IconButton>
             </Tooltip>
           </Box>
@@ -84,66 +85,93 @@ const Header = ({ mobileOpen, onToggleSidebar }) => {
           onClick={handleClose}
           slotProps={{
             paper: {
-            elevation: 0,
-            sx: {
-              overflow: 'visible',
-              filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-              mt: 0.5,
-              '& .MuiAvatar-root': {
-                width: 32,
-                height: 32,
-                ml: -0.5,
-                mr: 1,
+              elevation: 0,
+              sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                mt: 0.5,
+                '& .MuiAvatar-root': {
+                  width: 32,
+                  height: 32,
+                  ml: -0.5,
+                  mr: 1,
+                },
+                "&::before": {
+                  content: '""',
+                  display: "block",
+                  position: "absolute",
+                  top: 0,
+                  right: 14,
+                  width: 10,
+                  height: 10,
+                  bgcolor: "background.paper",
+                  transform: "translateY(-50%) rotate(45deg)",
+                  zIndex: 0,
+                },
               },
-              "&::before": {
-                content: '""',
-                display: "block",
-                position: "absolute",
-                top: 0,
-                right: 14,
-                width: 10,
-                height: 10,
-                bgcolor: "background.paper",
-                transform: "translateY(-50%) rotate(45deg)",
-                zIndex: 0,
-              },
-            },
-          }
+            }
           }}
           transformOrigin={{ horizontal: "right", vertical: "top" }}
           anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
         >
-          <MenuItem sx={{ flexDirection: "column", alignItems: "center" }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+          <MenuItem
+            sx={{
+              flexDirection: "column",
+              alignItems: "center",
+              py: 0.5,          // ↓ vertical padding
+              lineHeight: 1,
+              minHeight: "auto", // remove default min height
+            }}
+          >
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 500,
+                lineHeight: 1.2,
+                mb: 0.5,
+              }}
+            >
               {user?.name || "Amit Kumar"}
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                fontWeight: 400,
+                fontSize: 13,    // slightly smaller
+                lineHeight: 1,
+                mt: 0,
+              }}
+            >
               {user?.type || "Admin"}
             </Typography>
           </MenuItem>
 
+
           <Divider />
 
-          <MenuItem onClick={() => navigate("#")}>
-            <ListItemIcon>
+          <MenuItem onClick={() => navigate("#")} sx={{ gap: 0.75 }}>
+            <ListItemIcon sx={{ color: "primary.main", minWidth: 32 }}>
               <PersonAdd fontSize="small" />
             </ListItemIcon>
             Profile
           </MenuItem>
 
-          <MenuItem onClick={() => navigate("#")}>
-            <ListItemIcon>
-              <Settings fontSize="small" />
+          <MenuItem onClick={() => navigate("#")} sx={{ gap: 0.75 }}>
+            <ListItemIcon sx={{ color: "warning.main", minWidth: 32 }}>
+              <TbLockPassword fontSize="22" />
             </ListItemIcon>
             Reset Password
           </MenuItem>
 
-          <MenuItem onClick={handleLogout}>
-            <ListItemIcon>
+          <MenuItem onClick={handleLogout} sx={{ gap: 0.75 }}>
+            <ListItemIcon sx={{ color: "error.main", minWidth: 32 }}>
               <Logout fontSize="small" />
             </ListItemIcon>
             Logout
           </MenuItem>
+
         </Menu>
       </Toolbar>
     </AppBar>

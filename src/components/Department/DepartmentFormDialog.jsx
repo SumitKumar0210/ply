@@ -76,7 +76,7 @@ const DepartmentFormDialog = ({
                 onBlur={handleBlur}
                 error={touched.name && Boolean(errors.name)}
                 helperText={touched.name && errors.name}
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, mt:1 }}
               />
               <TextField
                 fullWidth
@@ -89,6 +89,7 @@ const DepartmentFormDialog = ({
                 error={touched.color && Boolean(errors.color)}
                 helperText={touched.color && errors.color}
                 placeholder="Enter color name or hex code"
+                sx={{ mb: 2 }}
               />
             </DialogContent>
             <DialogActions>

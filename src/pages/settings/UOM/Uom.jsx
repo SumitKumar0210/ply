@@ -371,12 +371,13 @@ const UOM = () => {
                   id="name"
                   name="name"
                   label="UOM"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.name}
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}
                   helperText={touched.name && errors.name}
-                  sx={{ mb: 3 }}
+                  sx={{ mb: 2, mt:2 }}
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
@@ -429,12 +430,13 @@ const UOM = () => {
                   id="edit_name"
                   name="name"
                   label="UOM"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.name}
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}
                   helperText={touched.name && errors.name}
-                  sx={{ mb: 3 }}
+                  sx={{ mb: 2, mt:2 }}
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>

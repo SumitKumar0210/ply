@@ -18,6 +18,8 @@ import {
     TextField,
     MenuItem,
     CircularProgress,
+    useMediaQuery,
+    useTheme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
@@ -80,6 +82,8 @@ const quoteValidationSchema = Yup.object({
 });
 
 const GenerateBill = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [creationDate] = useState(new Date());
     const [deliveryDate, setDeliveryDate] = useState(null);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -293,7 +297,7 @@ const GenerateBill = () => {
             const totals = calculateTotals(values);
 
             const formData = new FormData();
-            if(!deliveryDate){
+            if (!deliveryDate) {
                 errorMessage('The delivery date is required.')
                 return
             }
@@ -400,12 +404,14 @@ const GenerateBill = () => {
                                     flexWrap: "wrap",
                                     gap: 2,
                                     mb: 2,
+                                    mt:2
                                 }}
                             >
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: { xs: "100%", md: "auto" } }}>
                                     <Autocomplete
                                         options={customerData}
                                         size="small"
+                                        sx={{ width: { xs: "100%", md: 300 } }}
                                         getOptionLabel={(option) => option?.name || ""}
                                         value={selectedCustomer}
                                         onChange={(e, value) => setSelectedCustomer(value)}
@@ -414,7 +420,7 @@ const GenerateBill = () => {
                                                 {...params}
                                                 label="Select Customer"
                                                 variant="outlined"
-                                                sx={{ width: 300 }}
+                                                sx={{ width: { xs: "100%", md: 300 } }}
                                                 required
                                                 error={!selectedCustomer}
                                                 helperText={!selectedCustomer ? "Customer is required" : ""}
@@ -437,7 +443,7 @@ const GenerateBill = () => {
                                         slotProps={{
                                             textField: {
                                                 size: "small",
-                                                sx: { width: 250 },
+                                                sx: { width: { xs: "100%", md: 250 } },
                                                 error: deliveryDate && deliveryDate < creationDate,
                                                 helperText: deliveryDate && deliveryDate < creationDate
                                                     ? "Delivery date cannot be before creation date"
@@ -506,12 +512,12 @@ const GenerateBill = () => {
                                                         setFieldValue("price", value.rrp || "");
                                                     }
                                                 }}
+                                                sx={{ width: { xs: "100%", md: 150 } }}
                                                 renderInput={(params) => (
                                                     <TextField
                                                         {...params}
                                                         label="Model Code"
                                                         variant="outlined"
-                                                        sx={{ width: 150 }}
                                                         error={touched.product_id && Boolean(errors.product_id)}
                                                         helperText={touched.product_id && errors.product_id}
                                                         required
@@ -525,7 +531,7 @@ const GenerateBill = () => {
                                                 size="small"
                                                 value={selectedProduct?.name || ""}
                                                 disabled
-                                                sx={{ minWidth: 200 }}
+                                                sx={{ minWidth: { xs: "100%", md: 200 } }}
                                             />
 
                                             <TextField
@@ -538,7 +544,7 @@ const GenerateBill = () => {
                                                 onChange={handleChange}
                                                 error={touched.quantity && Boolean(errors.quantity)}
                                                 helperText={touched.quantity && errors.quantity}
-                                                sx={{ width: 100 }}
+                                                sx={{ width: { xs: "100%", md: 100 } }}
                                                 inputProps={{ min: 1, max: 10000 }}
                                                 required
                                             />
@@ -549,7 +555,7 @@ const GenerateBill = () => {
                                                 size="small"
                                                 value={selectedProduct?.size || ""}
                                                 disabled
-                                                sx={{ minWidth: 100 }}
+                                                sx={{ minWidth: { xs: "100%", md: 100 } }}
                                             />
 
                                             <TextField
@@ -562,12 +568,12 @@ const GenerateBill = () => {
                                                 onChange={handleChange}
                                                 error={touched.price && Boolean(errors.price)}
                                                 helperText={touched.price && errors.price}
-                                                sx={{ minWidth: 100 }}
+                                                sx={{ minWidth: { xs: "100%", md: 100 } }}
                                                 inputProps={{ min: 0, max: 10000000, step: "0.01" }}
                                                 required
                                             />
 
-                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: { xs: "100%", md: "auto" } }}>
                                                 {selectedProduct?.image && (
                                                     <ImagePreviewDialog
                                                         imageUrl={mediaUrl + selectedProduct?.image}
@@ -581,7 +587,7 @@ const GenerateBill = () => {
                                                 variant="contained"
                                                 color="primary"
                                                 disabled={!selectedProduct || isSubmitting}
-                                                sx={{ mt: 0 }}
+                                                sx={{ mt: 0, width: { xs: "100%", md: "auto" } }}
                                             >
                                                 {isSubmitting ? "Adding..." : "Add Item"}
                                             </Button>
@@ -590,95 +596,198 @@ const GenerateBill = () => {
                                 )}
                             </Formik>
 
-                            {/* Items Table */}
+                            {/* Items Table/Cards */}
                             {items.length > 0 && (
                                 <Box sx={{ mb: 3 }}>
                                     <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
                                         Added Items ({items.length})
                                     </Typography>
-                                    <Table>
-                                        <Thead>
-                                            <Tr>
-                                                <Th>Item Name</Th>
-                                                <Th>Item Code</Th>
-                                                <Th>Qty</Th>
-                                                <Th>Size</Th>
-                                                <Th>Unit Price (₹)</Th>
-                                                <Th>Total Cost (₹)</Th>
-                                                <Th>Documents</Th>
-                                                <Th>Action</Th>
-                                            </Tr>
-                                        </Thead>
-                                        <Tbody>
+
+                                    {/* Desktop Table View */}
+                                    {!isMobile && (
+                                        <Table>
+                                            <Thead>
+                                                <Tr>
+                                                    <Th>Item Name</Th>
+                                                    <Th>Item Code</Th>
+                                                    <Th>Qty</Th>
+                                                    <Th>Size</Th>
+                                                    <Th>Unit Price (₹)</Th>
+                                                    <Th>Total Cost (₹)</Th>
+                                                    <Th>Documents</Th>
+                                                    <Th>Action</Th>
+                                                </Tr>
+                                            </Thead>
+                                            <Tbody>
+                                                {items.map((item) => (
+                                                    <Tr key={item.id}>
+                                                        <Td>{item.name}</Td>
+                                                        <Td>{item.model}</Td>
+                                                        <Td>
+                                                            <TextField
+                                                                type="number"
+                                                                value={item.qty}
+                                                                onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                                                                size="small"
+                                                                sx={{ width: 80 }}
+                                                                inputProps={{ min: 1, max: 10000 }}
+                                                            />
+                                                        </Td>
+                                                        <Td>{item.size}</Td>
+                                                        <Td>
+                                                            <TextField
+                                                                type="number"
+                                                                value={item.unitPrice}
+                                                                onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)}
+                                                                size="small"
+                                                                sx={{ width: 100 }}
+                                                                inputProps={{ min: 0, max: 10000000, step: "0.01" }}
+                                                            />
+                                                        </Td>
+                                                        <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
+                                                        <Td>
+                                                            {item.document ? (
+                                                                <Box
+                                                                    sx={{
+                                                                        display: "flex",
+                                                                        alignItems: "center",
+                                                                        gap: 1,
+                                                                    }}
+                                                                >
+                                                                    <ImagePreviewDialog
+                                                                        imageUrl={item.document}
+                                                                        alt={item.documentName || "Document"}
+                                                                    />
+                                                                    <Typography variant="caption">
+                                                                        {item.documentName || "Document"}
+                                                                    </Typography>
+                                                                </Box>
+                                                            ) : (
+                                                                "-"
+                                                            )}
+                                                        </Td>
+                                                        <Td>
+                                                            <Tooltip title="Delete">
+                                                                <IconButton
+                                                                    color="error"
+                                                                    onClick={() =>
+                                                                        setDeleteDialog({
+                                                                            open: true,
+                                                                            itemId: item.id,
+                                                                        })
+                                                                    }
+                                                                >
+                                                                    <RiDeleteBinLine size={16} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </Td>
+                                                    </Tr>
+                                                ))}
+                                            </Tbody>
+                                        </Table>
+                                    )}
+
+                                    {/* Mobile Card View */}
+                                    {isMobile && (
+                                        <Stack spacing={2}>
                                             {items.map((item) => (
-                                                <Tr key={item.id}>
-                                                    <Td>{item.name}</Td>
-                                                    <Td>{item.model}</Td>
-                                                    <Td>
-                                                        <TextField
-                                                            type="number"
-                                                            value={item.qty}
-                                                            onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
-                                                            size="small"
-                                                            sx={{ width: 80 }}
-                                                            inputProps={{ min: 1, max: 10000 }}
-                                                        />
-                                                    </Td>
-                                                    <Td>{item.size}</Td>
-                                                    <Td>
-                                                        <TextField
-                                                            type="number"
-                                                            value={item.unitPrice}
-                                                            onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)}
-                                                            size="small"
-                                                            sx={{ width: 100 }}
-                                                            inputProps={{ min: 0, max: 10000000, step: "0.01" }}
-                                                        />
-                                                    </Td>
-                                                    <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
-                                                    <Td>
-                                                        {item.document ? (
-                                                            <Box
-                                                                sx={{
-                                                                    display: "flex",
-                                                                    alignItems: "center",
-                                                                    gap: 1,
-                                                                }}
-                                                            >
-                                                                <ImagePreviewDialog
-                                                                    imageUrl={item.document}
-                                                                    alt={item.documentName || "Document"}
-                                                                />
-                                                                <Typography variant="caption">
-                                                                    {item.documentName || "Document"}
+                                                <Card key={item.id} sx={{ bgcolor: '#f7f7f7' }}>
+                                                    <CardContent>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                                                            <Box sx={{ flex: 1 }}>
+                                                                <Typography variant="subtitle2" fontWeight="600">
+                                                                    {item.name}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    Model: {item.model}
                                                                 </Typography>
                                                             </Box>
-                                                        ) : (
-                                                            "-"
-                                                        )}
-                                                    </Td>
-                                                    <Td>
-                                                        <Tooltip title="Delete">
-                                                            <IconButton
-                                                                color="error"
-                                                                onClick={() =>
-                                                                    setDeleteDialog({
-                                                                        open: true,
-                                                                        itemId: item.id,
-                                                                    })
-                                                                }
-                                                            >
-                                                                <RiDeleteBinLine size={16} />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    </Td>
-                                                </Tr>
+                                                            <Tooltip title="Delete">
+                                                                <IconButton
+                                                                    color="error"
+                                                                    size="small"
+                                                                    onClick={() =>
+                                                                        setDeleteDialog({
+                                                                            open: true,
+                                                                            itemId: item.id,
+                                                                        })
+                                                                    }
+                                                                >
+                                                                    <RiDeleteBinLine size={18} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </Box>
+
+                                                        <Stack spacing={1.5}>
+                                                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                                                <Box sx={{ flex: 1 }}>
+                                                                    <Typography variant="caption" color="text.secondary" display="block">
+                                                                        Quantity
+                                                                    </Typography>
+                                                                    <TextField
+                                                                        type="number"
+                                                                        value={item.qty}
+                                                                        onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                                                                        size="small"
+                                                                        fullWidth
+                                                                        inputProps={{ min: 1, max: 10000 }}
+                                                                    />
+                                                                </Box>
+                                                                <Box sx={{ flex: 1 }}>
+                                                                    <Typography variant="caption" color="text.secondary" display="block">
+                                                                        Size
+                                                                    </Typography>
+                                                                    <TextField
+                                                                        value={item.size}
+                                                                        size="small"
+                                                                        fullWidth
+                                                                        disabled
+                                                                    />
+                                                                </Box>
+                                                            </Box>
+
+                                                            <Box>
+                                                                <Typography variant="caption" color="text.secondary" display="block">
+                                                                    Unit Price (₹)
+                                                                </Typography>
+                                                                <TextField
+                                                                    type="number"
+                                                                    value={item.unitPrice}
+                                                                    onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)}
+                                                                    size="small"
+                                                                    fullWidth
+                                                                    inputProps={{ min: 0, max: 10000000, step: "0.01" }}
+                                                                />
+                                                            </Box>
+
+                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1, borderTop: '1px solid #ddd' }}>
+                                                                <Typography variant="body2" fontWeight="600">
+                                                                    Total Cost:
+                                                                </Typography>
+                                                                <Typography variant="body2" fontWeight="600" color="primary">
+                                                                    ₹{item.cost.toLocaleString("en-IN")}
+                                                                </Typography>
+                                                            </Box>
+
+                                                            {item.document && (
+                                                                <Box sx={{ display: "flex", alignItems: "center", gap: 1, pt: 1 }}>
+                                                                    <ImagePreviewDialog
+                                                                        imageUrl={item.document}
+                                                                        alt={item.documentName || "Document"}
+                                                                    />
+                                                                    <Typography variant="caption">
+                                                                        {item.documentName || "Document"}
+                                                                    </Typography>
+                                                                </Box>
+                                                            )}
+                                                        </Stack>
+                                                    </CardContent>
+                                                </Card>
                                             ))}
-                                        </Tbody>
-                                    </Table>
+                                        </Stack>
+                                    )}
                                 </Box>
                             )}
-
                             {/* Totals Section */}
                             <Formik
                                 initialValues={{
@@ -744,7 +853,7 @@ const GenerateBill = () => {
                                                             <span>₹{totals.subTotal.toLocaleString("en-IN")}</span>
                                                         </Box>
 
-                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
+                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb:1 }}>
                                                             <TextField
                                                                 label="Discount (₹)"
                                                                 type="number"
@@ -760,7 +869,7 @@ const GenerateBill = () => {
                                                             <span>₹{(totals.subTotal - totals.discountAmount).toLocaleString("en-IN")}</span>
                                                         </Box>
 
-                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
+                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb:1 }}>
                                                             <TextField
                                                                 label="Add Charges (₹)"
                                                                 type="number"
@@ -852,7 +961,7 @@ const GenerateBill = () => {
                                                 </Box>
                                             </Grid>
 
-                                            <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 4 }}>
+                                            <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 4, mb:2 }}>
                                                 {/* <Button
                                                     variant="outlined"
                                                     color="secondary"
@@ -887,7 +996,7 @@ const GenerateBill = () => {
                 onClose={() => setOpenAddCustomer(false)}
                 title="Add Customer"
                 initialValues={getInitialCustomerValues()}
-                onSubmit={handleAddCustomer} // Add your customer submission logic here
+                onSubmit={handleAddCustomer}
                 states={states}
             />
 

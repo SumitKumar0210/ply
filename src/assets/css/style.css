@@ -3,7 +3,7 @@ body {
   overflow-y: auto !important;
   position: relative;
   background-color: #eff1f9;
-  /* font-family: "Open Sans", sans-serif !important; */
+  font-family: "Open Sans", sans-serif !important;
 }
 
 * {
@@ -180,8 +180,12 @@ textarea:focus-visible {
   pointer-events: auto;
 }
 
-.page-title {
+.page-title, .MuiTypography-h6 {
   font-size: 20px !important;
   font-weight: 400 !important;
   line-height: 26px !important;
+}
+
+.MuiTableContainer-root {
+  margin-top: 0 !important;
 }/*# sourceMappingURL=style.css.map */

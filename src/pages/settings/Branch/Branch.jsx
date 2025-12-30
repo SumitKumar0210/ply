@@ -285,7 +285,8 @@ const Branch = () => {
                   id="name"
                   name="name"
                   label="Branch Name"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.name}
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}
@@ -297,7 +298,8 @@ const Branch = () => {
                   id="mobile"
                   name="mobile"
                   label="Mobile"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.mobile}
                   onChange={handleChange}
                   error={touched.mobile && Boolean(errors.mobile)}
@@ -309,7 +311,8 @@ const Branch = () => {
                   id="address"
                   name="address"
                   label="Address"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.address}
                   onChange={handleChange}
                   error={touched.address && Boolean(errors.address)}
@@ -357,7 +360,8 @@ const Branch = () => {
                   id="edit_name"
                   name="name"
                   label="Branch Name"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.name}
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}
@@ -369,7 +373,8 @@ const Branch = () => {
                   id="edit_mobile"
                   name="mobile"
                   label="Mobile"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.mobile}
                   onChange={handleChange}
                   error={touched.mobile && Boolean(errors.mobile)}
@@ -381,7 +386,8 @@ const Branch = () => {
                   id="edit_address"
                   name="address"
                   label="Address"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.address}
                   onChange={handleChange}
                   error={touched.address && Boolean(errors.address)}

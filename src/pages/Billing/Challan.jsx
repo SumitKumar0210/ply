@@ -996,47 +996,60 @@ const Challan = () => {
                         <Card>
                             <CardContent>
                                 {/* Header Section */}
-                                <Grid size={12} sx={{ pt: 2 }}>
+                                <Grid size={12} sx={{ pt: 0 }}>
                                     <Box
                                         sx={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "space-between",
-                                            gap: 2,
-                                            flexWrap: "wrap",
+                                        display: "flex",
+                                        flexDirection: { xs: "column", sm: "row" },
+                                        alignItems: { xs: "flex-start", sm: "center" },
+                                        justifyContent: "space-between",
+                                        gap: { xs: 1, sm: 2 },
+                                        mb: 3,
+                                        width: "100%",
                                         }}
                                     >
-                                        <Typography variant="body1" sx={{ m: 0 }}>
-                                            Invoice No. :{" "}
+                                        <Typography
+                                        variant="body1"
+                                        sx={{ m: 0, width: { xs: "100%", sm: "auto" } }}
+                                        >
+                                        Invoice No. :{" "}
+                                        <Box component="span" sx={{ fontWeight: 600 }}>
+                                            {quotationDetails.invoice_no || "N/A"}
+                                        </Box>
+                                        </Typography>
+
+                                        <Box
+                                        sx={{
+                                            display: "flex",
+                                            flexDirection: { xs: "column", sm: "row" },
+                                            alignItems: { xs: "flex-start", sm: "center" },
+                                            justifyContent: { sm: "flex-end" },
+                                            gap: { xs: 1, sm: 2 },
+                                            width: { xs: "100%", sm: "auto" },
+                                        }}
+                                        >
+                                        <Typography
+                                            variant="body1"
+                                            sx={{ m: 0, width: { xs: "100%", sm: "auto" } }}
+                                        >
+                                            Billing Date:{" "}
                                             <Box component="span" sx={{ fontWeight: 600 }}>
-                                                {quotationDetails.invoice_no || "N/A"}
+                                            {formatDate(quotationDetails.date)}
                                             </Box>
                                         </Typography>
-                                        <Box
-                                            sx={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "end",
-                                                gap: 2,
-                                                flexWrap: "wrap",
-                                            }}
+
+                                        <Typography
+                                            variant="body1"
+                                            sx={{ m: 0, width: { xs: "100%", sm: "auto" } }}
                                         >
-                                            <Typography variant="body1" sx={{ m: 0 }}>
-                                                Billing Date:{" "}
-                                                <Box component="span" sx={{ fontWeight: 600 }}>
-                                                    {formatDate(quotationDetails.date)}
-                                                </Box>
-                                            </Typography>
-                                            <Typography variant="body1" sx={{ m: 0 }}>
-                                                Delivery Date:{" "}
-                                                <Box component="span" sx={{ fontWeight: 600 }}>
-                                                    {formatDate(quotationDetails.delivery_date)}
-                                                </Box>
-                                            </Typography>
+                                            Delivery Date:{" "}
+                                            <Box component="span" sx={{ fontWeight: 600 }}>
+                                            {formatDate(quotationDetails.delivery_date)}
+                                            </Box>
+                                        </Typography>
                                         </Box>
                                     </Box>
                                 </Grid>
-
                                 <Box
                                     sx={{
                                         display: "flex",
@@ -1095,29 +1108,112 @@ const Challan = () => {
                                 </Box>
 
                                 {/* Items Table */}
+                               {/* Items Table */}
                                 {items.length > 0 && (
                                     <Box sx={{ mb: 3 }}>
                                         <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
                                             Bill Items ({items.length})
                                         </Typography>
-                                        <Table>
-                                            <Thead>
-                                                <Tr>
-                                                    <Th>Item Name</Th>
-                                                    <Th>Item Code</Th>
-                                                    <Th>Qty</Th>
-                                                    <Th>Size</Th>
-                                                    <Th>Documents</Th>
-                                                </Tr>
-                                            </Thead>
-                                            <Tbody>
-                                                {items.map((item) => (
-                                                    <Tr key={item.id}>
-                                                        <Td>{item.product?.name}</Td>
-                                                        <Td>{item.product?.model}</Td>
-                                                        <Td>{item.qty}</Td>
-                                                        <Td>{item.product?.size}</Td>
-                                                        <Td>
+                                        
+                                        {/* Table for desktop */}
+                                        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                                            <Table>
+                                                <Thead>
+                                                    <Tr>
+                                                        <Th>Item Name</Th>
+                                                        <Th>Item Code</Th>
+                                                        <Th>Qty</Th>
+                                                        <Th>Size</Th>
+                                                        <Th>Documents</Th>
+                                                    </Tr>
+                                                </Thead>
+                                                <Tbody>
+                                                    {items.map((item) => (
+                                                        <Tr key={item.id}>
+                                                            <Td>{item.product?.name}</Td>
+                                                            <Td>{item.product?.model}</Td>
+                                                            <Td>{item.qty}</Td>
+                                                            <Td>{item.product?.size}</Td>
+                                                            <Td>
+                                                                {item.product?.image ? (
+                                                                    <Box
+                                                                        sx={{
+                                                                            display: "flex",
+                                                                            alignItems: "center",
+                                                                            gap: 1,
+                                                                        }}
+                                                                    >
+                                                                        <ImagePreviewDialog
+                                                                            imageUrl={mediaUrl + item.product?.image}
+                                                                            alt={item.product?.name || "Document"}
+                                                                        />
+                                                                        <Typography variant="caption">
+                                                                            {item.product?.name || "Document"}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                ) : (
+                                                                    "-"
+                                                                )}
+                                                            </Td>
+                                                        </Tr>
+                                                    ))}
+                                                </Tbody>
+                                            </Table>
+                                        </Box>
+
+                                        {/* Cards for mobile */}
+                                        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                            {items.map((item, index) => (
+                                                <Card 
+                                                    key={item.id} 
+                                                    sx={{ 
+                                                        mb: 2, 
+                                                        backgroundColor: '#f7f7f7',
+                                                        boxShadow: 1
+                                                    }}
+                                                >
+                                                    <CardContent>
+                                                        <Box sx={{ mb: 1.5 }}>
+                                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                                                Item Name
+                                                            </Typography>
+                                                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                                                                {item.product?.name}
+                                                            </Typography>
+                                                        </Box>
+
+                                                        <Box sx={{ mb: 1.5 }}>
+                                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                                                Item Code
+                                                            </Typography>
+                                                            <Typography variant="body1">
+                                                                {item.product?.model}
+                                                            </Typography>
+                                                        </Box>
+
+                                                        <Box sx={{ display: 'flex', gap: 3, mb: 1.5 }}>
+                                                            <Box sx={{ flex: 1 }}>
+                                                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                                                    Qty
+                                                                </Typography>
+                                                                <Typography variant="body1">
+                                                                    {item.qty}
+                                                                </Typography>
+                                                            </Box>
+                                                            <Box sx={{ flex: 1 }}>
+                                                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                                                                    Size
+                                                                </Typography>
+                                                                <Typography variant="body1">
+                                                                    {item.product?.size}
+                                                                </Typography>
+                                                            </Box>
+                                                        </Box>
+
+                                                        <Box>
+                                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mb: 0.5 }}>
+                                                                Documents
+                                                            </Typography>
                                                             {item.product?.image ? (
                                                                 <Box
                                                                     sx={{
@@ -1135,16 +1231,15 @@ const Challan = () => {
                                                                     </Typography>
                                                                 </Box>
                                                             ) : (
-                                                                "-"
+                                                                <Typography variant="body1">-</Typography>
                                                             )}
-                                                        </Td>
-                                                    </Tr>
-                                                ))}
-                                            </Tbody>
-                                        </Table>
+                                                        </Box>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </Box>
                                     </Box>
                                 )}
-
                                 {/* Order Terms */}
                                 <Grid size={12} sx={{ mt: 3 }}>
                                     <Box

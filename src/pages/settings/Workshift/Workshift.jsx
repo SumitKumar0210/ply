@@ -463,7 +463,7 @@ const WorkShift = () => {
                       />
                     </LocalizationProvider>
                   </Grid>
-                  <Grid item xs={6}>
+                  <Grid size={6}>
                     <LocalizationProvider dateAdapter={AdapterDayjs}>
                       <TimePicker
                         label="End Time"

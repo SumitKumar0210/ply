@@ -10,6 +10,7 @@ import {
   CardMedia,
   Alert,
   InputAdornment,
+  Divider,
 } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { Formik, Form } from "formik";
@@ -193,15 +194,16 @@ const GeneralSetting = () => {
     <Paper
       elevation={0}
       sx={{
-        p: 4,
-        borderRadius: 2,
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        p: 2,
+        // borderRadius: 2,
+        // background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
       }}
     >
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 2 }}>
         <Typography
           variant="h5"
           gutterBottom
+          className="page-title"
           sx={{
             fontWeight: 600,
             color: 'primary.main',
@@ -244,25 +246,25 @@ const GeneralSetting = () => {
       >
         {({ values, errors, touched, handleChange, setFieldValue, isSubmitting }) => (
           <Form>
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {/* Logo & Favicon Section */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Card
                   sx={{
-                    p: 3,
-                    mb: 2,
-                    background: 'rgba(255, 255, 255, 0.8)',
-                    backdropFilter: 'blur(10px)'
+                    // p: 3,
+                    // mb: 2,
+                    // background: 'rgba(214, 212, 212, 0.85)',
+                    // backdropFilter: 'blur(10px)'
                   }}
                 >
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                  {/* <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                     Brand Assets
-                  </Typography>
+                  </Typography> */}
 
                   <Grid container spacing={4}>
                     {/* Square Logo Upload */}
-                    <Grid item xs={12} md={4}>
-                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
                         Square Logo
                       </Typography>
                       <Button
@@ -279,6 +281,7 @@ const GeneralSetting = () => {
                           '&:hover': {
                             borderColor: 'primary.dark',
                             backgroundColor: 'primary.light',
+                            color: 'primary.contrastText'
                           }
                         }}
                       >
@@ -295,7 +298,7 @@ const GeneralSetting = () => {
                           }}
                         />
                       </Button>
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.875rem' }}>
                         Recommended: 200x200px, PNG or JPG (Max 5MB)
                       </Typography>
                       {validationErrors.logo && (
@@ -353,8 +356,8 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Horizontal Logo Upload */}
-                    <Grid item xs={12} md={4}>
-                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
                         Horizontal Logo
                       </Typography>
                       <Button
@@ -371,6 +374,7 @@ const GeneralSetting = () => {
                           '&:hover': {
                             borderColor: 'info.dark',
                             backgroundColor: 'info.light',
+                            color: 'info.contrastText'
                           }
                         }}
                       >
@@ -387,7 +391,7 @@ const GeneralSetting = () => {
                           }}
                         />
                       </Button>
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.875rem' }}>
                         Recommended: 400x100px, PNG or JPG (Max 5MB)
                       </Typography>
                       {validationErrors.horizontal_logo && (
@@ -445,8 +449,8 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Favicon Upload */}
-                    <Grid item xs={12} md={4}>
-                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
                         Favicon
                       </Typography>
                       <Button
@@ -463,6 +467,7 @@ const GeneralSetting = () => {
                           '&:hover': {
                             borderColor: 'secondary.dark',
                             backgroundColor: 'secondary.light',
+                            color: 'secondary.contrastText'
                           }
                         }}
                       >
@@ -479,7 +484,7 @@ const GeneralSetting = () => {
                           }}
                         />
                       </Button>
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.875rem' }}> 
                         Recommended: 32x32px, ICO or PNG (Max 5MB)
                       </Typography>
                       {validationErrors.favicon && (
@@ -536,28 +541,24 @@ const GeneralSetting = () => {
                   </Grid>
                 </Card>
               </Grid>
-
+              <Divider sx={{ width: '100%', mt: 1 }} />
               {/* Company Information */}
-              <Grid item xs={12}>
-                <Card
-                  sx={{
-                    p: 3,
-                    background: 'rgba(255, 255, 255, 0.8)',
-                    backdropFilter: 'blur(10px)'
-                  }}
-                >
-                  <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+              <Grid size={12}>
+                <Card>
+                  <Typography variant="h6" className="page-title" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
                     Company Information
                   </Typography>
 
-                  <Grid container spacing={3}>
+                  <Grid container spacing={2}>
                     {/* App Name */}
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <TextField
                         fullWidth
                         label="Application Name"
                         name="app_name"
                         variant="outlined"
+                        size="small"
+                        sx={{ mb: 1 }}
                         value={values.app_name}
                         onChange={handleChange}
                         error={touched.app_name && Boolean(errors.app_name)}
@@ -573,13 +574,15 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Email */}
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <TextField
                         fullWidth
                         label="Email Address"
                         name="email"
                         type="email"
                         variant="outlined"
+                        size="small"
+                        sx={{ mb: 1 }}
                         value={values.email}
                         onChange={handleChange}
                         error={touched.email && Boolean(errors.email)}
@@ -595,12 +598,14 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Contact */}
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <TextField
                         fullWidth
                         label="Contact Number"
                         name="contact"
                         variant="outlined"
+                        size="small"
+                        sx={{ mb: 1 }}
                         type="text"
                         value={values.contact}
                         onChange={(e) => {
@@ -625,12 +630,14 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* GST Number */}
-                    <Grid item xs={12} md={6}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <TextField
                         fullWidth
                         label="GST Number"
                         name="gst_no"
                         variant="outlined"
+                        size="small"
+                        sx={{ mb: 1 }}
                         value={values.gst_no}
                         onChange={(e) => {
                           const upperValue = e.target.value.toUpperCase();
@@ -653,7 +660,7 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Address */}
-                    <Grid item xs={12}>
+                    <Grid size={6}>
                       <TextField
                         fullWidth
                         label="Company Address"
@@ -661,6 +668,8 @@ const GeneralSetting = () => {
                         multiline
                         minRows={3}
                         variant="outlined"
+                        size="small"
+                        sx={{ mb: 1 }}
                         value={values.address}
                         onChange={handleChange}
                         error={touched.address && Boolean(errors.address)}
@@ -682,18 +691,19 @@ const GeneralSetting = () => {
               </Grid>
 
               {/* Submit Button */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Box
                   sx={{
                     display: 'flex',
                     justifyContent: 'flex-end',
                     gap: 2,
-                    mt: 2
+                     mt: 0
                   }}
                 >
                   <Button
                     type="button"
                     variant="outlined"
+                    color="error"
                     size="large"
                     disabled={isSubmitting}
                   >

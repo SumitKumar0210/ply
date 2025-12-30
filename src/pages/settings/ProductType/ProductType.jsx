@@ -386,13 +386,14 @@ const ProductType = () => {
                   id="productType"
                   name="name"
                   label="Product Type"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.name}
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}
                   helperText={touched.name && errors.name}
                   disabled={isSubmitting}
-                  sx={{ mb: 3 }}
+                  sx={{ mb: 2, mt:2 }}
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
@@ -458,13 +459,14 @@ const ProductType = () => {
                   id="edit_productType"
                   name="name"
                   label="Product Type"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.name}
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}
                   helperText={touched.name && errors.name}
                   disabled={isUpdating}
-                  sx={{ mb: 3 }}
+                  sx={{ mb: 2, mt:2 }}
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>

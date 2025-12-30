@@ -364,12 +364,13 @@ const RolesPage = () => {
                   id="roleName"
                   name="roleName"
                   label="Role"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.roleName}
                   onChange={handleChange}
                   error={touched.roleName && Boolean(errors.roleName)}
                   helperText={touched.roleName && errors.roleName}
-                  sx={{ mb: 3 }}
+                  sx={{ mb: 2, mt:2 }}
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
@@ -415,12 +416,13 @@ const RolesPage = () => {
                   id="roleName"
                   name="roleName"
                   label="Role"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.roleName}
                   onChange={handleChange}
                   error={touched.roleName && Boolean(errors.roleName)}
                   helperText={touched.roleName && errors.roleName}
-                  sx={{ mb: 3 }}
+                  sx={{ mb: 2, mt: 2 }}
                 />
               </DialogContent>
               <DialogActions sx={{ gap: 1, mb: 1 }}>
