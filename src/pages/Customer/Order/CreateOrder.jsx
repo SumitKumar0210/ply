@@ -16,7 +16,10 @@ import {
   Box,
   TextField,
   CircularProgress,
-  Backdrop
+  Backdrop,
+  useMediaQuery,
+  useTheme,
+  Divider
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -32,6 +35,8 @@ import { useNavigate } from "react-router-dom";
 
 const CreateOrder = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [creationDate, setCreationDate] = useState(null);
   const [eddDate, setEddDate] = useState(null);
   const [openDelete, setOpenDelete] = useState(false);
@@ -226,6 +231,175 @@ const CreateOrder = () => {
 
   const quoteList = data;
 
+  // Mobile Card View Component
+  const MobileCardView = ({ items, previousPOData, handleProductionQtyChange, handleStartDateChange, handleEndDateChange, handleDeleteItem, mediaUrl }) => {
+    return (
+      <Stack spacing={1} sx={{ mt: 2 }}>
+        {items.map((item) => {
+          const prevMatch = previousPOData.find(
+            (p) =>
+              p.product_id == item.product_id &&
+              p.group.trim() === item.group.trim()
+          );
+
+          return (
+            <Card key={item.rowId} variant="outlined" sx={{ position: 'relative',bgcolor: '#f7f7f7',pb:2 }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                  <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+                    {item.name}
+                  </Typography>
+                  <Tooltip title="Delete">
+                    <IconButton
+                      color="error"
+                      size="small"
+                      onClick={() => handleDeleteItem(item.rowId)}
+                    >
+                      <RiDeleteBinLine size={18} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+
+                <Stack spacing={1.5}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Group</Typography>
+                    <Typography variant="body2">{item.group}</Typography>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Model</Typography>
+                    <Typography variant="body2">{item.model}</Typography>
+                  </Box>
+
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Unique Code</Typography>
+                    <Typography variant="body2">{item.unique_code}</Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" color="text.secondary">Qty</Typography>
+                      <Typography variant="body2">{item.qty}</Typography>
+                    </Box>
+
+                    {previousPOData.length > 0 && (
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="caption" color="text.secondary">Qty in Production</Typography>
+                        <Box sx={{ mt: 0.5 }}>
+                          {prevMatch ? (
+                            <Chip
+                              label={prevMatch.total_qty}
+                              color="info"
+                              size="small"
+                              variant="outlined"
+                            />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">0</Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+
+                  <Divider />
+
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                      Production Qty
+                    </Typography>
+                    {prevMatch && parseInt(prevMatch.total_qty) === parseInt(item.qty) ? (
+                      <Typography
+                        variant="body2"
+                        color="success.main"
+                        sx={{ fontWeight: 500 }}
+                      >
+                        ✓ Completed
+                      </Typography>
+                    ) : (
+                      <TextField
+                        fullWidth
+                        size="small"
+                        type="number"
+                        value={item.production_qty ?? ""}
+                        onChange={(e) =>
+                          handleProductionQtyChange(
+                            item.rowId,
+                            e.target.value,
+                            item.qty,
+                            prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
+                          )
+                        }
+                        inputProps={{
+                          min: 0,
+                          max: prevMatch
+                            ? item.qty - parseInt(prevMatch.total_qty || 0)
+                            : item.qty,
+                        }}
+                      />
+                    )}
+                  </Box>
+
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Size</Typography>
+                    <Typography variant="body2">{item.size}</Typography>
+                  </Box>
+
+                  {item.document && (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                        Document
+                      </Typography>
+                      <ImagePreviewDialog
+                        imageUrl={mediaUrl + item.document}
+                        alt={item.name}
+                      />
+                    </Box>
+                  )}
+
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                        Start Date
+                      </Typography>
+                      <DatePicker
+                        value={item.start_date}
+                        onChange={(newValue) => handleStartDateChange(item.rowId, newValue)}
+                        disablePast
+                        slotProps={{
+                          textField: {
+                            size: 'small',
+                            fullWidth: true,
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                        End Date
+                      </Typography>
+                      <DatePicker
+                        value={item.end_date}
+                        onChange={(newValue) => handleEndDateChange(item.rowId, newValue)}
+                        disablePast
+                        slotProps={{
+                          textField: {
+                            size: 'small',
+                            fullWidth: true,
+                          },
+                        }}
+                      />
+                    </Box>
+                  </LocalizationProvider>
+                </Stack>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </Stack>
+    );
+  };
+
   return (
     <>
       <Backdrop
@@ -283,7 +457,7 @@ const CreateOrder = () => {
                         {...params}
                         label="Select Quote"
                         variant="outlined"
-                        sx={{ width: 300 }}
+                       sx={{ width: { xs: "100%", md: 300 } }}
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -295,12 +469,12 @@ const CreateOrder = () => {
                         }}
                       />
                     )}
-                    sx={{ width: 300 }}
+                    sx={{ width: { xs: "100%", md: 300 } }}
                   />
 
 
                   <LocalizationProvider dateAdapter={AdapterDateFns}>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       <DatePicker
                         label="Project Start Date"
                         value={creationDate}
@@ -309,7 +483,7 @@ const CreateOrder = () => {
                         slotProps={{
                           textField: {
                             size: 'small',
-                            sx: { width: 300, height: 40 },
+                            sx: { width: { xs: "100%", md: 300 } , height: 40 },
                           },
                         }}
                       />
@@ -322,7 +496,7 @@ const CreateOrder = () => {
                         slotProps={{
                           textField: {
                             size: 'small',
-                            sx: { width: 300, height: 40 },
+                            sx: { width: { xs: "100%", md: 300 } , height: 40 },
                           },
                         }}
                       />
@@ -345,149 +519,163 @@ const CreateOrder = () => {
               </Grid>
 
               {items.length > 0 && (
-                <Grid size={12} sx={{ mt: 3 }}>
-                  <LocalizationProvider dateAdapter={AdapterDateFns}>
-                    <Table>
-                      <Thead>
-                        <Tr>
-                          <Th>Group</Th>
-                          <Th>Product Name</Th>
-                          <Th>Model</Th>
-                          <Th>Unique Code</Th>
-                          <Th>Qty</Th>
-                          {previousPOData.length > 0 && <Th>Qty in Production</Th>}
-                          <Th>Production Qty</Th>
-                          <Th>Size</Th>
-                          <Th>Document</Th>
-                          <Th>Start Date</Th>
-                          <Th>End Date</Th>
-                          <Th>Action</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {items.map((item) => {
-                          const prevMatch = previousPOData.find(
-                            (p) =>
-                              p.product_id == item.product_id &&
-                              p.group.trim() === item.group.trim()
-                          );
-
-                          return (
-                            <Tr key={item.rowId}>
-                              <Td>{item.group}</Td>
-                              <Td>{item.name}</Td>
-                              <Td>{item.model}</Td>
-                              <Td>{item.unique_code}</Td>
-                              <Td>{item.qty}</Td>
-                              {previousPOData.length > 0 && (
-                                <Td style={{ textAlign: "center" }}>
-                                  {prevMatch ? (
-                                    <Chip
-                                      label={prevMatch.total_qty}
-                                      color="info"
-                                      size="small"
-                                      variant="outlined"
-                                    />
-                                  ) : (
-                                    <Typography
-                                      variant="body2"
-                                      color="text.secondary"
-                                      sx={{ display: "inline-block", textAlign: "center" }}
-                                    >
-                                      0
-                                    </Typography>
-                                  )}
-                                </Td>
-                              )}
-
-                              <Td style={{ textAlign: "center" }}>
-                                {prevMatch && parseInt(prevMatch.total_qty) === parseInt(item.qty) ? (
-                                  <Typography
-                                    variant="body2"
-                                    color="success.main"
-                                    sx={{ fontWeight: 500 }}
-                                  >
-                                    ✓ Completed
-                                  </Typography>
-                                ) : (
-                                  <TextField
-                                    size="small"
-                                    type="number"
-                                    value={item.production_qty ?? ""}
-                                    onChange={(e) =>
-                                      handleProductionQtyChange(
-                                        item.rowId,
-                                        e.target.value,
-                                        item.qty,
-                                        prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
-                                      )
-                                    }
-                                    sx={{ width: 100 }}
-                                    inputProps={{
-                                      min: 0,
-                                      max: prevMatch
-                                        ? item.qty - parseInt(prevMatch.total_qty || 0)
-                                        : item.qty,
-                                    }}
-                                  />
-
-                                )}
-                              </Td>
-                              <Td>{item.size}</Td>
-                              <Td>
-                                {item.document && (
-                                  <ImagePreviewDialog
-                                    imageUrl={mediaUrl + item.document}
-                                    alt={item.name}
-                                  />
-                                )}
-                              </Td>
-                              <Td>
-                                <DatePicker
-                                  value={item.start_date}
-                                  onChange={(newValue) => handleStartDateChange(item.rowId, newValue)}
-                                  disablePast
-                                  slotProps={{
-                                    textField: {
-                                      size: 'small',
-                                      sx: { width: 150 },
-                                    },
-                                  }}
-                                />
-                              </Td>
-                              <Td>
-                                <DatePicker
-                                  value={item.end_date}
-                                  onChange={(newValue) => handleEndDateChange(item.rowId, newValue)}
-                                  disablePast
-                                  slotProps={{
-                                    textField: {
-                                      size: 'small',
-                                      sx: { width: 150 },
-                                    },
-                                  }}
-                                />
-                              </Td>
-                              <Td>
-                                <Tooltip title="Delete">
-                                  <IconButton
-                                    color="error"
-                                    onClick={() => handleDeleteItem(item.rowId)}
-                                  >
-                                    <RiDeleteBinLine size={16} />
-                                  </IconButton>
-                                </Tooltip>
-                              </Td>
+                <Grid size={12}>
+                  {isMobile ? (
+                    <MobileCardView
+                      items={items}
+                      previousPOData={previousPOData}
+                      handleProductionQtyChange={handleProductionQtyChange}
+                      handleStartDateChange={handleStartDateChange}
+                      handleEndDateChange={handleEndDateChange}
+                      handleDeleteItem={handleDeleteItem}
+                      mediaUrl={mediaUrl}
+                    />
+                  ) : (
+                    <Box sx={{ mt: 3 }}>
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <Table>
+                          <Thead>
+                            <Tr>
+                              <Th>Group</Th>
+                              <Th>Product Name</Th>
+                              <Th>Model</Th>
+                              <Th>Unique Code</Th>
+                              <Th>Qty</Th>
+                              {previousPOData.length > 0 && <Th>Qty in Production</Th>}
+                              <Th>Production Qty</Th>
+                              <Th>Size</Th>
+                              <Th>Document</Th>
+                              <Th>Start Date</Th>
+                              <Th>End Date</Th>
+                              <Th>Action</Th>
                             </Tr>
-                          );
-                        })}
-                      </Tbody>
-                    </Table>
-                  </LocalizationProvider>
+                          </Thead>
+                          <Tbody>
+                            {items.map((item) => {
+                              const prevMatch = previousPOData.find(
+                                (p) =>
+                                  p.product_id == item.product_id &&
+                                  p.group.trim() === item.group.trim()
+                              );
+
+                              return (
+                                <Tr key={item.rowId}>
+                                  <Td>{item.group}</Td>
+                                  <Td>{item.name}</Td>
+                                  <Td>{item.model}</Td>
+                                  <Td>{item.unique_code}</Td>
+                                  <Td>{item.qty}</Td>
+                                  {previousPOData.length > 0 && (
+                                    <Td style={{ textAlign: "center" }}>
+                                      {prevMatch ? (
+                                        <Chip
+                                          label={prevMatch.total_qty}
+                                          color="info"
+                                          size="small"
+                                          variant="outlined"
+                                        />
+                                      ) : (
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{ display: "inline-block", textAlign: "center" }}
+                                        >
+                                          0
+                                        </Typography>
+                                      )}
+                                    </Td>
+                                  )}
+
+                                  <Td style={{ textAlign: "center" }}>
+                                    {prevMatch && parseInt(prevMatch.total_qty) === parseInt(item.qty) ? (
+                                      <Typography
+                                        variant="body2"
+                                        color="success.main"
+                                        sx={{ fontWeight: 500 }}
+                                      >
+                                        ✓ Completed
+                                      </Typography>
+                                    ) : (
+                                      <TextField
+                                        size="small"
+                                        type="number"
+                                        value={item.production_qty ?? ""}
+                                        onChange={(e) =>
+                                          handleProductionQtyChange(
+                                            item.rowId,
+                                            e.target.value,
+                                            item.qty,
+                                            prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
+                                          )
+                                        }
+                                        sx={{ width: 100 }}
+                                        inputProps={{
+                                          min: 0,
+                                          max: prevMatch
+                                            ? item.qty - parseInt(prevMatch.total_qty || 0)
+                                            : item.qty,
+                                        }}
+                                      />
+
+                                    )}
+                                  </Td>
+                                  <Td>{item.size}</Td>
+                                  <Td>
+                                    {item.document && (
+                                      <ImagePreviewDialog
+                                        imageUrl={mediaUrl + item.document}
+                                        alt={item.name}
+                                      />
+                                    )}
+                                  </Td>
+                                  <Td>
+                                    <DatePicker
+                                      value={item.start_date}
+                                      onChange={(newValue) => handleStartDateChange(item.rowId, newValue)}
+                                      disablePast
+                                      slotProps={{
+                                        textField: {
+                                          size: 'small',
+                                          sx: { width: 150 },
+                                        },
+                                      }}
+                                    />
+                                  </Td>
+                                  <Td>
+                                    <DatePicker
+                                      value={item.end_date}
+                                      onChange={(newValue) => handleEndDateChange(item.rowId, newValue)}
+                                      disablePast
+                                      slotProps={{
+                                        textField: {
+                                          size: 'small',
+                                          sx: { width: 150 },
+                                        },
+                                      }}
+                                    />
+                                  </Td>
+                                  <Td>
+                                    <Tooltip title="Delete">
+                                      <IconButton
+                                        color="error"
+                                        onClick={() => handleDeleteItem(item.rowId)}
+                                      >
+                                        <RiDeleteBinLine size={16} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Td>
+                                </Tr>
+                              );
+                            })}
+                          </Tbody>
+                        </Table>
+                      </LocalizationProvider>
+                    </Box>
+                  )}
                 </Grid>
               )}
 
-              <Grid size={12} sx={{ mt: 4 }}>
+              <Grid size={12} sx={{ mt: 4, mb:2 }}>
                 <Stack
                   direction="row"
                   spacing={2}

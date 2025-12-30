@@ -25,6 +25,9 @@ import {
   TableBody,
   TableContainer,
   Paper,
+  useTheme,
+  useMediaQuery,
+  Divider,
 } from "@mui/material";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Table as ResponsiveTable, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
@@ -102,6 +105,8 @@ const OrderDetailsView = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // State management
   const [loading, setLoading] = useState(false);
@@ -340,6 +345,202 @@ const OrderDetailsView = () => {
     };
   }, [items, editedProductionQty]);
 
+  // Render item card for mobile view
+  const renderItemCard = (item) => {
+    const matchedProduct = products.find(
+      (p) =>
+        (p.group ?? "").trim() === (item.group ?? "").trim() && p.product_id == item.product_id
+    );
+
+    const prevMatch = previousPOData.find(
+      (p) =>
+        p.product_id == item.product_id && (p.group ?? "").trim() === (item.group ?? "").trim()
+    );
+
+    const isEditing = editingItemId === item.id;
+
+    return (
+      <Card key={item.id} sx={{ mb: 2, bgcolor: '#f9f9f9' }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Chip label={`#${item.id}`} size="small" color="primary" />
+            <Typography variant="subtitle2" color="text.secondary">
+              {item.group}
+            </Typography>
+          </Box>
+
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            {item.name}
+          </Typography>
+
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid size={6}>
+              <Typography variant="caption" color="text.secondary">Model</Typography>
+              <Typography variant="body2">{item.model}</Typography>
+            </Grid>
+            <Grid size={6}>
+              <Typography variant="caption" color="text.secondary">Unique Code</Typography>
+              <Typography variant="body2">{item.unique_code}</Typography>
+            </Grid>
+            <Grid size={6}>
+              <Typography variant="caption" color="text.secondary">Size</Typography>
+              <Typography variant="body2">{item.size}</Typography>
+            </Grid>
+            <Grid size={6}>
+              <Typography variant="caption" color="text.secondary">Original Qty</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{item.original_qty}</Typography>
+            </Grid>
+            {previousPOData.length > 0 && (
+              <Grid size={6}>
+                <Typography variant="caption" color="text.secondary">Qty in Production</Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  {prevMatch ? (
+                    <Chip
+                      label={prevMatch.total_qty}
+                      color="info"
+                      size="small"
+                      variant="outlined"
+                    />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">0</Typography>
+                  )}
+                </Box>
+              </Grid>
+            )}
+            <Grid size={6}>
+              <Typography variant="caption" color="text.secondary">Production Qty</Typography>
+              <Box sx={{ mt: 0.5 }}>
+                {isEditing ? (
+                  <TextField
+                    type="number"
+                    size="small"
+                    value={editedProductionQty[item.id] || 0}
+                    onChange={(e) =>
+                      handleProductionQtyChange(
+                        item.id,
+                        e.target.value,
+                        item.original_qty,
+                        prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
+                      )
+                    }
+                    inputProps={{ min: 0 }}
+                    sx={{ width: "100%" }}
+                  />
+                ) : (
+                  <Chip
+                    label={editedProductionQty[item.id] || item.production_qty}
+                    color="primary"
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+            </Grid>
+            <Grid size={6}>
+              <Typography variant="caption" color="text.secondary">Start Date</Typography>
+              <Typography variant="body2">{item.start_date}</Typography>
+            </Grid>
+            <Grid size={6}>
+              <Typography variant="caption" color="text.secondary">End Date</Typography>
+              <Typography variant="body2">{item.end_date}</Typography>
+            </Grid>
+            <Grid size={12}>
+              <Typography variant="caption" color="text.secondary">Document</Typography>
+              <Box sx={{ mt: 0.5 }}>
+                {item.document ? (
+                  <ImagePreviewDialog
+                    imageUrl={mediaUrl + item.document}
+                    alt={item.name}
+                  />
+                ) : (
+                  <Typography variant="body2" color="text.secondary">No Document</Typography>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.NOT_STARTED && (
+              <>
+                {items.length > 1 && (
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    size="small"
+                    startIcon={<AiOutlineSetting />}
+                    onClick={() =>
+                      handleApproveSingle(
+                        matchedProduct.po_id,
+                        matchedProduct.group,
+                        matchedProduct.product_id
+                      )
+                    }
+                  >
+                    Start Production
+                  </Button>
+                )}
+
+                {!isEditing && orderData.quotation_id && (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    startIcon={<BiSolidEditAlt />}
+                    onClick={() => handleEditClick(item.id)}
+                  >
+                    Edit Qty
+                  </Button>
+                )}
+
+                {isEditing && (
+                  <>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="success"
+                      onClick={() => handleSaveEdit(item.id)}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleCancelEdit(item.id)}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
+
+            {matchedProduct &&
+              (matchedProduct.status === PRODUCTION_STATUS.IN_PROGRESS ||
+                matchedProduct.status === PRODUCTION_STATUS.COMPLETED) && (
+                <Button
+                  variant="outlined"
+                  color="info"
+                  size="small"
+                  startIcon={<AiOutlineEye />}
+                  onClick={() => handleViewStages(matchedProduct.id)}
+                >
+                  View Stages
+                </Button>
+              )}
+
+            {!matchedProduct && (
+              <Typography variant="caption" color="text.secondary">
+                No actions available
+              </Typography>
+            )}
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
+
   // Render loading state
   if (loading) {
     return (
@@ -382,7 +583,7 @@ const OrderDetailsView = () => {
         spacing={2}
         alignItems="center"
         justifyContent="space-between"
-        sx={{ mb: 2 }}
+        sx={{ mb: { xs: 2, md: 2 } }}
       >
         <Grid item>
           <Typography variant="h6" className="page-title">Order Details</Typography>
@@ -402,7 +603,7 @@ const OrderDetailsView = () => {
       </Grid>
 
       {/* Main Content */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
+      <Grid container spacing={2} sx={{ mb: 2}}>
         <Grid size={12}>
           <Card>
             <CardContent>
@@ -418,8 +619,8 @@ const OrderDetailsView = () => {
                   <StatusBadge status={orderData.status} />
                 </Stack>
 
-                <Grid container spacing={3} sx={{ justifyContent: "center", textAlign: "center" }}>
-                  <Grid item xs={12} md={4}>
+                <Grid container spacing={{ xs: 1, md: 3 }} sx={{ justifyContent: "center", textAlign: { xs: "left", md: "center" }}}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Quotation ID
                     </Typography>
@@ -428,7 +629,7 @@ const OrderDetailsView = () => {
                     </Typography>
                   </Grid>
 
-                  <Grid item xs={12} md={4}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Commencement Date
                     </Typography>
@@ -437,7 +638,7 @@ const OrderDetailsView = () => {
                     </Typography>
                   </Grid>
 
-                  <Grid item xs={12} md={4}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Delivery Date
                     </Typography>
@@ -447,7 +648,7 @@ const OrderDetailsView = () => {
                   </Grid>
 
                   {orderData.priority && (
-                    <Grid item xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Priority
                       </Typography>
@@ -457,7 +658,7 @@ const OrderDetailsView = () => {
                     </Grid>
                   )}
 
-                  <Grid item xs={12} md={4}>
+                  <Grid size={{ xs: 12, md: 3 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Created Date
                     </Typography>
@@ -467,7 +668,7 @@ const OrderDetailsView = () => {
                   </Grid>
 
                   {orderData.remark && (
-                    <Grid item xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 3 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Remarks
                       </Typography>
@@ -516,7 +717,7 @@ const OrderDetailsView = () => {
                 </Stack>
               )}
 
-              {/* Items Table */}
+              {/* Items Section */}
               <Box sx={{ mt: 3 }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Order Items
@@ -683,71 +884,203 @@ const OrderDetailsView = () => {
                                       </Tooltip>
                                     )}
 
-                                    {/* Edit Production Qty Button - show only when quotation_id exists */}
-                                    {!isEditing && orderData.quotation_id && (
-                                      <Tooltip title="Edit Production Qty">
-                                        <IconButton
-                                          color="primary"
-                                          size="small"
-                                          onClick={() => handleEditClick(item.id)}
-                                        >
-                                          <BiSolidEditAlt size={16} />
-                                        </IconButton>
-                                      </Tooltip>
-                                    )}
+                {items.length === 0 ? (
+                  <Box sx={{ textAlign: "center", py: 5 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No items found
+                    </Typography>
+                  </Box>
+                ) : (
+                  <>
+                    {/* Mobile View - Cards */}
+                    {isMobile ? (
+                      <Box>
+                        {items.map((item) => renderItemCard(item))}
+                      </Box>
+                    ) : (
+                      /* Desktop View - Table */
+                      <ResponsiveTable>
+                        <Thead>
+                          <Tr>
+                            <Th>#</Th>
+                            <Th>Group</Th>
+                            <Th>Product Name</Th>
+                            <Th>Model</Th>
+                            <Th>Unique Code</Th>
+                            <Th>Original Qty</Th>
+                            {previousPOData.length > 0 && <Th>Qty in Production</Th>}
+                            <Th>Production Qty</Th>
+                            <Th>Size</Th>
+                            <Th>Document</Th>
+                            <Th>Start Date</Th>
+                            <Th>End Date</Th>
+                            <Th>Action</Th>
+                          </Tr>
+                        </Thead>
+                        <Tbody>
+                          {items.map((item) => {
+                            const matchedProduct = products.find(
+                              (p) =>
+                                (p.group ?? "").trim() === (item.group ?? "").trim() && p.product_id == item.product_id
+                            );
 
-                                    {/* Save/Cancel Buttons - show when editing */}
-                                    {isEditing && (
-                                      <>
-                                        <Button
-                                          size="small"
-                                          variant="contained"
-                                          color="success"
-                                          onClick={() => handleSaveEdit(item.id)}
-                                        >
-                                          Save
-                                        </Button>
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          onClick={() => handleCancelEdit(item.id)}
-                                        >
-                                          Cancel
-                                        </Button>
-                                      </>
-                                    )}
-                                  </>
-                                )}
+                            const prevMatch = previousPOData.find(
+                              (p) =>
+                                p.product_id == item.product_id && (p.group ?? "").trim() === (item.group ?? "").trim()
+                            );
 
-                                {/* View Production Stages Button - show when production is IN_PROGRESS (1) or COMPLETED (2) */}
-                                {matchedProduct &&
-                                  (matchedProduct.status === PRODUCTION_STATUS.IN_PROGRESS ||
-                                    matchedProduct.status === PRODUCTION_STATUS.COMPLETED) && (
-                                    <Tooltip title="View Production Stages">
-                                      <IconButton
+                            const isEditing = editingItemId === item.id;
+
+                            return (
+                              <Tr key={item.id}>
+                                <Td>{item.id}</Td>
+                                <Td>{item.group}</Td>
+                                <Td>{item.name}</Td>
+                                <Td>{item.model}</Td>
+                                <Td>{item.unique_code}</Td>
+                                <Td>{item.original_qty}</Td>
+                                {previousPOData.length > 0 && (
+                                  <Td style={{ textAlign: "center" }}>
+                                    {prevMatch ? (
+                                      <Chip
+                                        label={prevMatch.total_qty}
                                         color="info"
                                         size="small"
-                                        onClick={() => handleViewStages(matchedProduct.id)}
-                                      >
-                                        <AiOutlineEye size={18} />
-                                      </IconButton>
-                                    </Tooltip>
-                                  )}
-
-                                {/* Show dash when no matched product found */}
-                                {!matchedProduct && (
-                                  <Typography variant="caption" color="text.secondary">
-                                    —
-                                  </Typography>
+                                        variant="outlined"
+                                      />
+                                    ) : (
+                                      <Typography variant="body2" color="text.secondary">
+                                        0
+                                      </Typography>
+                                    )}
+                                  </Td>
                                 )}
-                              </Box>
-                            </Td>
-                          </Tr>
-                        );
-                      })
+                                <Td style={{ textAlign: "center" }}>
+                                  {isEditing ? (
+                                    <TextField
+                                      type="number"
+                                      size="small"
+                                      value={editedProductionQty[item.id] || 0}
+                                      onChange={(e) =>
+                                        handleProductionQtyChange(
+                                          item.id,
+                                          e.target.value,
+                                          item.original_qty,
+                                          prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
+                                        )
+                                      }
+                                      inputProps={{ min: 0 }}
+                                      sx={{ width: "100px" }}
+                                    />
+                                  ) : (
+                                    <Chip
+                                      label={editedProductionQty[item.id] || item.production_qty}
+                                      color="primary"
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                  )}
+                                </Td>
+                                <Td>{item.size}</Td>
+                                <Td>
+                                  {item.document ? (
+                                    <ImagePreviewDialog
+                                      imageUrl={mediaUrl + item.document}
+                                      alt={item.name}
+                                    />
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                      No Document
+                                    </Typography>
+                                  )}
+                                </Td>
+                                <Td>{item.start_date}</Td>
+                                <Td>{item.end_date}</Td>
+                                <Td>
+                                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                    {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.NOT_STARTED && (
+                                      <>
+                                        {items.length > 1 && (
+                                          <Tooltip title="Start Production">
+                                            <IconButton
+                                              color="warning"
+                                              size="small"
+                                              onClick={() =>
+                                                handleApproveSingle(
+                                                  matchedProduct.po_id,
+                                                  matchedProduct.group,
+                                                  matchedProduct.product_id
+                                                )
+                                              }
+                                            >
+                                              <AiOutlineSetting size={16} />
+                                            </IconButton>
+                                          </Tooltip>
+                                        )}
+
+                                        {!isEditing && orderData.quotation_id && (
+                                          <Tooltip title="Edit Production Qty">
+                                            <IconButton
+                                              color="primary"
+                                              size="small"
+                                              onClick={() => handleEditClick(item.id)}
+                                            >
+                                              <BiSolidEditAlt size={16} />
+                                            </IconButton>
+                                          </Tooltip>
+                                        )}
+
+                                        {isEditing && (
+                                          <>
+                                            <Button
+                                              size="small"
+                                              variant="contained"
+                                              color="success"
+                                              onClick={() => handleSaveEdit(item.id)}
+                                            >
+                                              Save
+                                            </Button>
+                                            <Button
+                                              size="small"
+                                              variant="outlined"
+                                              onClick={() => handleCancelEdit(item.id)}
+                                            >
+                                              Cancel
+                                            </Button>
+                                          </>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {matchedProduct &&
+                                      (matchedProduct.status === PRODUCTION_STATUS.IN_PROGRESS ||
+                                        matchedProduct.status === PRODUCTION_STATUS.COMPLETED) && (
+                                        <Tooltip title="View Production Stages">
+                                          <IconButton
+                                            color="info"
+                                            size="small"
+                                            onClick={() => handleViewStages(matchedProduct.id)}
+                                          >
+                                            <AiOutlineEye size={18} />
+                                          </IconButton>
+                                        </Tooltip>
+                                      )}
+
+                                    {!matchedProduct && (
+                                      <Typography variant="caption" color="text.secondary">
+                                        —
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                </Td>
+                              </Tr>
+                            );
+                          })}
+                        </Tbody>
+                      </ResponsiveTable>
                     )}
-                  </Tbody>
-                </ResponsiveTable>
+                  </>
+                )}
               </Box>
 
               {/* Summary Section */}
@@ -764,29 +1097,29 @@ const OrderDetailsView = () => {
                 >
                   <Grid
                     container
-                    spacing={2}
+                    spacing={1}
                     sx={{
-                      width: "auto",
-                      maxWidth: 600,
+                      width: "600px",
+                      maxWidth: 1000,
                       justifyContent: "center",
-                      textAlign: "center",
+                      textAlign: { xs: "left", sm: "center" }
                     }}
                   >
-                    <Grid item xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Total Items
                       </Typography>
                       <Typography variant="h6">{summary.totalItems}</Typography>
                     </Grid>
 
-                    <Grid item xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Total Original Qty
                       </Typography>
                       <Typography variant="h6">{summary.totalOriginalQty}</Typography>
                     </Grid>
 
-                    <Grid item xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Total Production Qty
                       </Typography>
@@ -816,7 +1149,7 @@ const OrderDetailsView = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Production Stages Modal - OPTIMIZED */}
+      {/* Production Stages Modal */}
       <Dialog
         open={openStagesModal}
         onClose={() => setOpenStagesModal(false)}
@@ -865,7 +1198,6 @@ const OrderDetailsView = () => {
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>
                         <Chip
-                          // label={log.from_stage?.name || "N/A"}
                           label={
                             log.from_stage?.name
                               ? log.from_stage.name

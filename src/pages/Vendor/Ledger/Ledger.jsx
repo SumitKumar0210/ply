@@ -196,14 +196,7 @@ const Ledger = () => {
                               {item?.vendor_invoice_date || '-'}
                             </Typography>
                           </Grid>
-                          <Grid size={6}>
-                            <Typography variant="caption" color="text.secondary">
-                              Total Qty
-                            </Typography>
-                            <Typography variant="body2">
-                              {itemCount(item?.material_items)}
-                            </Typography>
-                          </Grid>
+                          
                         </Grid>
 
                         {/* Debit and Credit */}
@@ -289,7 +282,7 @@ const Ledger = () => {
                           >
                             <TableCell>{item?.vendor_invoice_date || '-'}</TableCell>
                             <TableCell>{item?.vendor_invoice_no || '-'}</TableCell>
-                            <TableCell>{itemCount(item?.material_items)}</TableCell>
+                           
                             <TableCell>
                               ₹{Number(item?.grand_total || 0).toLocaleString('en-IN')}
                             </TableCell>

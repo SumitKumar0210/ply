@@ -385,19 +385,28 @@ const EditOrder = () => {
                     }}
                   />
                 )}
-                sx={{ width: 300 }}
+                sx={{ width: { xs: '100%', md: 300 } }}
               />
-
-
-
               <LocalizationProvider dateAdapter={AdapterDateFns}>
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box 
+                  sx={{
+                      display: 'flex',
+                      gap: 2,
+                      flexDirection: { xs: 'column', md: 'row' },
+                      width: { xs: '100%', md: 'auto' },
+                    }}
+                  >
                   <DatePicker
                     label="Project Start Date"
                     value={formData.projectStartDate}
                     onChange={(newValue) => setFormData(prev => ({ ...prev, projectStartDate: newValue }))}
                     disablePast
-                    slotProps={{ textField: { size: 'small', sx: { width: 300 } } }}
+                    slotProps={{
+                      textField: {
+                        size: 'small',
+                        sx: { width: { xs: '100%', md: 300 } },
+                      },
+                    }}
                   />
 
                   <DatePicker
@@ -405,7 +414,12 @@ const EditOrder = () => {
                     value={formData.edd}
                     onChange={(newValue) => setFormData(prev => ({ ...prev, edd: newValue }))}
                     disablePast
-                    slotProps={{ textField: { size: 'small', sx: { width: 300 } } }}
+                    slotProps={{
+                      textField: {
+                        size: 'small',
+                        sx: { width: { xs: '100%', md: 300 } },
+                      },
+                    }}
                   />
                 </Box>
               </LocalizationProvider>
@@ -551,7 +565,7 @@ const EditOrder = () => {
           )}
 
           {/* Action Buttons */}
-          <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end", mt: 4 }}>
+          <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end", mt: 4, mb:2 }}>
             <Button
               variant="outlined"
               onClick={() => navigate("/customer/order")}

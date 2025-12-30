@@ -9,6 +9,8 @@ import {
   Box,
   CircularProgress,
   Avatar,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 import { useNavigate, useParams } from "react-router-dom";
@@ -20,6 +22,9 @@ import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePrev
 import { useAuth } from "../../../context/AuthContext";
 
 const QuoteDetailsView = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -59,11 +64,11 @@ const QuoteDetailsView = () => {
     }
   }, [dispatch, id]);
 
-  const fetchQuotation = (id) =>{
+  const fetchQuotation = (id) => {
     dispatch(editQuotation(id));
   }
 
-  const handleApprove = async(id) => {
+  const handleApprove = async (id) => {
     await dispatch(approveQuotation(id));
     fetchQuotation(id);
 
@@ -195,7 +200,7 @@ const QuoteDetailsView = () => {
             <Card>
               <CardContent>
                 {/* Header Section */}
-                <Grid size={12} sx={{ pt: 2 }}>
+                <Grid size={12} sx={{ pt: { xs: 0, sm: 1 } }}>
                   <Box
                     sx={{
                       display: "flex",
@@ -243,7 +248,7 @@ const QuoteDetailsView = () => {
                     {appDetails.company_address}
                     <br />
                     GSTIN: {appDetails.gst_no}
-                    
+
                   </Typography>
                 </Grid>
 
@@ -283,6 +288,7 @@ const QuoteDetailsView = () => {
                           backgroundColor: "#f5f5f5",
                           padding: "8px 12px",
                           borderRadius: "4px",
+                          mb:2
                         }}
                       >
                         <Typography variant="body1" sx={{ m: 0 }}>
@@ -292,44 +298,144 @@ const QuoteDetailsView = () => {
                         </Typography>
                       </Box>
                     </Grid>
+                    {isMobile ? (
+                      // 🔹 MOBILE VIEW (Cards)
+                      <>
+                        <Box >
+                          {items.map((item) => (
+                            <Card
+                              key={item.id}
+                              sx={{
+                                mb: 2,
+                                backgroundColor: '#f7f7f7',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                              }}
+                            >
+                              <CardContent>
+                                <Grid container spacing={1}>
+                                  <Grid size={12}>
+                                    <Typography variant="h6" sx={{ fontWeight: 600}}>
+                                      {item.name}
+                                    </Typography>
+                                  </Grid>
 
-                    <Grid size={12} sx={{ mt: 0 }}>
-                      <Table>
-                        <Thead>
-                          <Tr>
-                            <Th>Item Name</Th>
-                            <Th>Item Code</Th>
-                            <Th>Qty</Th>
-                            <Th>Size</Th>
-                            <Th>Unit Price</Th>
-                            <Th>Total Cost</Th>
-                            <Th>Documents</Th>
-                            <Th style={{ width: "200px" }}>Narration</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {items
-                            .filter((item) => item.group === area)
-                            .map((item) => (
-                              <Tr key={item.id}>
-                                <Td>{item.name}</Td>
-                                <Td>{item.itemCode}</Td>
-                                <Td>{item.qty}</Td>
-                                <Td>{item.size}</Td>
-                                <Td>
-                                  ₹{item.unitPrice.toLocaleString("en-IN")}
-                                </Td>
-                                <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
-                                <Td>
-                                  {item.documents ? (
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                      }}
-                                    >
-                                      {/* <Avatar
+                                  <Grid size={6}>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Item Code
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      {item.itemCode}
+                                    </Typography>
+                                  </Grid>
+
+                                  <Grid size={6}>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Qty
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      {item.qty}
+                                    </Typography>
+                                  </Grid>
+
+                                  <Grid size={6}>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Size
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      {item.size}
+                                    </Typography>
+                                  </Grid>
+
+                                  <Grid size={6}>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Unit Price
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                      ₹{item.unitPrice.toLocaleString("en-IN")}
+                                    </Typography>
+                                  </Grid>
+
+                                  <Grid size={12}>
+                                    <Typography variant="caption" color="text.secondary">
+                                      Total Cost
+                                    </Typography>
+                                    <Typography variant="h6" color="primary" sx={{ fontWeight: 600 }}>
+                                      ₹{item.cost.toLocaleString("en-IN")}
+                                    </Typography>
+                                  </Grid>
+
+                                  {item.documents && (
+                                    <Grid size={12}>
+                                      <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                                        Documents
+                                      </Typography>
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <ImagePreviewDialog
+                                          imageUrl={item.documents}
+                                          alt={item.documents.split("/").pop()}
+                                        />
+                                        <Typography variant="caption" sx={{ wordBreak: "break-all" }}>
+                                          {item.documents.split("/").pop()}
+                                        </Typography>
+                                      </Box>
+                                    </Grid>
+                                  )}
+
+                                  {item.narration && (
+                                    <Grid size={12}>
+                                      <Typography variant="caption" color="text.secondary">
+                                        Narration
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                        {item.narration}
+                                      </Typography>
+                                    </Grid>
+                                  )}
+                                </Grid>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </Box>
+                      </>
+                    ) : (
+                      // 🔹 DESKTOP VIEW (Table)
+                      <Grid size={12} sx={{ mt: 0 }}>
+                        <Table>
+                          <Thead>
+                            <Tr>
+                              <Th>Item Name</Th>
+                              <Th>Item Code</Th>
+                              <Th>Qty</Th>
+                              <Th>Size</Th>
+                              <Th>Unit Price</Th>
+                              <Th>Total Cost</Th>
+                              <Th>Documents</Th>
+                              <Th style={{ width: "200px" }}>Narration</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {items
+                              .filter((item) => item.group === area)
+                              .map((item) => (
+                                <Tr key={item.id}>
+                                  <Td>{item.name}</Td>
+                                  <Td>{item.itemCode}</Td>
+                                  <Td>{item.qty}</Td>
+                                  <Td>{item.size}</Td>
+                                  <Td>
+                                    ₹{item.unitPrice.toLocaleString("en-IN")}
+                                  </Td>
+                                  <Td>₹{item.cost.toLocaleString("en-IN")}</Td>
+                                  <Td>
+                                    {item.documents ? (
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: 1,
+                                        }}
+                                      >
+                                        {/* <Avatar
                                         variant="rounded"
                                         src={item.documents} // ✅ image preview
                                         alt="document"
@@ -339,30 +445,31 @@ const QuoteDetailsView = () => {
                                           fontSize: 16,
                                         }}
                                       /> */}
-                                      <ImagePreviewDialog
-                                        imageUrl={item.documents}
-                                        alt={item.documents.split("/").pop()}
-                                      />
-                                      <Typography
-                                        variant="caption"
-                                        sx={{ wordBreak: "break-all" }}
-                                      >
-                                        {item.documents.split("/").pop()}{" "}
-                                        {/* ✅ shows just filename */}
-                                      </Typography>
-                                    </Box>
-                                  ) : (
-                                    "-"
-                                  )}
-                                </Td>
-                                <Td style={{ width: "200px" }}>
-                                  {item.narration || "-"}
-                                </Td>
-                              </Tr>
-                            ))}
-                        </Tbody>
-                      </Table>
-                    </Grid>
+                                        <ImagePreviewDialog
+                                          imageUrl={item.documents}
+                                          alt={item.documents.split("/").pop()}
+                                        />
+                                        <Typography
+                                          variant="caption"
+                                          sx={{ wordBreak: "break-all" }}
+                                        >
+                                          {item.documents.split("/").pop()}{" "}
+                                          {/* ✅ shows just filename */}
+                                        </Typography>
+                                      </Box>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </Td>
+                                  <Td style={{ width: "200px" }}>
+                                    {item.narration || "-"}
+                                  </Td>
+                                </Tr>
+                              ))}
+                          </Tbody>
+                        </Table>
+                      </Grid>
+                    )}
                   </React.Fragment>
                 ))}
 
