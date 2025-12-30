@@ -722,6 +722,167 @@ const OrderDetailsView = () => {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Order Items
                 </Typography>
+                <ResponsiveTable>
+                  <Thead>
+                    <Tr>
+                      <Th>#</Th>
+                      <Th>Group</Th>
+                      <Th>Product Name</Th>
+                      {/* <Th>Model</Th> */}
+                      <Th>Unique Code</Th>
+                      <Th>Original Qty</Th>
+                      {previousPOData.length > 0 && <Th>Qty in Production</Th>}
+                      <Th>Production Qty</Th>
+                      {previousPOData.length > 0 && <Th>Completed Product</Th>}
+                      <Th>Size</Th>
+                      <Th>Document</Th>
+                      <Th>Start Date</Th>
+                      <Th>End Date</Th>
+                      <Th>Action</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {items.length === 0 ? (
+                      <Tr>
+                        <Td colSpan={13} style={{ textAlign: "center" }}>
+                          <Typography variant="body2" color="text.secondary">
+                            No items found
+                          </Typography>
+                        </Td>
+                      </Tr>
+                    ) : (
+                      items.map((item) => {
+                        const matchedProduct = products.find(
+                          (p) =>
+                            (p.group ?? "").trim() === (item.group ?? "").trim() && p.product_id == item.product_id
+                        );
+
+                        // const prevMatch = previousPOData.find(
+                        //   (p) =>
+                        //     p.product_id == item.product_id && (p.group ?? "").trim() === (item.group ?? "").trim()
+                        // );
+
+                        const prevMatch = previousPOData.find(
+                          (p) =>
+                            p.status === 1 &&
+                            p.product_id == item.product_id &&
+                            (p.group ?? "").trim() === (item.group ?? "").trim()
+                        );
+                        const compeletedMatch = previousPOData.find(
+                          (p) =>
+                            p.status === 2 &&
+                            p.product_id == item.product_id &&
+                            (p.group ?? "").trim() === (item.group ?? "").trim()
+                        );
+
+                        const isEditing = editingItemId === item.id;
+
+                        return (
+                          <Tr key={item.id}>
+                            <Td>{item.id}</Td>
+                            <Td>{item.group}</Td>
+                            <Td>{item.name} ({item.model})</Td>
+                            {/* <Td>{item.model}</Td> */}
+                            <Td>{item.unique_code}</Td>
+                            <Td>{item.original_qty}</Td>
+                            {previousPOData.length > 0 && (
+                              <Td style={{ textAlign: "center" }}>
+                                {/* show in production product means status = 1 */}
+                                {prevMatch ? (
+                                  <Chip
+                                    label={prevMatch.total_qty}
+                                    color="info"
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    0
+                                  </Typography>
+                                )}
+                              </Td>
+                            )}
+                            <Td style={{ textAlign: "center" }}>
+                              {isEditing ? (
+                                <TextField
+                                  type="number"
+                                  size="small"
+                                  value={editedProductionQty[item.id] || 0}
+                                  onChange={(e) =>
+                                    handleProductionQtyChange(
+                                      item.id,
+                                      e.target.value,
+                                      item.original_qty,
+                                      prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
+                                    )
+                                  }
+                                  inputProps={{ min: 0 }}
+                                  sx={{ width: "100px" }}
+                                />
+                              ) : (
+                                <Chip
+                                  label={editedProductionQty[item.id] || item.production_qty}
+                                  color="primary"
+                                  size="small"
+                                  variant="outlined"
+                                />
+                              )}
+                            </Td>
+                            {previousPOData.length > 0 && (
+                              <Td style={{ textAlign: "center" }}>
+                                {/* show completed product means status = 2 */}
+                                {compeletedMatch ? (
+                                  <Chip
+                                    label={compeletedMatch.total_qty}
+                                    color="info"
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    0
+                                  </Typography>
+                                )}
+                              </Td>
+                            )}
+                            <Td>{item.size}</Td>
+                            <Td>
+                              {item.document ? (
+                                <ImagePreviewDialog
+                                  imageUrl={mediaUrl + item.document}
+                                  alt={item.name}
+                                />
+                              ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                  No Document
+                                </Typography>
+                              )}
+                            </Td>
+                            <Td>{item.start_date}</Td>
+                            <Td>{item.end_date}</Td>
+                            <Td>
+                              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                {/* Show buttons when product status is NOT_STARTED (0) */}
+                                {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.NOT_STARTED && (
+                                  <>
+                                    {/* Start Production Button - show only when there are multiple items */}
+                                    {items.length > 1 && (
+                                      <Tooltip title="Start Production">
+                                        <IconButton
+                                          color="warning"
+                                          size="small"
+                                          onClick={() =>
+                                            handleApproveSingle(
+                                              matchedProduct.po_id,
+                                              matchedProduct.group,
+                                              matchedProduct.product_id
+                                            )
+                                          }
+                                        >
+                                          <AiOutlineSetting size={16} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
 
                 {items.length === 0 ? (
                   <Box sx={{ textAlign: "center", py: 5 }}>

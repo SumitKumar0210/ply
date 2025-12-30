@@ -382,7 +382,7 @@ export default function Production() {
                         })}
 
                     {/* Add Department Button */}
-                    <Box sx={{ flex: "0 0 auto" }}>
+                    {/* <Box sx={{ flex: "0 0 auto" }}>
                       <Tooltip title="Add Department" arrow>
                         <IconButton
                           onClick={() => setOpenDepartmentDialog(true)}
@@ -400,7 +400,7 @@ export default function Production() {
                           <IoMdAdd size={24} />
                         </IconButton>
                       </Tooltip>
-                    </Box>
+                    </Box> */}
                   </Box>
                 </CardContent>
               </Card>
