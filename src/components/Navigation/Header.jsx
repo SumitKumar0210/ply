@@ -69,7 +69,7 @@ const Header = ({ mobileOpen, onToggleSidebar }) => {
 
           {/* Right Side (User Menu) */}
           <Box>
-            <Tooltip title="Account settings">
+            <Tooltip title="Account settings" arrow placement="bottom">
               <IconButton onClick={handleClick} size="small" sx={{ ml: 2 }}>
                 <Avatar sx={{ width: 40, height: 40 }} src={user?.profileImage ?? User} alt="User" />
               </IconButton>
