@@ -68,6 +68,7 @@ const Calendar = lazy(() => import("../pages/Users/Calendar/Calendar"));
 const Attendance = lazy(() => import("../pages/Users/Attendance/Attendance"));
 const MaterialInventory = lazy(() => import("../pages/Vendor/Material/Inventory"));
 
+const Logs = lazy(() => import("../pages/Logs/Log"));
 
 const Error404 = lazy(() => import("../pages/error/404"));
 const Error403 = lazy(() => import("../pages/error/403"));
@@ -101,6 +102,11 @@ const AppRoutes = () => {
           element={
               <PublicPurchaseOrderView />
           }
+        />
+
+        <Route
+          path="/logs"
+          element={<SecurePage><Logs /></SecurePage>}
         />
 
         {/* Auth (public) */}

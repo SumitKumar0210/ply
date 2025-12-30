@@ -23,6 +23,7 @@ import {
   useMediaQuery,
   useTheme
 } from "@mui/material";
+import dayjs from "dayjs";
 import { styled } from "@mui/material/styles";
 import { Link, useSearchParams } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
@@ -242,11 +243,21 @@ const Quote = () => {
 
   const handleDateFormate = (date) => {
     if (!date) return "";
+
     const d = new Date(date);
+
     const day = String(d.getDate()).padStart(2, "0");
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
+
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "PM" : "AM";
+
+    hours = hours % 12 || 12; // convert to 12-hour format
+    const hh = String(hours).padStart(2, "0");
+
+    return `${day}-${month}-${year} ${hh}:${minutes} ${ampm}`;
   };
 
   const handleItemCount = (items) => {
@@ -282,7 +293,7 @@ const Quote = () => {
         },
         {
           accessorKey: "date",
-          header: "Date",
+          header: "Date / Time",
           Cell: ({ row }) => handleDateFormate(row.original.created_at),
         },
         {

@@ -15,6 +15,7 @@ import {
   TextField,
   InputAdornment,
 } from "@mui/material";
+import dayjs from "dayjs";
 import { MdOutlineRemoveRedEye, MdDescription, MdLocalShipping, MdCheckCircle } from "react-icons/md";
 import { FaTruck } from "react-icons/fa";
 import {
@@ -179,18 +180,12 @@ const Bills = () => {
         Cell: ({ row }) => row.original?.customer?.mobile || "N/A",
       },
       {
-        accessorKey: "date",
-        header: "Bill Date",
-        size: 120,
-        Cell: ({ cell }) => {
-          const value = cell.getValue();
-          if (!value) return "N/A";
-          try {
-            return new Date(value).toLocaleDateString('en-IN');
-          } catch {
-            return value;
-          }
-        }
+        accessorKey: "created_at",
+        header: "Bill Date / Time",
+        Cell: ({ cell }) =>
+          cell.getValue()
+            ? dayjs(cell.getValue()).format("YYYY-MM-DD hh:mm A")
+            : "-",
       },
       {
         accessorKey: "grand_total",
@@ -513,12 +508,12 @@ const Bills = () => {
 
                     {hasPermission("bills.create") && (
                       <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddBill}
-                    >
-                      Add Bill
-                    </Button>
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddBill}
+                      >
+                        Add Bill
+                      </Button>
                     )}
                   </Box>
                 </Box>
