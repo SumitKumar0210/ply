@@ -24,6 +24,7 @@ import {
   useMediaQuery,
   useTheme
 } from "@mui/material";
+import dayjs from "dayjs";
 import { styled } from "@mui/material/styles";
 import { Link } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
@@ -256,7 +257,7 @@ const Order = () => {
     const baseColumns = [
       { accessorKey: "orderNumber", header: "Order No.", Cell: ({ row }) => row.original?.batch_no ?? '' },
       { accessorKey: "customerName", header: "Customer Name", Cell: ({ row }) => row.original?.customer?.name ?? '' },
-      { accessorKey: "dated", header: "Dated", Cell: ({ row }) => handleDateFormate(row.original.created_at) },
+      { accessorKey: "created_at", header: "Date / Time", Cell: ({ row }) =>row.original?.created_at ? dayjs(row.original?.created_at).format("YYYY-MM-DD hh:mm A"): "-", },
       { accessorKey: "itemOrdered", header: "Item Ordered", Cell: ({ row }) => handleIQtyCount(row.original?.product_ids) },
       { accessorKey: "commencement_date", header: "Commencement Date", Cell: ({ row }) => handleDateFormate(row.original.commencement_date) },
       { accessorKey: "delivered_date", header: "Delivered Date", Cell: ({ row }) => handleDateFormate(row.original.delivery_date) },

@@ -17,6 +17,7 @@ import {
   TextField,
   InputAdornment,
 } from "@mui/material";
+import dayjs from "dayjs";
 import { styled } from "@mui/material/styles";
 import { Link } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
@@ -254,11 +255,11 @@ const Order = () => {
         header: "Customer Name",
         Cell: ({ row }) => row.original?.customer?.name ?? "",
       },
-      {
-        accessorKey: "dated",
-        header: "Dated",
-        Cell: ({ row }) => handleDateFormate(row.original.created_at),
-      },
+      { accessorKey: "created_at", 
+        header: "Date / Time", 
+        Cell: ({ row }) => row.original?.created_at ? 
+        dayjs(row.original?.created_at).format("YYYY-MM-DD hh:mm A") 
+        : "-", },
       {
         accessorKey: "itemOrdered",
         header: "Item Ordered",

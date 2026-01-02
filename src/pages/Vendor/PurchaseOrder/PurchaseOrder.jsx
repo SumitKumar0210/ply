@@ -24,6 +24,8 @@ import {
   Pagination,
   CircularProgress,
 } from "@mui/material";
+import dayjs from "dayjs";
+
 import { Link, useNavigate } from "react-router-dom";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -248,7 +250,7 @@ const PurchaseOrderCard = ({ order, onView, onEdit, onDelete, hasPermission }) =
             justifyContent: "space-between",
             bgcolor: "#f0f7ff",
             px: 2,
-            py:1,
+            py: 1,
             borderRadius: 1,
             mb: 2,
             border: "1px solid #e3f2fd",
@@ -452,7 +454,14 @@ const PurchaseOrder = () => {
         header: "Items Ordered",
         Cell: ({ row }) => getItemCount(row.original.material_items),
       },
-      { accessorKey: "order_date", header: "Order Date" },
+      {
+        accessorKey: "created_at",
+        header: "Order Date",
+        Cell: ({ cell }) =>
+          cell.getValue()
+            ? dayjs(cell.getValue()).format("YYYY-MM-DD hh:mm A")
+            : "-",
+      },
       { accessorKey: "credit_days", header: "Credit Days" },
       {
         accessorKey: "grand_total",
@@ -669,12 +678,12 @@ const PurchaseOrder = () => {
           {loading && (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress />
-            
+
               <Typography variant="h6" className='page-title'>
                 Purchase Order
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                
+
                 {/* <Tooltip title="Print">
                   <IconButton onClick={handlePrint} size="small">
                     <FiPrinter size={20} />

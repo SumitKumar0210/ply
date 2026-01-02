@@ -14,6 +14,9 @@ import {
   Skeleton,
 } from "@mui/material";
 import { NavLink, useLocation, Link } from "react-router-dom";
+import { BiCalendarCheck } from "react-icons/bi";
+import { FaRegListAlt } from "react-icons/fa";
+
 
 // Icons
 import { SlArrowDown, SlArrowUp } from "react-icons/sl";
@@ -264,6 +267,14 @@ const menuSections = [
               "labours.update",
             ]
           },
+        ],
+      },
+      {
+        text: "HRMS",
+        icon: <FaRegListAlt />,
+        anyPermissions: [],
+        children: [
+          
           {
             text: "Mark Attendance", to: "/attendance-calendar", icon: <IoPeopleOutline  />, anyPermissions: [
               "labour_worksheet.update",
