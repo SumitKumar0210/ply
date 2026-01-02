@@ -786,7 +786,7 @@ const CreatePurchaseOrder = () => {
                               <span>₹{subTotal.toLocaleString("en-IN")}</span>
                             </Box>
 
-                            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
+                            {/* <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
                               <TextField
                                 label="Discount"
                                 type="number"
@@ -802,7 +802,7 @@ const CreatePurchaseOrder = () => {
                                 inputProps={{ min: 0 }}
                               />
                               <span>₹{(subTotal - discountAmount).toLocaleString("en-IN")}</span>
-                            </Box>
+                            </Box> */}
 
                             <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
                               <TextField

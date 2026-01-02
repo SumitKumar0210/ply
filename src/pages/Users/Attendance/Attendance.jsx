@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useCallback, useRef } from "react";
+import React, { useMemo, useEffect, useCallback, useRef, useState  } from "react";
 import Grid from "@mui/material/Grid";
 import {
   Paper,
@@ -19,10 +19,11 @@ import {
   CircularProgress,
   Backdrop,
   Skeleton,
+  Button,
 } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchActiveLabours } from "../slices/labourSlice";
-import { getMonthlyAttendance, setMonthYear } from "./slice/attendanceSlice";
+import { getMonthlyAttendance, setMonthYear, sendDailyAttendanceReport } from "./slice/attendanceSlice";
 import {
   MdChevronLeft,
   MdChevronRight,
@@ -66,10 +67,10 @@ const AttendanceTableSkeleton = ({ daysInMonth }) => {
                 borderLeft: "1px solid rgba(224, 224, 224, 1)",
               }}
             >
-              <Skeleton 
-                variant="rounded" 
-                width={60} 
-                height={20} 
+              <Skeleton
+                variant="rounded"
+                width={60}
+                height={20}
                 sx={{ margin: "0 auto" }}
               />
             </TableCell>
@@ -86,10 +87,10 @@ const AttendanceTableSkeleton = ({ daysInMonth }) => {
               borderLeft: "2px solid #e0e0e0",
             }}
           >
-            <Skeleton 
-              variant="rounded" 
-              width={60} 
-              height={24} 
+            <Skeleton
+              variant="rounded"
+              width={60}
+              height={24}
               sx={{ margin: "0 auto" }}
             />
           </TableCell>
@@ -102,6 +103,8 @@ const AttendanceTableSkeleton = ({ daysInMonth }) => {
 const Attendance = () => {
   const dispatch = useDispatch();
   const isInitialMount = useRef(true);
+  const [sendingReport, setSendingReport] = useState(false);
+
 
   // Redux state
   const { activeLabours: labours = [], loading: laboursLoading } = useSelector((state) => state.labour);
@@ -181,7 +184,7 @@ const Attendance = () => {
   // Calculate hours between sign in and sign out
   const calculateHours = useCallback((signIn, signOut) => {
     if (!signIn || !signOut) return 0;
-    
+
     try {
       const start = new Date(`2000-01-01 ${signIn}`);
       const end = new Date(`2000-01-01 ${signOut}`);
@@ -242,22 +245,37 @@ const Attendance = () => {
   // Determine if we should show skeleton (only on initial load, not on month/year changes)
   const showSkeleton = loading && isInitialMount.current;
 
+  const handleSendAttendanceReport = async () => {
+    try {
+      setSendingReport(true);
+      await dispatch(sendDailyAttendanceReport()).unwrap();
+    } catch (error) {
+      console.error("Failed to send attendance report", error);
+    } finally {
+      setSendingReport(false);
+    }
+  };
+
   return (
     <>
       {/* Header - Always visible */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
+      <Grid container spacing={2} sx={{ mb: 3, justifyContent: "space-between" }}>
         <Grid item xs={12}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 2,
+            }}
+          >
             <Typography variant="h5" className="page-title">
               Monthly Attendance
             </Typography>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <IconButton 
-                onClick={handlePreviousMonth} 
-                size="small"
-                disabled={loading}
-              >
+              <IconButton onClick={handlePreviousMonth} size="small" disabled={loading}>
                 <MdChevronLeft size={24} />
               </IconButton>
 
@@ -289,31 +307,38 @@ const Attendance = () => {
                 </Select>
               </FormControl>
 
-              <IconButton 
-                onClick={handleNextMonth} 
-                size="small"
-                disabled={loading}
-              >
+              <IconButton onClick={handleNextMonth} size="small" disabled={loading}>
                 <MdChevronRight size={24} />
               </IconButton>
 
               <Tooltip title="Refresh">
-                <IconButton 
-                  onClick={loadAttendance} 
-                  size="small"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <CircularProgress size={20} />
-                  ) : (
-                    <MdRefresh size={20} />
-                  )}
+                <IconButton onClick={loadAttendance} size="small" disabled={loading}>
+                  {loading ? <CircularProgress size={20} /> : <MdRefresh size={20} />}
                 </IconButton>
               </Tooltip>
             </Box>
           </Box>
         </Grid>
+
+        {/* Send Report Button */}
+        <Grid item xs={12}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button
+            sx={{justifyContent: "end" }}
+              variant="contained"
+              size="small"
+              onClick={handleSendAttendanceReport}
+              disabled={sendingReport}
+              startIcon={
+                sendingReport ? <CircularProgress size={16} color="inherit" /> : null
+              }
+            >
+              {sendingReport ? "Sending..." : "Send Attendance Report"}
+            </Button>
+          </Box>
+        </Grid>
       </Grid>
+
 
       {/* Attendance Table - Always visible with skeleton when loading */}
       <Paper elevation={0} sx={{ width: "100%", overflow: "hidden", position: "relative" }}>
@@ -384,8 +409,8 @@ const Attendance = () => {
                       backgroundColor: isWeekend(day)
                         ? "#ffebee"
                         : isToday(day)
-                        ? "#e3f2fd"
-                        : "#1976d2",
+                          ? "#e3f2fd"
+                          : "#1976d2",
                       color: isWeekend(day) || isToday(day) ? "#000" : "white",
                       borderLeft: "1px solid rgba(224, 224, 224, 1)",
                     }}
@@ -468,15 +493,15 @@ const Attendance = () => {
                             backgroundColor: weekend
                               ? "#ffebee"
                               : today
-                              ? "#e3f2fd"
-                              : "white",
+                                ? "#e3f2fd"
+                                : "white",
                             borderLeft: "1px solid rgba(224, 224, 224, 1)",
                           }}
                         >
                           {attendance ? (
-                            <Tooltip 
+                            <Tooltip
                               title={
-                                attendance.sign_out 
+                                attendance.sign_out
                                   ? `Sign In: ${attendance.sign_in} | Sign Out: ${attendance.sign_out}`
                                   : `Sign In: ${attendance.sign_in} | Not Signed Out`
                               }

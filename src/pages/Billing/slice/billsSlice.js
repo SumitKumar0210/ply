@@ -161,6 +161,22 @@ export const markAsDelivered = createAsyncThunk(
   }
 );
 
+
+export const sendChallanToCustomer = createAsyncThunk(
+    "bill/sendChallanToCustomer",
+    async (values, { rejectWithValue }) => {
+        try {
+            const res = await api.post("/admin/mail/send-challan-mail", values);
+            successMessage(res.data.message);
+            return values;
+        } catch (error) {
+            const errMsg = getErrorMessage(error);
+            errorMessage(errMsg);
+            return rejectWithValue(errMsg);
+        }
+    }
+);
+
 const billsSlice = createSlice({
   name: "bill",
   initialState: {

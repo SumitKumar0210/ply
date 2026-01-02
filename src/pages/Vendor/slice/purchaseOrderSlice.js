@@ -160,6 +160,22 @@ export const deletePO = createAsyncThunk(
   }
 );
 
+
+export const sendPurchaseOrderToVendor = createAsyncThunk(
+    "purchaseOrder/sendPurchaseOrderToVendor",
+    async (values, { rejectWithValue }) => {
+        try {
+            const res = await api.post("/admin/mail/send-purchase-order-mail", values);
+            successMessage(res.data.message);
+            return values;
+        } catch (error) {
+            const errMsg = getErrorMessage(error);
+            errorMessage(errMsg);
+            return rejectWithValue(errMsg);
+        }
+    }
+);
+
 //  Purchase Order slice
 const purchaseOrderSlice = createSlice({
   name: "purchaseOrder",

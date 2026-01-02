@@ -7,7 +7,12 @@ const Footer = ({ mobileOpen }) => {
   const auth = useAuth();
   const ctxAppDetails = auth?.appDetails ?? null;
   const displayAppName = ctxAppDetails?.application_name || (typeof window !== "undefined" ? localStorage.getItem("application_name") : "") || "";
-  
+  const isPoweredBy = ctxAppDetails?.is_powered_by || "";
+  const poweredByLink = ctxAppDetails?.powered_by_link || "";
+  const poweredByName = ctxAppDetails?.powered_by_name || "";
+
+  console.log(isPoweredBy,poweredByLink,poweredByName);
+
   return (
     <Box
       sx={{
@@ -32,18 +37,20 @@ const Footer = ({ mobileOpen }) => {
         <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
           © {new Date().getFullYear()} {displayAppName}. All rights reserved.
         </Typography>
+        {isPoweredBy && (
+          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+            Powered by{" "}
+            <a
+              href={poweredByLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: "none" }}
+            >
+              {poweredByName} &reg;
+            </a>
+          </Typography>
+        )}
 
-        <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
-          Powered by{" "}
-          <a
-            href="https://techiesquad.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ textDecoration: "none" }}
-          >
-            Techie Squad &reg;
-          </a>
-        </Typography>
       </Box>
 
     </Box>

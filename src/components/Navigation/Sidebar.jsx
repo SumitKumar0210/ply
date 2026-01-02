@@ -26,9 +26,9 @@ import { MdStorefront, MdOutlineDashboard } from "react-icons/md";
 import { RiFileList3Line, RiFlowChart } from "react-icons/ri";
 import { LiaFileInvoiceSolid } from "react-icons/lia";
 import { LuTable } from "react-icons/lu";
-import { IoConstructOutline, IoPeopleOutline  } from "react-icons/io5";
+import { IoConstructOutline, IoPeopleOutline } from "react-icons/io5";
 import { TbUsersPlus } from "react-icons/tb";
-import { BsBoxSeam, BsTag  } from "react-icons/bs";
+import { BsBoxSeam, BsTag } from "react-icons/bs";
 
 import Logo from "../../assets/images/logo.svg";
 import { useAuth } from "../../context/AuthContext";
@@ -100,7 +100,7 @@ const menuSections = [
           { text: "Vendor list", to: "/vendor/list", icon: <LuTable />, anyPermissions: ["vendor_lists.read"] },
           { text: "Movement", to: "/stocks", icon: <BsBoxSeam />, anyPermissions: ["stocks.read"] },
           {
-            text: "Inventory", to: "/material-inventory", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
+            text: "Inventory", to: "/material-inventory", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
           },
         ],
       },
@@ -140,7 +140,7 @@ const menuSections = [
               "customer_orders.read",
             ]
           },
-          
+
           { text: "Customer List", to: "/customer/list", icon: <LuTable />, anyPermissions: ["customer_lists.view_ledger"] },
         ],
       },
@@ -184,9 +184,9 @@ const menuSections = [
               "productions.ready_for_delivery"
             ]
           },
-          
+
           {
-            text: "RRP", to: "/production/rrp-calculation", icon: <BsTag  />, permission:"rrp.read"
+            text: "RRP", to: "/production/rrp-calculation", icon: <BsTag />, permission: "rrp.read"
           },
         ],
       },
@@ -227,7 +227,7 @@ const menuSections = [
             ]
           },
           {
-            text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions:["product_stocks.read"]
+            text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
           },
         ],
       },
@@ -272,19 +272,22 @@ const menuSections = [
       {
         text: "HRMS",
         icon: <FaRegListAlt />,
-        anyPermissions: [],
+        anyPermissions: [
+          "attendance.mark_attendance",
+          "attendance.read",
+          "attendance.send_mail_to_admin",
+        ],
         children: [
-          
+
           {
-            text: "Mark Attendance", to: "/attendance-calendar", icon: <IoPeopleOutline  />, anyPermissions: [
-              "labour_worksheet.update",
-              "labour_worksheet.read",
+            text: "Mark Attendance", to: "/attendance-calendar", icon: <IoPeopleOutline />, anyPermissions: [
+              "attendance.mark_attendance",
             ]
           },
           {
-            text: "Attendance List", to: "/attendance-lists", icon: <IoPeopleOutline  />, anyPermissions: [
-              "labour_worksheet.update",
-              "labour_worksheet.read",
+            text: "Attendance List", to: "/attendance-lists", icon: <IoPeopleOutline />, anyPermissions: [
+              "attendance.read",
+              "attendance.send_mail_to_admin",
             ]
           },
         ],
@@ -370,27 +373,27 @@ const Sidebar = ({ mobileOpen, onClose }) => {
       {/* Logo */}
       <Box display="flex" alignItems="center" justifyContent="center" sx={{ p: 2 }}>
         <Link to="/dashboard" style={{ display: "inline-flex" }}>
-        {/* Show skeleton while appDetails not available in either context or localStorage */}
-        {(!displayLogo || displayLogo === "") ? (
-          <Skeleton variant="rectangular" width={auto} height={48} sx={{ borderRadius: 1 }} />
-        ) : (
-          <img
-            src={displayLogo}
-            alt={displayAppName || "logo"}
-            style={{
-              width: "100%",
-              height: "48px",
-              objectFit: "contain",
-              display: imageLoaded ? "block" : "none",
-            }}
-            onLoad={() => setImageLoaded(true)}
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = Logo;
-              setImageLoaded(true);
-            }}
-          />
-        )}
+          {/* Show skeleton while appDetails not available in either context or localStorage */}
+          {(!displayLogo || displayLogo === "") ? (
+            <Skeleton variant="rectangular" width={auto} height={48} sx={{ borderRadius: 1 }} />
+          ) : (
+            <img
+              src={displayLogo}
+              alt={displayAppName || "logo"}
+              style={{
+                width: "100%",
+                height: "48px",
+                objectFit: "contain",
+                display: imageLoaded ? "block" : "none",
+              }}
+              onLoad={() => setImageLoaded(true)}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = Logo;
+                setImageLoaded(true);
+              }}
+            />
+          )}
         </Link>
       </Box>
 

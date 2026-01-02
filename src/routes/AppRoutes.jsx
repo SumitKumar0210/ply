@@ -132,8 +132,11 @@ const AppRoutes = () => {
         <Route path="/users" element={<SecurePage permission="users.read"><Users /></SecurePage>} />
         <Route path="/customers" element={<SecurePage permission="customers.read"><Customers /></SecurePage>} />
         <Route path="/labours" element={<SecurePage permission="labours.read"><Labours /></SecurePage>} />
-        <Route path="/attendance-calendar" element={<SecurePage permission="labour_worksheet.read"><Calendar /></SecurePage>} />
-        <Route path="/attendance-lists" element={<SecurePage permission="labour_worksheet.read"><Attendance /></SecurePage>} />
+        <Route path="/attendance-calendar" element={<SecurePage permission="attendance.mark_attendance"><Calendar /></SecurePage>} />
+        <Route path="/attendance-lists" element={<SecurePage anyPermissions={[
+          "attendance.read",
+          "attendance.send_mail_to_admin",
+        ]}><Attendance /></SecurePage>} />
  
         {/* Vendor group */}
         <Route path="/vendor/dashboard" element={<SecurePage ><VendorDashboard /></SecurePage>} />

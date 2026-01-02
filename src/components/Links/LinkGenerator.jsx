@@ -23,6 +23,8 @@ import {
   clearLinkData,
 } from "./slice/linkManagementSlice";
 import { sendQuotationMail } from "../../pages/Customer/slice/quotationSlice";
+import { sendChallanToCustomer } from "../../pages/Billing/slice/billsSlice";
+import { sendPurchaseOrderToVendor } from "../../pages/Vendor/slice/purchaseOrderSlice";
 import { successMessage, errorMessage } from "../../toast";
 
 const URL = import.meta.env.VITE_FRONTEND_BASE_URL;
@@ -35,12 +37,12 @@ const ENTITY_CONFIG = {
   },
   challan: {
     label: "Challan",
-    mailAction: null,
+    mailAction: sendChallanToCustomer,
     urlPrefix: "challan/",
   },
   purchase_order: {
     label: "Purchase Order",
-    mailAction: null, // Add mail action if available
+    mailAction: sendPurchaseOrderToVendor, // Add mail action if available
     urlPrefix: "purchase-order/",
   },
 };
@@ -138,7 +140,7 @@ const LinkGenerator = ({ id, customerId, entity = "quotation" }) => {
         formData.append("bill_id", id);
         formData.append("customer_id", customerId);
       } else if (entity === "purchase_order") {
-        formData.append("production_order_id", id);
+        formData.append("purchase_order_id", id);
         formData.append("vendor_id", customerId);
       }
 

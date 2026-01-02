@@ -11,6 +11,8 @@ import {
   Alert,
   InputAdornment,
   Divider,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { Formik, Form } from "formik";
@@ -23,6 +25,7 @@ import ReceiptIcon from "@mui/icons-material/Receipt";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import InsertEmoticonIcon from "@mui/icons-material/InsertEmoticon";
 import CropLandscapeIcon from "@mui/icons-material/CropLandscape";
+import LinkIcon from "@mui/icons-material/Link";
 import { fetchSettings, updateSetting } from "../slices/generalSettingSlice";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -38,6 +41,9 @@ const GeneralSetting = () => {
     logo: "",
     horizontal_logo: "",
     favicon: "",
+    is_powered_by: false,
+    powered_by_link: "",
+    powered_by_name: "",
   });
 
   const { refreshAppDetails } = useAuth();
@@ -62,6 +68,9 @@ const GeneralSetting = () => {
         logo: data[0].logo || "",
         horizontal_logo: data[0].horizontal_logo || "",
         favicon: data[0].favicon || "",
+        is_powered_by: Boolean(data[0].is_powered_by) || false,
+        powered_by_link: data[0].powered_by_link || "",
+        powered_by_name: data[0].powered_by_name || "",
       });
     }
   }, [data]);
@@ -103,6 +112,22 @@ const GeneralSetting = () => {
       .required("Address is required")
       .min(10, "Address must be at least 10 characters")
       .max(500, "Address must not exceed 500 characters"),
+
+    powered_by_link: Yup.string().when('is_powered_by', {
+      is: true,
+      then: (schema) => schema
+        .required("Link is required when Powered By is enabled")
+        .url("Please enter a valid URL"),
+      otherwise: (schema) => schema.nullable()
+    }),
+
+    powered_by_name: Yup.string().when('is_powered_by', {
+      is: true,
+      then: (schema) => schema
+        .required("Name is required when Powered By is enabled")
+        .min(2, "Name must be at least 2 characters"),
+      otherwise: (schema) => schema.nullable()
+    }),
   });
 
   // File validation helper
@@ -179,12 +204,9 @@ const GeneralSetting = () => {
         setSuccessMessage("Settings updated successfully!");
         setTimeout(() => setSuccessMessage(""), 3000);
         setInitialData(values);
-      } else {
-        // setValidationErrors({ submit: "Failed to update settings. Please try again." });
       }
     } catch (error) {
       console.error("Failed to update settings:", error);
-      // setValidationErrors({ submit: "An unexpected error occurred. Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -195,8 +217,6 @@ const GeneralSetting = () => {
       elevation={0}
       sx={{
         p: 2,
-        // borderRadius: 2,
-        // background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
       }}
     >
       <Box sx={{ mb: 2 }}>
@@ -249,18 +269,7 @@ const GeneralSetting = () => {
             <Grid container spacing={2}>
               {/* Logo & Favicon Section */}
               <Grid size={12}>
-                <Card
-                  sx={{
-                    // p: 3,
-                    // mb: 2,
-                    // background: 'rgba(214, 212, 212, 0.85)',
-                    // backdropFilter: 'blur(10px)'
-                  }}
-                >
-                  {/* <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                    Brand Assets
-                  </Typography> */}
-
+                <Card>
                   <Grid container spacing={4}>
                     {/* Square Logo Upload */}
                     <Grid size={{ xs: 12, md: 4 }}>
@@ -484,7 +493,7 @@ const GeneralSetting = () => {
                           }}
                         />
                       </Button>
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.875rem' }}> 
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.875rem' }}>
                         Recommended: 32x32px, ICO or PNG (Max 5MB)
                       </Typography>
                       {validationErrors.favicon && (
@@ -542,6 +551,7 @@ const GeneralSetting = () => {
                 </Card>
               </Grid>
               <Divider sx={{ width: '100%', mt: 1 }} />
+              
               {/* Company Information */}
               <Grid size={12}>
                 <Card>
@@ -609,7 +619,7 @@ const GeneralSetting = () => {
                         type="text"
                         value={values.contact}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, ""); // allow only digits
+                          const value = e.target.value.replace(/\D/g, "");
                           if (value.length <= 10) {
                             handleChange({
                               target: { name: "contact", value }
@@ -690,6 +700,86 @@ const GeneralSetting = () => {
                 </Card>
               </Grid>
 
+              {/* Powered By Section */}
+              <Grid size={12}>
+                <Card>
+                  <Typography variant="h6" className="page-title" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+                    Powered By
+                  </Typography>
+
+                  <Grid container spacing={2} alignItems="center">
+                    {/* Enable/Disable Switch */}
+                    <Grid size={{ xs: 12, md: 3 }}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={Boolean(values.is_powered_by)}
+                            onChange={(e) => {
+                              setFieldValue('is_powered_by', e.target.checked);
+                            }}
+                            name="is_powered_by"
+                            color="primary"
+                          />
+                        }
+                        label="Enable Powered By"
+                        sx={{ mb: 1 }}
+                      />
+                    </Grid>
+
+                    {/* Powered By Name */}
+                    <Grid size={{ xs: 12, md: 3 }}>
+                      <TextField
+                        fullWidth
+                        label="Powered By Name"
+                        name="powered_by_name"
+                        variant="outlined"
+                        size="small"
+                        sx={{ mb: 1 }}
+                        value={values.powered_by_name}
+                        onChange={handleChange}
+                        error={touched.powered_by_name && Boolean(errors.powered_by_name)}
+                        helperText={touched.powered_by_name && errors.powered_by_name}
+                        disabled={!values.is_powered_by}
+                        placeholder="Company Name"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <BusinessIcon color="action" />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Grid>
+
+                    {/* Powered By Link */}
+                    <Grid size={{ xs: 12, md: 3 }}>
+                      <TextField
+                        fullWidth
+                        label="Link"
+                        name="powered_by_link"
+                        type="url"
+                        variant="outlined"
+                        size="small"
+                        sx={{ mb: 1 }}
+                        value={values.powered_by_link}
+                        onChange={handleChange}
+                        error={touched.powered_by_link && Boolean(errors.powered_by_link)}
+                        helperText={touched.powered_by_link && errors.powered_by_link}
+                        disabled={!values.is_powered_by}
+                        placeholder="https://example.com"
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <LinkIcon color="action" />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                </Card>
+              </Grid>
+
               {/* Submit Button */}
               <Grid size={12}>
                 <Box
@@ -697,7 +787,7 @@ const GeneralSetting = () => {
                     display: 'flex',
                     justifyContent: 'flex-end',
                     gap: 2,
-                     mt: 0
+                    mt: 0
                   }}
                 >
                   <Button
