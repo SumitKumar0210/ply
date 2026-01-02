@@ -387,12 +387,13 @@ const TaxSlab = () => {
                                     name="percentage"
                                     type="number"
                                     label="Percentage"
-                                    variant="standard"
+                                    variant="outlined"
+                                    size="small"
                                     value={values.percentage}
                                     onChange={handleChange}
                                     error={touched.percentage && Boolean(errors.percentage)}
                                     helperText={touched.percentage && errors.percentage}
-                                    sx={{ mb: 2 }}
+                                    sx={{ mb: 2, mt: 2 }}
                                 />
                             </DialogContent>
                             <DialogActions>
@@ -430,12 +431,13 @@ const TaxSlab = () => {
                                     name="percentage"
                                     type="number"
                                     label="Percentage"
-                                    variant="standard"
+                                    variant="outlined"
+                                    size="small"
                                     value={values.percentage}
                                     onChange={handleChange}
                                     error={touched.percentage && Boolean(errors.percentage)}
                                     helperText={touched.percentage && errors.percentage}
-                                    sx={{ mb: 2 }}
+                                    sx={{ mb: 2, mt:2 }}
                                 />
                             </DialogContent>
                             <DialogActions>

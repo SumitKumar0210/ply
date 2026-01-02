@@ -308,7 +308,7 @@ const Machine = () => {
           onBlur={handleBlur}
           error={touched.name && Boolean(errors.name)}
           helperText={touched.name && errors.name}
-          sx={{ mb: 3 }}
+          
         />
       </Grid>
       <Grid size={{ xs: 12, md: 6 }}>
@@ -324,7 +324,7 @@ const Machine = () => {
           onBlur={handleBlur}
           error={touched.run_hours_at_service && Boolean(errors.run_hours_at_service)}
           helperText={touched.run_hours_at_service && errors.run_hours_at_service}
-          sx={{ mb: 3 }}
+          
         />
       </Grid>
       <Grid size={{ xs: 12, md: 6 }}>
@@ -340,7 +340,7 @@ const Machine = () => {
           onBlur={handleBlur}
           error={touched.service_interval_days && Boolean(errors.service_interval_days)}
           helperText={touched.service_interval_days && errors.service_interval_days}
-          sx={{ mb: 3 }}
+          
         />
       </Grid>
       <Grid size={{ xs: 12, md: 6 }}>
@@ -356,7 +356,7 @@ const Machine = () => {
           onBlur={handleBlur}
           error={touched.service_cycle_months && Boolean(errors.service_cycle_months)}
           helperText={touched.service_cycle_months && errors.service_cycle_months}
-          sx={{ mb: 3 }}
+          
         />
       </Grid>
       <Grid size={12}>
@@ -373,7 +373,7 @@ const Machine = () => {
           onBlur={handleBlur}
           error={touched.message && Boolean(errors.message)}
           helperText={touched.message && errors.message}
-          sx={{ mb: 3 }}
+          
         />
       </Grid>
     </Grid>

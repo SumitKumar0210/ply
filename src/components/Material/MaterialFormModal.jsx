@@ -222,7 +222,6 @@ const MaterialFormModal = ({ open, onClose, editData = null }) => {
                     error={touched.name && Boolean(errors.name)}
                     helperText={touched.name && errors.name}
                     disabled={isSubmitting}
-
                   />
                 </Grid>
 

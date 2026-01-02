@@ -336,12 +336,13 @@ const Category = () => {
                   fullWidth
                   name="group_id"
                   label="Group"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.group_id}
                   onChange={handleChange}
                   error={touched.group_id && Boolean(errors.group_id)}
                   helperText={touched.group_id && errors.group_id}
-                  sx={{ marginBottom: 1 }}
+                  sx={{ marginBottom: 2, mt:1  }}
                 >
                   {groups.map((group) => (
                     <MenuItem key={group.id} value={String(group.id)}>
@@ -353,7 +354,8 @@ const Category = () => {
                   fullWidth
                   name="name"
                   label="Category"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.name}
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}
@@ -406,12 +408,13 @@ const Category = () => {
                   fullWidth
                   name="group_id"
                   label="Group"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.group_id}
                   onChange={handleChange}
                   error={touched.group_id && Boolean(errors.group_id)}
                   helperText={touched.group_id && errors.group_id}
-                  sx={{ marginBottom: 1 }}
+                  sx={{ marginBottom: 2, mt:1 }}
                 >
                   {groups.map((group) => (
                     <MenuItem key={group.id} value={String(group.id)}>
@@ -423,7 +426,8 @@ const Category = () => {
                   fullWidth
                   name="name"
                   label="Category"
-                  variant="standard"
+                  variant="outlined"
+                  size="small"
                   value={values.name}
                   onChange={handleChange}
                   error={touched.name && Boolean(errors.name)}

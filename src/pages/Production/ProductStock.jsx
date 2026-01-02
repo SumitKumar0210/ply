@@ -173,7 +173,7 @@ const ProductStocks = () => {
 
   return (
     <>
-<Grid
+      <Grid
         container
         spacing={2}
         alignItems="center"
@@ -186,16 +186,16 @@ const ProductStocks = () => {
           </Typography>
         </Grid>
         <Grid item>
-           {hasPermission('product.create') && (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleAddProduct}
-                sx={{mt: 0}}
-              >
-                Add Product
-              </Button>
-            )}
+          {hasPermission('product.create') && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddProduct}
+              sx={{ mt: 0 }}
+            >
+              Add Product
+            </Button>
+          )}
         </Grid>
       </Grid>
       {isMobile ? (
@@ -234,18 +234,18 @@ const ProductStocks = () => {
                       Decorative Laminate Sheet
                     </Typography>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      
+
                       <Chip
-                    label="Hardware"
-                    size="small"
-                    sx={{
-                      bgcolor: "white",
-                      color: "primary.main",
-                      fontWeight: 500,
-                      fontSize: "0.75rem",
-                    }}
-                  />
-                  <Chip
+                        label="Hardware"
+                        size="small"
+                        sx={{
+                          bgcolor: "white",
+                          color: "primary.main",
+                          fontWeight: 500,
+                          fontSize: "0.75rem",
+                        }}
+                      />
+                      <Chip
                         label="Qty: 45"
                         size="small"
                         sx={{
@@ -257,7 +257,7 @@ const ProductStocks = () => {
                       />
                     </Box>
                   </Box>
-                  
+
                 </Box>
               </Box>
 
@@ -289,31 +289,31 @@ const ProductStocks = () => {
                           }}
                         />
                         {/* Product Details */}
-                        
 
-<Box sx={{ flex: 1 }}>
-  {/* Model */}
-  <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
-    <MdOutlineQrCode2 size={14} color="#666" />
-    <Typography
-      variant="body2"
-      sx={{ fontWeight: 500, lineHeight: 1.2 }}
-    >
-      DL-503
-    </Typography>
-  </Box>
 
-  {/* Size / Dimension */}
-  <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mt: 0.5 }}>
-    <MdStraighten size={14} color="#666" />
-    <Typography
-      variant="caption"
-      sx={{ color: "text.secondary" }}
-    >
-      8×4 ft
-    </Typography>
-  </Box>
-</Box>
+                        <Box sx={{ flex: 1 }}>
+                          {/* Model */}
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
+                            <MdOutlineQrCode2 size={14} color="#666" />
+                            <Typography
+                              variant="body2"
+                              sx={{ fontWeight: 500, lineHeight: 1.2 }}
+                            >
+                              DL-503
+                            </Typography>
+                          </Box>
+
+                          {/* Size / Dimension */}
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mt: 0.5 }}>
+                            <MdStraighten size={14} color="#666" />
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "text.secondary" }}
+                            >
+                              8×4 ft
+                            </Typography>
+                          </Box>
+                        </Box>
 
                       </Box>
                     </Box>
@@ -397,7 +397,7 @@ const ProductStocks = () => {
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-                    
+
                   </Box>
                 </Box>
               )}
