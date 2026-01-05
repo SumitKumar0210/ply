@@ -6,6 +6,16 @@ import {
   IconButton,
   Tooltip,
   Skeleton,
+  Card,
+  CardContent,
+  Divider,
+  Pagination,
+  InputAdornment,
+  CircularProgress,
+  TextField,
+  Chip,
+  useMediaQuery,
+  useTheme
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
 import {
@@ -14,11 +24,14 @@ import {
   MRT_GlobalFilterTextField,
 } from "material-react-table";
 import { FiPrinter } from "react-icons/fi";
+import { FiUser, FiCalendar } from 'react-icons/fi';
+import { IoMdCheckmarkCircleOutline } from "react-icons/io";
+import { PiCurrencyInr } from "react-icons/pi";
 import { BsCloudDownload } from "react-icons/bs";
 import { IoMdRefresh } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchStock } from "./slice/stockSlice";
-
+import SearchIcon from "@mui/icons-material/Search";
 // Error Boundary
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -46,13 +59,15 @@ class ErrorBoundary extends React.Component {
 }
 
 const StockInOut = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
   const searchTimerRef = useRef(null);
 
-  const { 
-    data: stockData = [], 
-    loading, 
+  const {
+    data: stockData = [],
+    loading,
     error,
     pagination: reduxPagination,
   } = useSelector((state) => state.stock);
@@ -62,7 +77,7 @@ const StockInOut = () => {
     pageIndex: 0,
     pageSize: 10,
   });
-  
+
   const [globalFilter, setGlobalFilter] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -273,101 +288,282 @@ const StockInOut = () => {
   // Calculate total records from Redux state
   const totalRecords = reduxPagination?.total || 0;
 
+   // Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
+
   return (
-    <ErrorBoundary>
-      <Grid container spacing={2}>
-        <Grid size={12}>
-          <Paper
-            elevation={0}
-            ref={tableContainerRef}
-            sx={{
-              width: "100%",
-              overflow: "hidden",
-              backgroundColor: "#fff",
-              px: 2,
-              py: 1,
-            }}
-          >
-            <MaterialReactTable
-              columns={columns}
-              data={stockData}
-              getRowId={(row) => row.id}
-              manualPagination
-              manualFiltering
-              rowCount={totalRecords}
-              state={{
-                isLoading: loading,
-                pagination: pagination,
-                globalFilter,
-                showProgressBars: loading,
-              }}
-              onPaginationChange={handlePaginationChange}
-              onGlobalFilterChange={handleGlobalFilterChange}
-              enableTopToolbar
-              enableColumnFilters={false}
-              enableSorting={false}
-              enablePagination
-              enableBottomToolbar
-              enableGlobalFilter
-              enableDensityToggle={false}
-              enableColumnActions={false}
-              enableColumnVisibilityToggle={false}
-              initialState={{ density: "compact" }}
-              muiTableContainerProps={{
-                sx: {
-                  width: "100%",
-                  backgroundColor: "#fff",
-                  overflowX: "auto",
-                  minWidth: "800px",
-                },
-              }}
-              muiTablePaperProps={{
-                sx: { backgroundColor: "#fff", boxShadow: "none" },
-              }}
-              muiPaginationProps={{
-                rowsPerPageOptions: [5, 10, 20, 50, 100],
-                showFirstButton: true,
-                showLastButton: true,
-              }}
-              renderTopToolbar={({ table }) => (
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    width: "100%",
-                    p: 1,
-                  }}
-                >
-                  <Typography variant="h6" className='page-title'>
-                    Stock Movement In/Out
-                  </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <MRT_GlobalFilterTextField table={table} />
-                    <MRT_ToolbarInternalButtons table={table} />
-                    <Tooltip title="Refresh">
-                      <IconButton onClick={handleRefresh} size="small" disabled={loading}>
-                        <IoMdRefresh size={20} />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Print">
-                      <IconButton onClick={handlePrint} size="small">
-                        <FiPrinter size={20} />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Download CSV">
-                      <IconButton onClick={downloadCSV} size="small">
-                        <BsCloudDownload size={20} />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </Box>
-              )}
-            />
-          </Paper>
+    <>
+      <Grid
+        container
+        spacing={2}
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 2 }}
+      >
+        <Grid size="12">
+          <Typography variant="h6" className="page-title">
+            Stock Movement In/Out
+          </Typography>
         </Grid>
       </Grid>
-    </ErrorBoundary>
+      <ErrorBoundary>
+
+        {isMobile ? (
+          // 🔹 MOBILE VIEW (Cards)
+          <>
+            <Box sx={{ minHeight: '100vh' }}>
+              {/* Mobile Search */}
+              <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Search purchase orders..."
+                  value=""
+                  // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Paper>
+              <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+                {/* Header Section - Blue Background */}
+                <Box
+                  sx={{
+                    bgcolor: "primary.main",
+                    p: 1.5,
+                    color: "primary.contrastText",
+                  }}
+                >
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                    <Box>
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                       Decorative Laminate Sheet
+                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <FiCalendar size={14} />
+                        <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                          Dec 15, 2024
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {/* <Chip
+                      label="Partially Paid"
+                      size="small"
+                      sx={{
+                        bgcolor: "white",
+                        color: "primary.main",
+                        fontWeight: 500,
+                        fontSize: "0.75rem",
+                      }}
+                    /> */}
+                  </Box>
+                </Box>
+
+                {/* Body Section */}
+                <CardContent sx={{ p: 1.5 }}>
+                  {/* Details Grid */}
+                  <Grid container spacing={1} sx={{ mb: 2 }}>
+                    <Grid size={4}>
+                      <Box sx={{ display: "flex", alignItems: "start", gap: 1, borderRight: '1px solid', borderColor: 'divider', pr: 1 }}>
+                        <Box
+                          sx={{
+                            color: "text.secondary",
+                            mt: 0.2,
+                          }}
+                        >
+                          <IoMdCheckmarkCircleOutline size={16} />
+                        </Box>
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                              display: "block",
+                              fontSize: "0.85rem",
+                              mb: 0.3,
+                            }}
+                          >
+                            Stock In
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem", color: "success.main" }}>
+                            120
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                    <Grid size={4}>
+                      <Box sx={{ display: "flex", alignItems: "start", gap: 1, borderRight: '1px solid', borderColor: 'divider', pr: 1 }}>
+                        <Box
+                          sx={{
+                            color: "text.secondary",
+                            mt: 0.2,
+                          }}
+                        >
+                          <IoMdCheckmarkCircleOutline size={16} />
+                        </Box>
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                              display: "block",
+                              fontSize: "0.85rem",
+                              mb: 0.3,
+                            }}
+                          >
+                            Stock Out
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem", color: "error.main" }}>
+                            20
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                    <Grid size={4}>
+                      <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                        <Box
+                          sx={{
+                            color: "text.secondary",
+                            mt: 0.2,
+                          }}
+                        >
+                          <IoMdCheckmarkCircleOutline size={16} />
+                        </Box>
+                        <Box>
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "text.secondary",
+                              display: "block",
+                              fontSize: "0.85rem",
+                              mb: 0.3,
+                            }}
+                          >
+                            Avl. Qty
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem", color: "success.main" }}>
+                            50
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+              {/* Mobile Pagination */}
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+                <Pagination
+                  count={Math.ceil(10 / pagination.pageSize)}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
+              </Box>
+            </Box>
+          </>
+        ) : (
+          // 🔹 DESKTOP VIEW (Table)
+          <Grid container spacing={2}>
+            <Grid size={12}>
+              <Paper
+                elevation={0}
+                ref={tableContainerRef}
+                sx={{
+                  width: "100%",
+                  overflow: "hidden",
+                  backgroundColor: "#fff",
+                  px: 2,
+                  py: 1,
+                }}
+              >
+                <MaterialReactTable
+                  columns={columns}
+                  data={stockData}
+                  getRowId={(row) => row.id}
+                  manualPagination
+                  manualFiltering
+                  rowCount={totalRecords}
+                  state={{
+                    isLoading: loading,
+                    pagination: pagination,
+                    globalFilter,
+                    showProgressBars: loading,
+                  }}
+                  onPaginationChange={handlePaginationChange}
+                  onGlobalFilterChange={handleGlobalFilterChange}
+                  enableTopToolbar
+                  enableColumnFilters={false}
+                  enableSorting={false}
+                  enablePagination
+                  enableBottomToolbar
+                  enableGlobalFilter
+                  enableDensityToggle={false}
+                  enableColumnActions={false}
+                  enableColumnVisibilityToggle={false}
+                  initialState={{ density: "compact" }}
+                  muiTableContainerProps={{
+                    sx: {
+                      width: "100%",
+                      backgroundColor: "#fff",
+                      overflowX: "auto",
+                      minWidth: "800px",
+                    },
+                  }}
+                  muiTablePaperProps={{
+                    sx: { backgroundColor: "#fff", boxShadow: "none" },
+                  }}
+                  muiPaginationProps={{
+                    rowsPerPageOptions: [5, 10, 20, 50, 100],
+                    showFirstButton: true,
+                    showLastButton: true,
+                  }}
+                  renderTopToolbar={({ table }) => (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                        p: 1,
+                      }}
+                    >
+                      <Typography variant="h6" className='page-title'>
+                        Stock Movement In/Out
+                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <MRT_GlobalFilterTextField table={table} />
+                        <MRT_ToolbarInternalButtons table={table} />
+                        <Tooltip title="Refresh">
+                          <IconButton onClick={handleRefresh} size="small" disabled={loading}>
+                            <IoMdRefresh size={20} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Print">
+                          <IconButton onClick={handlePrint} size="small">
+                            <FiPrinter size={20} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Download CSV">
+                          <IconButton onClick={downloadCSV} size="small">
+                            <BsCloudDownload size={20} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+                  )}
+                />
+              </Paper>
+            </Grid>
+          </Grid>
+        )}
+      </ErrorBoundary>
+    </>
   );
 };
 

@@ -243,11 +243,11 @@ export default function Production() {
                       p: 2,
                       backgroundColor: "white",
                       borderRadius: 1,
-                      boxShadow: 1,
-                      transition: "box-shadow 0.2s ease-in-out",
-                      "&:hover": {
-                        boxShadow: 2,
-                      },
+                      // boxShadow: 1,
+                      // transition: "box-shadow 0.2s ease-in-out",
+                      // "&:hover": {
+                      //   boxShadow: 0.5,
+                      // },
                     }}
                   >
                     <Typography variant="h6" fontWeight={600}>
@@ -327,9 +327,9 @@ export default function Production() {
                                 p: 2,
                                 borderRadius: 1,
                                 mb: 2,
-                                boxShadow: 1,
-                                transition: "0.2s",
-                                "&:hover": { boxShadow: 2 },
+                                // boxShadow: 1,
+                                // transition: "0.2s",
+                                // "&:hover": { boxShadow: 2 },
                               }}
                             >
                               <Chip
@@ -416,7 +416,7 @@ export default function Production() {
                   backgroundColor: "white",
                   borderRadius: 1,
                   p: 3,
-                  boxShadow: 1,
+                  // boxShadow: 1,
                 }}
               >
                 <Typography variant="h6" color="text.secondary" gutterBottom>
