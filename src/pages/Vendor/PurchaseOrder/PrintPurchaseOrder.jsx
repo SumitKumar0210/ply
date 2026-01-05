@@ -316,10 +316,10 @@ const { appDetails } = useAuth();
                       <span style={{ marginLeft: 'auto' }}>{po.subtotal || 0}</span>
                     </Box>
 
-                    <Box className="fs-15" sx={{ display: 'flex' }}>
+                    {/* <Box className="fs-15" sx={{ display: 'flex' }}>
                       <strong>Discount</strong>
                       <span style={{ marginLeft: 'auto' }}>{po.discount || 0}</span>
-                    </Box>
+                    </Box> */}
 
                     <Box className="fs-15" sx={{ display: 'flex' }}>
                       <strong>Additional Charges</strong>

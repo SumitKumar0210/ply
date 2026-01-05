@@ -50,6 +50,7 @@ import { capitalize } from "lodash";
 
 // Constants
 const MODULES = [
+  { value: "attendance", label: "Attendance" },
   { value: "bills", label: "Bills" },
   { value: "categories", label: "Categories" },
   { value: "company_orders", label: "Company Orders" }, // fixed spelling

@@ -302,6 +302,9 @@ export const AuthProvider = ({ children, eager = true }) => {
           application_name: appData.app_name ?? "",
           company_address: appData.address ?? "",
           gst_no: appData.gst_no ?? "",
+          is_powered_by: appData.is_powered_by ?? "",
+          powered_by_link: appData.powered_by_link ?? "",
+          powered_by_name: appData.powered_by_name ?? "",
         };
 
         // Save to storage

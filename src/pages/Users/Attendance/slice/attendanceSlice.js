@@ -19,6 +19,22 @@ export const getMonthlyAttendance = createAsyncThunk(
     }
 );
 
+
+export const sendDailyAttendanceReport = createAsyncThunk(
+    "attendance/sendDailyAttendanceReport",
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await api.post("/admin/mail/daily-attendance-report");
+            successMessage(response.data.message);
+            return ;
+        } catch (error) {
+            const errMsg = getErrorMessage(error);
+            errorMessage(errMsg);
+            return rejectWithValue(errMsg);
+        }
+    }
+);
+
 const attendanceSlice = createSlice({
     name: "attendance",
     initialState: {
