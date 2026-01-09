@@ -38,6 +38,7 @@ import { fetchActiveProducts } from "../settings/slices/productSlice";
 import { fetchActiveTaxSlabs } from "../settings/slices/taxSlabSlice";
 import { addBill } from "./slice/billsSlice";
 import { successMessage, errorMessage } from "../../toast";
+import { fetchStates } from "../settings/slices/stateSlice";
 import { useNavigate } from "react-router-dom";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import CustomerFormDialog, { getInitialCustomerValues } from "../../components/Customer/CustomerFormDialog";
@@ -105,6 +106,7 @@ const GenerateBill = () => {
     const { data: products = [], loading: productsLoading } = useSelector(
         (state) => state.product
     );
+    console.log(products);
     const { activeData: gsts = [], loading: gstsLoading } = useSelector(
         (state) => state.taxSlab
     );
@@ -348,15 +350,27 @@ const GenerateBill = () => {
         }
     };
 
+    const openCustomerModal = async () => {
+        await dispatch(fetchStates());
+        setOpenAddCustomer(true);
+    };
+
+
     // Handle add customer
     const handleAddCustomer = useCallback(async (values, { resetForm }) => {
         try {
             const res = await dispatch(addCustomer(values));
             if (res.error) return;
+
+            // Refresh the customer list after adding
+            await dispatch(fetchActiveCustomers());
+
             resetForm();
-            setOpen(false);
+            setOpenAddCustomer(false);
+            successMessage("Customer added successfully!");
         } catch (error) {
             console.error("Add customer failed:", error);
+            errorMessage("Failed to add customer");
         }
     }, [dispatch]);
 
@@ -404,7 +418,7 @@ const GenerateBill = () => {
                                     flexWrap: "wrap",
                                     gap: 2,
                                     mb: 2,
-                                    mt:2
+                                    mt: 2
                                 }}
                             >
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: { xs: "100%", md: "auto" } }}>
@@ -429,7 +443,7 @@ const GenerateBill = () => {
                                     />
 
                                     <Tooltip title="Add New Customer">
-                                        <IconButton color="primary" onClick={() => setOpenAddCustomer(true)}>
+                                        <IconButton color="primary" onClick={() => openCustomerModal()}>
                                             <BiSolidUserPlus size={22} />
                                         </IconButton>
                                     </Tooltip>
@@ -444,10 +458,10 @@ const GenerateBill = () => {
                                             textField: {
                                                 size: "small",
                                                 sx: { width: { xs: "100%", md: 250 } },
-                                                error: deliveryDate && deliveryDate < creationDate,
-                                                helperText: deliveryDate && deliveryDate < creationDate
-                                                    ? "Delivery date cannot be before creation date"
-                                                    : ""
+                                                // error: deliveryDate && deliveryDate < creationDate,
+                                                // helperText: deliveryDate && deliveryDate < creationDate
+                                                //     ? "Delivery date cannot be before creation date"
+                                                //     : ""
                                             },
                                         }}
                                     />
@@ -853,7 +867,7 @@ const GenerateBill = () => {
                                                             <span>₹{totals.subTotal.toLocaleString("en-IN")}</span>
                                                         </Box>
 
-                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb:1 }}>
+                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb: 1 }}>
                                                             <TextField
                                                                 label="Discount (₹)"
                                                                 type="number"
@@ -869,7 +883,7 @@ const GenerateBill = () => {
                                                             <span>₹{(totals.subTotal - totals.discountAmount).toLocaleString("en-IN")}</span>
                                                         </Box>
 
-                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb:1 }}>
+                                                        <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb: 1 }}>
                                                             <TextField
                                                                 label="Add Charges (₹)"
                                                                 type="number"
@@ -961,7 +975,7 @@ const GenerateBill = () => {
                                                 </Box>
                                             </Grid>
 
-                                            <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 4, mb:2 }}>
+                                            <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 4, mb: 2 }}>
                                                 {/* <Button
                                                     variant="outlined"
                                                     color="secondary"

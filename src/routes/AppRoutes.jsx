@@ -55,6 +55,7 @@ const ReadyProduct = lazy(() => import("../pages/Production/ReadyProduct"));
 const ProductChallan = lazy(() => import("../pages/Production/ProductChallna"));
 const Bills = lazy(() => import("../pages/Billing/Bills"));
 const GenerateBill = lazy(() => import("../pages/Billing/GenerateBill"));
+const PackageList = lazy(() => import("../pages/Billing/PackageList"));
 const EditBill = lazy(() => import("../pages/Billing/EditGenerateBill"));
 const ViewBill = lazy(() => import("../pages/Billing/ViewBill"));
 const Challan = lazy(() => import("../pages/Billing/Challan"));
@@ -63,6 +64,7 @@ const StockInOut = lazy(() => import("../pages/Billing/Stocks"));
 const Permissions = lazy(() => import("../pages/Users/Permissions"));
 const PermissionGroupManager = lazy(() => import("../pages/Users/userPermission"));
 const ProductStocks = lazy(() => import("../pages/Production/ProductStock"));
+const DiscardedProduct = lazy(() => import("../pages/Production/DiscardedProduct"));
 const RRPManagement = lazy(() => import("../pages/Production/RRPManagement"));
 const Calendar = lazy(() => import("../pages/Users/Calendar/Calendar"));
 const Attendance = lazy(() => import("../pages/Users/Attendance/Attendance"));
@@ -107,6 +109,16 @@ const AppRoutes = () => {
         <Route
           path="/logs"
           element={<SecurePage><Logs /></SecurePage>}
+        />
+        
+        <Route
+          path="/discarded-product"
+          element={<SecurePage><DiscardedProduct /></SecurePage>}
+        />
+
+        <Route
+          path="/package-list/:id"
+          element={<SecurePage><PackageList /></SecurePage>}
         />
 
         {/* Auth (public) */}

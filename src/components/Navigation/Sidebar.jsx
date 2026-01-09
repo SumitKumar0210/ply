@@ -29,6 +29,9 @@ import { LuTable } from "react-icons/lu";
 import { IoConstructOutline, IoPeopleOutline } from "react-icons/io5";
 import { TbUsersPlus } from "react-icons/tb";
 import { BsBoxSeam, BsTag } from "react-icons/bs";
+import { LiaFileInvoiceDollarSolid } from "react-icons/lia";
+import { GoGear } from "react-icons/go";
+import { PiGearFine } from "react-icons/pi";
 
 import Logo from "../../assets/images/logo.svg";
 import { useAuth } from "../../context/AuthContext";
@@ -146,7 +149,7 @@ const menuSections = [
       },
       {
         text: "Production",
-        icon: <FiUsers />,
+        icon: <PiGearFine  />,
         anyPermissions: [
           "company_orders.read",
           "company_orders.update",
@@ -192,7 +195,7 @@ const menuSections = [
       },
       {
         text: "Billing",
-        icon: <FiUsers />,
+        icon: <LiaFileInvoiceDollarSolid />,
         anyPermissions: [
           "bills.read",
           "bills.create_challan",
@@ -293,7 +296,12 @@ const menuSections = [
         ],
       },
       {
-        text: "Settings", to: "/settings", icon: <MdOutlineDashboard />, anyPermissions: [
+        text: "Logs", to: "/logs", icon: <MdOutlineDashboard />, anyPermissions: [
+          "groups.read",
+        ]
+      },
+      {
+        text: "Settings", to: "/settings", icon: <GoGear />, anyPermissions: [
           "settings.read",
           "groups.read",
           "categories.read",

@@ -21,7 +21,8 @@ import {
   Pagination,
   InputAdornment,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Skeleton
 } from "@mui/material";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
 import {
@@ -39,12 +40,13 @@ import { HiOutlineReceiptTax } from "react-icons/hi";
 import { BsTelephone } from "react-icons/bs";
 import { MdAlternateEmail } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProducts, deleteProduct, statusUpdate } from "../settings/slices/productSlice";
+import { fetchProductsWithSearch, deleteProduct, statusUpdate, discardStock } from "../settings/slices/productSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import Profile from "../../assets/images/profile.jpg";
 import ProductFormDialog from "../../components/Product/ProductFormDialog";
+import DiscardStockDialog from "../../components/Product/DiscardStockDialog";
 import { useAuth } from "../../context/AuthContext";
-import { MdOutlineQrCode2, MdStraighten } from "react-icons/md";
+import { MdOutlineQrCode2, MdStraighten, MdDeleteSweep } from "react-icons/md";
 
 const ProductStocks = () => {
   const { hasPermission, hasAnyPermission } = useAuth();
@@ -54,7 +56,8 @@ const ProductStocks = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const { data: data = [], loading } = useSelector((state) => state.product);
+  const { searchData: data = [], loading } = useSelector((state) => state.product);
+  console.log(data);
 
   const tableContainerRef = useRef(null);
   const [openProductDialog, setOpenProductDialog] = useState(false);
@@ -62,18 +65,17 @@ const ProductStocks = () => {
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [openDiscard, setOpenDiscard] = useState(false);
+  const [discardRow, setDiscardRow] = useState(null);
+  const [mobileSearchFilter, setMobileSearchFilter] = useState("");
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   useEffect(() => {
-    dispatch(fetchProducts());
+    dispatch(fetchProductsWithSearch());
   }, [dispatch]);
-
-  // Load groups when dialog opens
-  // useEffect(() => {
-  //   if (openProductDialog) {
-  //     dispatch(fetchActiveGroup());
-  //     dispatch(fetchActiveProductTypes());
-  //   }
-  // }, [openProductDialog, dispatch]);
 
   const handleAddProduct = () => {
     setEditProductData(null);
@@ -98,7 +100,46 @@ const ProductStocks = () => {
     setOpenDelete(false);
     setDeleteRow(null);
   };
+
+  const handleDiscardSubmit = async (payload) => {
+    const res = await dispatch(discardStock(payload));
+    if (res.error) return;
+    setOpenDiscard(false);
+    setDiscardRow(null);
+    dispatch(fetchProductsWithSearch());
+  };
+
   const canUpdate = useMemo(() => hasPermission("product.update"), [hasPermission]);
+
+  // Handle mobile search change
+  const handleMobileSearchChange = (value) => {
+    setMobileSearchFilter(value);
+  };
+
+  // Mobile pagination handlers
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
+
+  // Filter data based on mobile search
+  const filteredData = useMemo(() => {
+    if (!mobileSearchFilter) return data;
+    
+    const searchLower = mobileSearchFilter.toLowerCase();
+    return data.filter((product) => 
+      product.name?.toLowerCase().includes(searchLower) ||
+      product.model?.toLowerCase().includes(searchLower) ||
+      product.size?.toLowerCase().includes(searchLower) ||
+      product.product_type?.toLowerCase().includes(searchLower)
+    );
+  }, [data, mobileSearchFilter]);
+
+  // Paginate filtered data for mobile
+  const paginatedData = useMemo(() => {
+    const startIndex = pagination.pageIndex * pagination.pageSize;
+    const endIndex = startIndex + pagination.pageSize;
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, pagination]);
 
   const columns = useMemo(() => {
     const baseColumns = [
@@ -118,24 +159,66 @@ const ProductStocks = () => {
       { accessorKey: "size", header: "Size", size: 100 },
       { accessorKey: "product_type", header: "Product Type", size: 150 },
       { accessorKey: "available_qty", header: "Available Qty", size: 150 },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableColumnFilter: false,
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+        Cell: ({ row }) => {
+          if (loading) return <Skeleton variant="text" width={80} />;
 
+          return (
+            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+              {hasPermission("product.update") && (
+                <Tooltip title="Edit">
+                  <IconButton 
+                    color="primary"
+                    onClick={() => handleEditProduct(row.original)}
+                  >
+                    <BiSolidEditAlt size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {hasPermission("product.delete") && (
+                <Tooltip title="Delete">
+                  <IconButton 
+                    color="error"
+                    onClick={() => {
+                      setDeleteRow(row.original);
+                      setOpenDelete(true);
+                    }}
+                  >
+                    <RiDeleteBinLine size={16} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              <Tooltip title="Discard Stock">
+                <IconButton
+                  color="warning"
+                  onClick={() => {
+                    setDiscardRow(row.original);
+                    setOpenDiscard(true);
+                  }}
+                >
+                  <MdDeleteSweep size={16} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          );
+        },
+      },
     ];
-
 
     return baseColumns;
   }, [
-    dispatch,
+    loading,
     mediaUrl,
     hasPermission,
-    hasAnyPermission,
-    canUpdate,
-    handleEditProduct,
-    setOpenDelete,
-    setDeleteRow,
-    statusUpdate,
     Profile,
+    handleEditProduct,
   ]);
-
 
   // Function to download CSV from data
   const downloadCSV = () => {
@@ -153,23 +236,48 @@ const ProductStocks = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "Product_data.csv");
+    link.setAttribute("download", `Product_Stocks_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
-  };
 
+    const printWindow = window.open('', '_blank');
+    const tableHTML = tableContainerRef.current.innerHTML;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Product Stocks</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            @media print {
+              button, .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Product Stocks</h2>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
 
   return (
     <>
@@ -198,6 +306,7 @@ const ProductStocks = () => {
           )}
         </Grid>
       </Grid>
+
       {isMobile ? (
         // 🔹 MOBILE VIEW (Cards)
         <>
@@ -207,9 +316,9 @@ const ProductStocks = () => {
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Search purchase orders..."
-                value=""
-                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                placeholder="Search products..."
+                value={mobileSearchFilter}
+                onChange={(e) => handleMobileSearchChange(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -219,117 +328,184 @@ const ProductStocks = () => {
                 }}
               />
             </Paper>
-            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
-              {/* Header Section - Blue Background */}
-              <Box
-                sx={{
-                  bgcolor: "primary.main",
-                  p: 1.5,
-                  color: "primary.contrastText",
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 500, color: "white", mb: 0.5 }}>
-                      Decorative Laminate Sheet
-                    </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
 
-                      <Chip
-                        label="Hardware"
-                        size="small"
-                        sx={{
-                          bgcolor: "white",
-                          color: "primary.main",
-                          fontWeight: 500,
-                          fontSize: "0.75rem",
-                        }}
-                      />
-                      <Chip
-                        label="Qty: 45"
-                        size="small"
-                        sx={{
-                          fontSize: "0.75rem",
-                          fontWeight: 500,
-                          bgcolor: "success.light",
-                          color: "success.contrastText"
-                        }}
-                      />
+            {/* Loading State */}
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : paginatedData.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="body1" color="text.secondary">
+                  No products found
+                </Typography>
+              </Paper>
+            ) : (
+              paginatedData.map((product) => (
+                <Card key={product.id} sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2 }}>
+                  {/* Header Section - Blue Background */}
+                  <Box
+                    sx={{
+                      bgcolor: "primary.main",
+                      p: 1.5,
+                      color: "primary.contrastText",
+                    }}
+                  >
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 500, color: "white", mb: 0.5 }}>
+                          {product.name || "N/A"}
+                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
+                          {product.product_type && (
+                            <Chip
+                              label={product.product_type}
+                              size="small"
+                              sx={{
+                                bgcolor: "white",
+                                color: "primary.main",
+                                fontWeight: 500,
+                                fontSize: "0.75rem",
+                              }}
+                            />
+                          )}
+                          <Chip
+                            label={`Qty: ${product.available_qty || 0}`}
+                            size="small"
+                            sx={{
+                              fontSize: "0.75rem",
+                              fontWeight: 500,
+                              bgcolor: product.available_qty > 0 ? "success.light" : "error.light",
+                              color: product.available_qty > 0 ? "success.contrastText" : "error.contrastText"
+                            }}
+                          />
+                        </Box>
+                      </Box>
                     </Box>
                   </Box>
 
-                </Box>
-              </Box>
+                  {/* Body Section */}
+                  <CardContent sx={{ px: 1.5 }}>
+                    {/* Details Grid */}
+                    <Grid container spacing={0} sx={{ mb: 0 }}>
+                      <Grid size={12}>
+                        {/* Products Section */}
+                        <Box sx={{ mt: 0 }}>
+                          {/* Single Product Item */}
+                          <Box
+                            sx={{
+                              display: "flex",
+                              gap: 1.5,
+                            }}
+                          >
+                            {/* Product Image */}
+                            <Box
+                              component="img"
+                              src={product.image ? mediaUrl + product.image : Profile}
+                              alt={product.name}
+                              sx={{
+                                width: 46,
+                                height: 46,
+                                borderRadius: 1,
+                                objectFit: "cover",
+                                border: "1px solid #eee",
+                              }}
+                            />
+                            {/* Product Details */}
+                            <Box sx={{ flex: 1 }}>
+                              {/* Model */}
+                              {product.model && (
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
+                                  <MdOutlineQrCode2 size={14} color="#666" />
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ fontWeight: 500, lineHeight: 1.2 }}
+                                  >
+                                    {product.model}
+                                  </Typography>
+                                </Box>
+                              )}
 
-              {/* Body Section */}
-              <CardContent sx={{ px: 1.5 }}>
-                {/* Details Grid */}
-                <Grid container spacing={0} sx={{ mb: 0 }}>
-                  <Grid size={12}>
-                    {/* Products Section */}
-                    <Box sx={{ mt: 0 }}>
-                      {/* Single Product Item */}
-                      <Box
-                        sx={{
-                          display: "flex",
-                          gap: 1.5,
-                        }}
-                      >
-                        {/* Product Image */}
-                        <Box
-                          component="img"
-                          src="https://pihpl.com/wp-content/uploads/Plywood-core.jpg"
-                          alt="Decorative Laminate Sheet"
-                          sx={{
-                            width: 46,
-                            height: 46,
-                            borderRadius: 1,
-                            objectFit: "cover",
-                            border: "1px solid #eee",
-                          }}
-                        />
-                        {/* Product Details */}
-
-
-                        <Box sx={{ flex: 1 }}>
-                          {/* Model */}
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6 }}>
-                            <MdOutlineQrCode2 size={14} color="#666" />
-                            <Typography
-                              variant="body2"
-                              sx={{ fontWeight: 500, lineHeight: 1.2 }}
-                            >
-                              DL-503
-                            </Typography>
-                          </Box>
-
-                          {/* Size / Dimension */}
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mt: 0.5 }}>
-                            <MdStraighten size={14} color="#666" />
-                            <Typography
-                              variant="caption"
-                              sx={{ color: "text.secondary" }}
-                            >
-                              8×4 ft
-                            </Typography>
+                              {/* Size / Dimension */}
+                              {product.size && (
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mt: 0.5 }}>
+                                  <MdStraighten size={14} color="#666" />
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ color: "text.secondary" }}
+                                  >
+                                    {product.size}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
                           </Box>
                         </Box>
+                      </Grid>
+                    </Grid>
 
-                      </Box>
+                    {/* Action Buttons */}
+                    <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 2 }}>
+                      {hasPermission("product.update") && (
+                        <IconButton
+                          size="medium"
+                          onClick={() => handleEditProduct(product)}
+                          sx={{
+                            bgcolor: "#e3f2fd",
+                            color: "#1976d2",
+                            "&:hover": { bgcolor: "#bbdefb" },
+                          }}
+                        >
+                          <BiSolidEditAlt size={20} />
+                        </IconButton>
+                      )}
+                      {hasPermission("product.delete") && (
+                        <IconButton
+                          size="medium"
+                          onClick={() => {
+                            setDeleteRow(product);
+                            setOpenDelete(true);
+                          }}
+                          sx={{
+                            bgcolor: "#ffebee",
+                            color: "#d32f2f",
+                            "&:hover": { bgcolor: "#ffcdd2" },
+                          }}
+                        >
+                          <RiDeleteBinLine size={20} />
+                        </IconButton>
+                      )}
+                      <IconButton
+                        size="medium"
+                        onClick={() => {
+                          setDiscardRow(product);
+                          setOpenDiscard(true);
+                        }}
+                        sx={{
+                          bgcolor: "#fff3e0",
+                          color: "#f57c00",
+                          "&:hover": { bgcolor: "#ffe0b2" },
+                        }}
+                      >
+                        <MdDeleteSweep size={20} />
+                      </IconButton>
                     </Box>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+
             {/* Mobile Pagination */}
-            {/* <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-                    <Pagination
-                      count={Math.ceil(10 / pagination.pageSize)}
-                      page={pagination.pageIndex + 1}
-                      onChange={handleMobilePageChange}
-                      color="primary"
-                    />
-                  </Box> */}
+            {!loading && filteredData.length > 0 && (
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3, pb: 3 }}>
+                <Pagination
+                  count={Math.ceil(filteredData.length / pagination.pageSize)}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
+              </Box>
+            )}
           </Box>
         </>
       ) : (
@@ -397,7 +573,6 @@ const ProductStocks = () => {
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>
-
                   </Box>
                 </Box>
               )}
@@ -405,7 +580,6 @@ const ProductStocks = () => {
           </Paper>
         </Grid>
       )}
-
 
       {/* Product Form Dialog - Handles both Add and Edit */}
       <ProductFormDialog
@@ -437,6 +611,18 @@ const ProductStocks = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Discard Stock Dialog */}
+      {discardRow && (
+        <DiscardStockDialog
+          open={openDiscard}
+          onClose={() => {
+            setOpenDiscard(false);
+            setDiscardRow(null);
+          }}
+          product={discardRow}
+          onSubmit={handleDiscardSubmit}
+        />
+      )}
     </>
   );
 };

@@ -53,7 +53,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import { fetchQuotation, deleteQuotation } from "../slice/quotationSlice";
 import { useDispatch, useSelector } from "react-redux";
 import LinkGenerator from "../../../components/Links/LinkGenerator";
-import { set } from "lodash";
 import { useAuth } from "../../../context/AuthContext";
 
 //  Styled Dialog
@@ -108,6 +107,17 @@ const getStatusChip = (status) => {
       return <Chip label="Requested to edit" color="secondary" size="small" />;
     default:
       return <Chip label="Unknown" size="small" />;
+  }
+};
+
+// Status text helper
+const getStatusText = (status) => {
+  switch (status) {
+    case 0: return "Draft";
+    case 1: return "Ordered";
+    case 2: return "Approved";
+    case 3: return "Requested to edit";
+    default: return "Unknown";
   }
 };
 
@@ -229,7 +239,7 @@ const Quote = () => {
     navigate("/customer/quote/edit/" + id);
   };
 
-  const handlDelete = (row) => {
+  const handleDelete = (row) => {
     setDeleteRow(row);
     setOpenDelete(true);
   };
@@ -313,7 +323,7 @@ const Quote = () => {
           accessorKey: "status",
           header: "Status",
           Cell: ({ row }) => (
-            <div onClick={() => showEditRequest(row.original)} style={{ cursor: "pointer" }}>
+            <div onClick={() => showEditRequest(row.original)} style={{ cursor: row.original.status === 3 ? "pointer" : "default" }}>
               {getStatusChip(row.original.status)}
             </div>
           ),
@@ -364,7 +374,7 @@ const Quote = () => {
                     <IconButton
                       aria-label="delete"
                       color="error"
-                      onClick={() => handlDelete(row.original)}
+                      onClick={() => handleDelete(row.original)}
                     >
                       <RiDeleteBinLine size={16} />
                     </IconButton>
@@ -377,8 +387,9 @@ const Quote = () => {
       }
 
       return baseColumns;
-      []
-    });
+    },
+    [hasPermission, hasAnyPermission]
+  );
 
   //  CSV export
   const downloadCSV = useCallback(() => {
@@ -397,7 +408,7 @@ const Quote = () => {
         handleDateFormate(row.created_at),
         row.grand_total ? "₹ " + parseInt(row.grand_total) : "",
         handleItemCount(row.product_ids),
-        row.status === 0 ? "Draft" : row.status === 1 ? "Ordered" : row.status === 2 ? "Production" : "Unknown",
+        getStatusText(row.status),
       ]);
 
       const csvContent = [
@@ -430,17 +441,209 @@ const Quote = () => {
     try {
       const printWindow = window.open("", "", "height=600,width=1200");
       if (!printWindow) return;
+      printWindow.document.write('<html><head><title>Print</title>');
+      printWindow.document.write('<style>body{font-family: Arial, sans-serif;} table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ddd;padding:8px;text-align:left;}</style>');
+      printWindow.document.write('</head><body>');
       printWindow.document.write(tableContainerRef.current.innerHTML);
+      printWindow.document.write('</body></html>');
       printWindow.document.close();
       printWindow.print();
     } catch (error) {
       console.error("Print error:", error);
     }
   }, []);
+
   // Mobile pagination handlers
   const handleMobilePageChange = (event, value) => {
     setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
   };
+
+  // Render mobile card
+  const renderMobileCard = (row) => (
+    <Card key={row.id} sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2 }}>
+      {/* Header Section - Blue Background */}
+      <Box
+        sx={{
+          bgcolor: "primary.main",
+          p: 1.5,
+          color: "primary.contrastText",
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+              {row.batch_no || "N/A"}
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <FiUser size={14} />
+              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                {row.customer?.name || "Unknown Customer"}
+              </Typography>
+            </Box>
+          </Box>
+          <Box onClick={() => showEditRequest(row)} style={{ cursor: row.status === 3 ? "pointer" : "default" }}>
+            {getStatusChip(row.status)}
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Body Section */}
+      <CardContent sx={{ p: 1.5 }}>
+        {/* Details Grid */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={6}>
+            <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+              <Box
+                sx={{
+                  color: "text.secondary",
+                  mt: 0.2,
+                }}
+              >
+                <FiCalendar size={16} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                    fontSize: "0.75rem",
+                    mb: 0.3,
+                  }}
+                >
+                  Quote Date
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                  {handleDateFormate(row.created_at)}
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+          <Grid item xs={6}>
+            <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+              <Box
+                sx={{
+                  color: "text.secondary",
+                  mt: 0.2,
+                }}
+              >
+                <IoMdCheckmarkCircleOutline size={16} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                    fontSize: "0.75rem",
+                    mb: 0.3,
+                  }}
+                >
+                  Total Items
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                  {handleItemCount(row.product_ids)}
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+        </Grid>
+
+        {/* Total Section */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            bgcolor: "#f0f7ff",
+            px: 1.5,
+            py: 1,
+            borderRadius: 1,
+            mb: 2,
+            border: "1px solid #e3f2fd",
+          }}
+        >
+          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
+            Quote Total
+          </Typography>
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 600, color: "primary.main", fontSize: "1rem" }}
+          >
+            {row.grand_total ? `₹${parseInt(row.grand_total).toLocaleString()}` : "₹0"}
+          </Typography>
+        </Box>
+
+        <Divider sx={{ mb: 2 }} />
+
+        {/* Action Buttons */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+          {hasPermission("quotations.generate_public_link") && (
+            <LinkGenerator
+              id={row.id}
+              customerId={row.customer?.id}
+              entity="quotation"
+            />
+          )}
+
+          {hasPermission("quotations.read") && (
+            <Tooltip title="View">
+              <IconButton
+                size="small"
+                onClick={() => handleViewClick(row.id)}
+                sx={{
+                  width: "36px", 
+                  height: "36px",
+                  bgcolor: "#fff3e0",
+                  color: "#ff9800",
+                  "&:hover": { bgcolor: "#ffe0b2" },
+                }}
+              >
+                <MdOutlineRemoveRedEye size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          {hasPermission("quotations.update") && (
+            <Tooltip title="Edit">
+              <IconButton
+                size="small"
+                onClick={() => handleEditClick(row.id)}
+                sx={{
+                  width: "36px", 
+                  height: "36px",
+                  bgcolor: "#e8eaf6",
+                  color: "#3f51b5",
+                  "&:hover": { bgcolor: "#c5cae9" },
+                }}
+              >
+                <BiSolidEditAlt size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          {hasPermission("quotations.delete") && (
+            <Tooltip title="Delete">
+              <IconButton
+                size="small"
+                onClick={() => handleDelete(row)}
+                sx={{
+                  width: "36px", 
+                  height: "36px",
+                  bgcolor: "#ffebee",
+                  color: "#d32f2f",
+                  "&:hover": { bgcolor: "#ffcdd2" },
+                }}
+              >
+                <RiDeleteBinLine size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <>
       {/* Header Row */}
@@ -451,17 +654,18 @@ const Quote = () => {
         justifyContent="space-between"
         sx={{ mb: { xs: 1, md: 2 } }}
       >
-        <Grid>
+        <Grid item>
           <Typography variant="h6" className="page-title">Quotation</Typography>
         </Grid>
-        <Grid>
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+        <Grid item>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
             {hasPermission("quotations.approved_data") && (
               <Button
                 variant={showApproved ? "contained" : "outlined"}
                 startIcon={showApproved ? <MdOutlineRemoveRedEye /> : <MdOutlineVisibilityOff />}
                 onClick={handleToggleApproved}
                 color={showApproved ? "success" : "primary"}
+                size={isMobile ? "small" : "medium"}
               >
                 {showApproved ? "Showing Approved" : "Approved Quotes"}
               </Button>
@@ -472,6 +676,7 @@ const Quote = () => {
                 startIcon={<AddIcon />}
                 component={Link}
                 to="/customer/quote/create"
+                size={isMobile ? "small" : "medium"}
               >
                 Create Quote
               </Button>
@@ -482,221 +687,54 @@ const Quote = () => {
 
       {isMobile ? (
         // 🔹 MOBILE VIEW (Cards)
-        <>
-          <Box>
-            {/* Mobile Search */}
-            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Search purchase orders..."
-                value=""
-                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Paper>
-            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
-              {/* Header Section - Blue Background */}
-              <Box
-                sx={{
-                  bgcolor: "primary.main",
-                  p: 1.5,
-                  color: "primary.contrastText",
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
-                      Q_002
-                    </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <FiUser size={14} />
-                      <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
-                        Satish Sharma
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Chip
-                    label="Requested to edit"
-                    size="small"
-                    sx={{
-                      bgcolor: "white",
-                      color: "primary.main",
-                      fontWeight: 500,
-                      fontSize: "0.75rem",
-                    }}
-                  />
-                </Box>
-              </Box>
+        <Box>
+          {/* Mobile Search */}
+          <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Search quotations..."
+              value={globalFilter}
+              onChange={(e) => handleGlobalFilterChange(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Paper>
 
-              {/* Body Section */}
-              <CardContent sx={{ p: 1.5 }}>
-                {/* Details Grid */}
-                <Grid container spacing={2} sx={{ mb: 2 }}>
-                  <Grid size={6}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.2,
-                        }}
-                      >
-                        <FiCalendar size={16} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          Quote Date
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                          08-12-2025
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                  <Grid size={6}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.2,
-                        }}
-                      >
-                        <IoMdCheckmarkCircleOutline size={16} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          Total Items
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                          20
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-
-                </Grid>
-                {/* Total Section */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    bgcolor: "#f0f7ff",
-                    px: 1,
-                    py: 1,
-                    borderRadius: 1,
-                    mb: 2,
-                    border: "1px solid #e3f2fd",
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {/* <MdCurrencyRupee size={20} color="primary.main" /> */}
-                    <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
-                      Quote Total
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 500, color: "primary.main", fontSize: "1rem" }}
-                  >
-                    ₹45,750.00
-                  </Typography>
-                </Box>
-                <Divider sx={{ mb: 2 }} />
-                {/* Action Buttons */}
-                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
-                  {/* Link / Generate */}
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#e3f2fd",          // light blue
-                      color: "#1976d2",            // info blue
-                      "&:hover": { bgcolor: "#bbdefb" },
-                    }}
-                  >
-                    <LinkGenerator size={20} />
-                  </IconButton>
-
-                  {/* Edit */}
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#fff3e0",          // light orange
-                      color: "#ff9800",            // warning
-                      "&:hover": { bgcolor: "#ffe0b2" },
-                    }}
-                  >
-
-                    <MdOutlineRemoveRedEye size={20} />
-                  </IconButton>
-
-                  {/* View */}
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#e8eaf6",          // light indigo
-                      color: "#3f51b5",            // primary
-                      "&:hover": { bgcolor: "#c5cae9" },
-                    }}
-                  >
-                    <BiSolidEditAlt size={20} />
-                  </IconButton>
-
-                  {/* Delete */}
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#ffebee",          // light red
-                      color: "#d32f2f",            // error
-                      "&:hover": { bgcolor: "#ffcdd2" },
-                    }}
-                  >
-                    <RiDeleteBinLine size={20} />
-                  </IconButton>
-                </Box>
-
-              </CardContent>
-            </Card>
-            {/* Mobile Pagination */}
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-              <Pagination
-                count={Math.ceil(10 / pagination.pageSize)}
-                page={pagination.pageIndex + 1}
-                onChange={handleMobilePageChange}
-                color="primary"
-              />
+          {/* Loading State */}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
             </Box>
-          </Box>
-        </>
+          ) : tableData.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <Typography color="text.secondary">No quotations found</Typography>
+            </Paper>
+          ) : (
+            <>
+              {/* Render Cards */}
+              {tableData.map((row) => renderMobileCard(row))}
+
+              {/* Mobile Pagination */}
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+                <Pagination
+                  count={Math.ceil(totalRecords / pagination.pageSize)}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
+              </Box>
+            </>
+          )}
+        </Box>
       ) : (
         // 🔹 DESKTOP VIEW (Table)
-        <Grid size={12}>
+        <Grid item xs={12}>
           <Paper
             elevation={0}
             ref={tableContainerRef}
@@ -729,6 +767,7 @@ const Quote = () => {
               enableGlobalFilter
               enableDensityToggle={false}
               enableColumnActions={false}
+              enableFullScreenToggle={false}
               enableColumnVisibilityToggle={false}
               initialState={{ density: "compact" }}
               muiTableContainerProps={{
@@ -757,12 +796,14 @@ const Quote = () => {
                     justifyContent: "space-between",
                     width: "100%",
                     p: 1,
+                    flexWrap: "wrap",
+                    gap: 1,
                   }}
                 >
                   <Typography variant="h6" className='page-title'>
                     {showApproved ? "Approved Quote List" : "Quote List"}
                   </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                     <MRT_GlobalFilterTextField table={table} />
                     <MRT_ToolbarInternalButtons table={table} />
                     <Tooltip title="Refresh">
@@ -787,16 +828,19 @@ const Quote = () => {
           </Paper>
         </Grid>
       )}
+
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
-        <DialogTitle>{"Delete this quotation?"}</DialogTitle>
-        <DialogContent style={{ width: "300px" }}>
-          <DialogContentText>This action cannot be undone</DialogContentText>
+        <DialogTitle>Delete this quotation?</DialogTitle>
+        <DialogContent style={{ minWidth: "300px" }}>
+          <DialogContentText>
+            This action cannot be undone. Are you sure you want to delete quotation {deleteRow?.batch_no}?
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDelete(false)}>Cancel</Button>
           <Button
-            onClick={() => deleteData(deleteRow.id)}
+            onClick={() => deleteData(deleteRow?.id)}
             variant="contained"
             color="error"
             autoFocus

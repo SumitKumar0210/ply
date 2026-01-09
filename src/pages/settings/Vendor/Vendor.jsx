@@ -49,8 +49,8 @@ const Vendor = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: vendorDatas = [], loading } = useSelector((state) => state.vendor);
-  const vendorData = vendorDatas?.data ?? [];
-  console.log(vendorData);
+  const vendorData = vendorDatas?? [];
+
   useEffect(() => {
     dispatch(fetchVendors());
   }, [dispatch]);
@@ -75,12 +75,26 @@ const Vendor = () => {
     setOpenDelete(true);
   };
 
+
+  // Component - Handle errors properly
   const handleConfirmDelete = async (id) => {
     setIsDeleting(true);
-    await dispatch(deleteVendor(id));
-    setIsDeleting(false);
-    setOpenDelete(false);
-    setDeleteData(null);
+    try {
+      const resultAction = await dispatch(deleteVendor(id));
+
+      if (deleteVendor.fulfilled.match(resultAction)) {
+        // Success - modal closes and state updates
+        setOpenDelete(false);
+        setDeleteData(null);
+      } else {
+        // Error - keep modal open so user can retry
+        console.error("Delete failed:", resultAction.payload);
+      }
+    } catch (error) {
+      console.error("Delete vendor error:", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleStatusToggle = (row, newStatus) => {
@@ -328,12 +342,12 @@ const Vendor = () => {
                     </Tooltip>
                     {hasPermission("vendors.create") && (
                       <Button
-                      variant="contained"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddVendor}
-                    >
-                      Add Vendor
-                    </Button>
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddVendor}
+                      >
+                        Add Vendor
+                      </Button>
                     )}
                   </Box>
                 </Box>

@@ -11,7 +11,6 @@ const Footer = ({ mobileOpen }) => {
   const poweredByLink = ctxAppDetails?.powered_by_link || "";
   const poweredByName = ctxAppDetails?.powered_by_name || "";
 
-  console.log(isPoweredBy,poweredByLink,poweredByName);
 
   return (
     <Box

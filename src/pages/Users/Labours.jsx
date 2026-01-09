@@ -16,7 +16,7 @@ import {
   Box,
   Tooltip,
   InputAdornment,
-Chip,
+  Chip,
   useMediaQuery,
   useTheme,
   Pagination,
@@ -25,6 +25,7 @@ Chip,
   Divider,
   Switch,
   Avatar,
+  CircularProgress,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
@@ -33,7 +34,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
-
 import SearchIcon from "@mui/icons-material/Search";
 import AddIcon from "@mui/icons-material/Add";
 import {
@@ -45,9 +45,7 @@ import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import Profile from "../../assets/images/profile.jpg";
 import CustomSwitch from "../../components/CustomSwitch/CustomSwitch";
-
 import { PiCurrencyInr } from "react-icons/pi";
-
 import { successMessage, errorMessage } from "../../toast";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -61,7 +59,6 @@ import {
 import { fetchActiveDepartments } from "../settings/slices/departmentSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
 import { compressImage } from "../../components/imageCompressor/imageCompressor";
-// import { fetchActiveWorkShifts } from "../settings/slices/Workshiftslice";
 import { fetchActiveWorkShifts } from "../settings/slices/workshiftslice";
 
 // Constants
@@ -75,7 +72,7 @@ const DOCUMENT_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const SUPPORTED_IMAGE_FORMATS = ["image/jpg", "image/jpeg", "image/png", "image/webp"];
 const SUPPORTED_DOCUMENT_FORMATS = [...SUPPORTED_IMAGE_FORMATS, "application/pdf"];
 
@@ -180,7 +177,6 @@ const createValidationSchema = (isEdit = false) => {
 
         if (!value) return true;
 
-        // Skip validation for 'other' document type
         if (document_type === "other") {
           return value.length >= 5 && value.length <= 30;
         }
@@ -213,7 +209,6 @@ const createValidationSchema = (isEdit = false) => {
       }),
   };
 
-  // Add image validation only for add mode
   if (!isEdit) {
     baseSchema.image = Yup.mixed()
       .required("Profile image is required")
@@ -236,13 +231,10 @@ const createValidationSchema = (isEdit = false) => {
 
   return Yup.object(baseSchema);
 };
- // Mobile pagination handlers
-  const handleMobilePageChange = (event, value) => {
-    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
-  };
+
 const Labours = () => {
-   const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [open, setOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
     open: false,
@@ -259,6 +251,7 @@ const Labours = () => {
     pageSize: 10,
   });
   const [globalFilter, setGlobalFilter] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const tableContainerRef = useRef(null);
   const searchTimeoutRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -266,49 +259,49 @@ const Labours = () => {
 
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
-  const { searchResults = [], loading } = useSelector(
-    (state) => state.labour
-  );
+  const { searchResults = [], loading } = useSelector((state) => state.labour);
   const { data: departments = [] } = useSelector((state) => state.department);
   const { data: shifts = [] } = useSelector((state) => state.workShift);
 
-
-  const {
-    data: rowData = [],
-  } = searchResults;
-
-  const {
-    data: tableData = [],
-    total = 0,
-  } = rowData;
+  const { data: rowData = [] } = searchResults;
+  const { data: tableData = [], total = 0 } = rowData;
 
   const dispatch = useDispatch();
 
-  // Fetch labours with pagination and search
+  // Debounce search input
   useEffect(() => {
-    // Clear existing timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    // Debounce search by 500ms
     searchTimeoutRef.current = setTimeout(() => {
-      dispatch(
-        fetchAllLaboursWithSearch({
-          pageIndex: pagination.pageIndex + 1,
-          pageLimit: pagination.pageSize,
-          search: globalFilter || "", // Send empty string if not searching
-        })
-      );
+      setDebouncedSearch(globalFilter);
     }, 500);
 
-    // Cleanup
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
+  }, [globalFilter]);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    if (debouncedSearch !== undefined) {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }
+  }, [debouncedSearch]);
+
+  // Fetch labours with pagination and search
+  useEffect(() => {
+    dispatch(
+      fetchAllLaboursWithSearch({
+        pageIndex: pagination.pageIndex + 1,
+        pageLimit: pagination.pageSize,
+        search: debouncedSearch || "",
+      })
+    );
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
   // Fetch departments and shifts when modals open
   useEffect(() => {
@@ -317,11 +310,6 @@ const Labours = () => {
       dispatch(fetchActiveWorkShifts());
     }
   }, [open, editOpen, dispatch]);
-
-  // Reset to first page when search changes
-  useEffect(() => {
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, [globalFilter]);
 
   // Cleanup preview URLs on unmount
   useEffect(() => {
@@ -414,18 +402,15 @@ const Labours = () => {
     }
   }, [dispatch, editData, handleEditClose]);
 
-  // Handle image compression
   const handleImageChange = async (event, setFieldValue, isEdit = false) => {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!SUPPORTED_IMAGE_FORMATS.includes(file.type)) {
       errorMessage("Please upload a valid image file (JPG, PNG, or WebP)");
       return;
     }
 
-    // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       errorMessage("File size must be less than 5MB");
       return;
@@ -442,10 +427,6 @@ const Labours = () => {
       const originalSize = (file.size / 1024).toFixed(2);
       const compressedSize = (compressed.size / 1024).toFixed(2);
       const reduction = (((file.size - compressed.size) / file.size) * 100).toFixed(2);
-
-      console.log(
-        `Image compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
-      );
 
       successMessage(
         `Image compressed: ${originalSize}KB → ${compressedSize}KB (${reduction}% saved)`
@@ -475,26 +456,22 @@ const Labours = () => {
     }
   };
 
-  // Handle document upload with compression for images
   const handleDocumentChange = async (event, setFieldValue) => {
     const file = event.currentTarget.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!SUPPORTED_DOCUMENT_FORMATS.includes(file.type)) {
       errorMessage("Please upload a valid document (Image or PDF)");
       event.target.value = null;
       return;
     }
 
-    // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       errorMessage("Document size must be less than 5MB");
       event.target.value = null;
       return;
     }
 
-    // If it's an image, compress it
     if (file.type.startsWith("image/")) {
       try {
         setCompressingDocument(true);
@@ -508,17 +485,12 @@ const Labours = () => {
         const compressedSize = (compressed.size / 1024).toFixed(2);
         const reduction = (((file.size - compressed.size) / file.size) * 100).toFixed(2);
 
-        console.log(
-          `Document compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`
-        );
-
         successMessage(
           `Document compressed: ${originalSize}KB → ${compressedSize}KB (${reduction}% saved)`
         );
 
         setFieldValue("document_file", compressed);
 
-        // Create preview URL for compressed image
         if (documentPreviewUrl && documentPreviewUrl.startsWith("blob:")) {
           URL.revokeObjectURL(documentPreviewUrl);
         }
@@ -528,7 +500,6 @@ const Labours = () => {
         errorMessage("Failed to compress document. Using original file.");
         setFieldValue("document_file", file);
 
-        // Create preview URL for original image
         if (documentPreviewUrl && documentPreviewUrl.startsWith("blob:")) {
           URL.revokeObjectURL(documentPreviewUrl);
         }
@@ -537,7 +508,6 @@ const Labours = () => {
         setCompressingDocument(false);
       }
     } else {
-      // For PDF files, just set the file
       setFieldValue("document_file", file);
       setDocumentPreviewUrl(null);
       successMessage("Document uploaded successfully!");
@@ -548,6 +518,16 @@ const Labours = () => {
     const newStatus = checked ? 1 : 0;
     dispatch(statusUpdate({ ...row, status: newStatus }));
   }, [dispatch]);
+
+  // Mobile pagination handler
+  const handleMobilePageChange = (event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  };
+
+  // Mobile search handler
+  const handleMobileSearch = (value) => {
+    setGlobalFilter(value);
+  };
 
   // Table columns
   const columns = useMemo(
@@ -624,7 +604,7 @@ const Labours = () => {
         ),
       },
     ],
-    [dispatch, mediaUrl, handleStatusChange, handleUpdate, handleDeleteClick]
+    [mediaUrl, handleStatusChange, handleUpdate, handleDeleteClick]
   );
 
   // CSV export
@@ -861,7 +841,6 @@ const Labours = () => {
           </Grid>
           <Grid size={6}>
             {(values.image || (isEdit && previewUrl)) && (
-
               <ImagePreviewDialog
                 imageUrl={values.image
                   ? URL.createObjectURL(values.image)
@@ -929,7 +908,6 @@ const Labours = () => {
         />
       </Grid>
 
-
       <Grid size={{ xs: 12, md: 6 }}>
         <Grid container spacing={1} alignItems="center">
           <Grid size={documentPreviewUrl ? 8 : 8}>
@@ -963,7 +941,6 @@ const Labours = () => {
             {values.document_file && (
               <Box>
                 {documentPreviewUrl ? (
-
                   <ImagePreviewDialog
                     imageUrl={documentPreviewUrl}
                     alt="Document Preview"
@@ -978,10 +955,10 @@ const Labours = () => {
           </Grid>
         </Grid>
       </Grid>
-
     </Grid>
   );
 
+  // MAIN RETURN JSX
   return (
     <>
       {/* Header */}
@@ -997,261 +974,282 @@ const Labours = () => {
       </Grid>
 
       {isMobile ? (
-              // 🔹 MOBILE VIEW (Cards)
-              <>
-                <Box sx={{ minHeight: '100vh' }}>
-                  {/* Mobile Search */}
-                  <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
-                    <TextField
-                      fullWidth
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box sx={{ minHeight: '100vh' }}>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search labours..."
+                value={globalFilter}
+                onChange={(e) => handleMobileSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
+
+            {/* Loading State */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
+            {/* Cards */}
+            {!loading && tableData.map((row) => (
+              <Card key={row.id} sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
+                {/* Header Section - Blue Background */}
+                <Box
+                  sx={{
+                    bgcolor: "primary.main",
+                    p: 1.25,
+                    color: "primary.contrastText",
+                  }}
+                >
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                      <Avatar
+                        src={row.image ? mediaUrl + row.image : Profile}
+                        alt={row.name}
+                        sx={{ width: 40, height: 40 }}
+                      />
+                      <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                        {row.name}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={row.department?.name || "N/A"}
                       size="small"
-                      placeholder="Search labours..."
-                      value=""
-                      // onChange={(e) => handleGlobalFilterChange(e.target.value)}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Paper>
-                  <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
-                    {/* Header Section - Blue Background */}
-                    <Box
                       sx={{
-                        bgcolor: "primary.main",
-                        p: 1.25,
-                        color: "primary.contrastText",
+                        bgcolor: "white",
+                        color: "primary.main",
+                        fontWeight: 500,
+                        fontSize: "0.75rem",
                       }}
-                    >
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                          <Avatar
-                            src="/path-to-image.jpg"
-                            alt="Aman"
-                            sx={{ width: 40, height: 40 }}
-                          />
-                          <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
-                            Aman
-                          </Typography>
-                        </Box>
-                  <Chip
-                    label="Quality Check"
-                    size="small"
-                    sx={{
-                      bgcolor: "white",
-                      color: "primary.main",
-                      fontWeight: 500,
-                      fontSize: "0.75rem",
-                    }}
-                  />
-                      </Box>
-                    </Box>
-      
-                    {/* Body Section */}
-                    <CardContent sx={{ p: 1.5 }}>
-                      {/* Details Grid */}
-                      <Grid container spacing={1} sx={{ mb: 2 }}>
-                  <Grid size={12}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      {/* Icon */}
-                      <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
-                        <PiCurrencyInr size={16} />
-                      </Box>
-
-                      {/* Text */}
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{ color: "text.secondary", fontSize: "0.875rem", minWidth: '114px'}}
-                        >
-                          Per Hour Cost :
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 500, fontSize: "0.875rem" }}
-                        >
-                          5,000
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-
-                  <Grid size={12}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      {/* Icon */}
-                      <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
-                        <PiCurrencyInr size={16} />
-                      </Box>
-
-                      {/* Text */}
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{ color: "text.secondary", fontSize: "0.875rem", minWidth: '114px'}}
-                        >
-                          Over Time Rate :
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 500, fontSize: "0.875rem" }}
-                        >
-                          200
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                </Grid>
-      
-                      <Divider sx={{ mb: 1.5 }} />
-                      {/* Action Buttons */}
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Switch
-                          defaultChecked
-                          sx={{
-                            width: 36,
-                            height: 20,
-                            padding: 0,
-                            '& .MuiSwitch-switchBase': {
-                              padding: 0,
-                              margin: '2px',
-                              transitionDuration: '300ms',
-                              '&.Mui-checked': {
-                                transform: 'translateX(16px)',
-                                color: '#fff',
-                                '& + .MuiSwitch-track': {
-                                  backgroundColor: '#0d6efd',
-                                  opacity: 1,
-                                  border: 0,
-                                },
-                              },
-                              '&.Mui-disabled + .MuiSwitch-track': {
-                                opacity: 0.5,
-                              },
-                            },
-                            '& .MuiSwitch-thumb': {
-                              boxSizing: 'border-box',
-                              width: 16,
-                              height: 16,
-                              boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.2)',
-                            },
-                            '& .MuiSwitch-track': {
-                              borderRadius: 10,
-                              backgroundColor: '#d9e0e6ff',
-                              opacity: 1,
-                              transition: 'background-color 0.3s',
-                            },
-                          }}
-                        />
-                        <Box sx={{ display: "flex", gap: 1.5 }}>
-                          <IconButton
-                            size="medium"
-                            sx={{
-                              bgcolor: "#e3f2fd",
-                              color: "#1976d2",
-                              "&:hover": { bgcolor: "#bbdefb" },
-                            }}
-                          >
-                            <BiSolidEditAlt size={20} />
-                          </IconButton>
-                          <IconButton
-                            size="medium"
-                            sx={{
-                              bgcolor: "#ffebee",
-                              color: "#d32f2f",
-                              "&:hover": { bgcolor: "#ffcdd2" },
-                            }}
-                          >
-                            <RiDeleteBinLine size={20} />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                  {/* Mobile Pagination */}
-                  <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-                    <Pagination
-                      count={Math.ceil(10 / pagination.pageSize)}
-                      page={pagination.pageIndex + 1}
-                      onChange={handleMobilePageChange}
-                      color="primary"
                     />
                   </Box>
                 </Box>
-              </>
-            ) : (
-              // 🔹 DESKTOP VIEW (Table)
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          ref={tableContainerRef}
-          sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff", px: 2, py: 1 }}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={tableData}
-            getRowId={(row) => row.id}
-            rowCount={total}
-            manualPagination
-            manualFiltering
-            onPaginationChange={setPagination}
-            onGlobalFilterChange={setGlobalFilter}
-            state={{
-              isLoading: loading,
-              pagination,
-              globalFilter,
-            }}
-            enableTopToolbar
-            enableColumnFilters={false}
-            enableSorting={false}
-            enablePagination
-            enableBottomToolbar
-            enableGlobalFilter
-            enableDensityToggle={false}
-            enableColumnActions={false}
-            enableFullScreenToggle={false}
-            initialState={{ density: "compact" }}
-            muiTableContainerProps={{
-              sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto" },
-            }}
-            muiTableBodyCellProps={{ sx: { whiteSpace: "nowrap" } }}
-            muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-            muiTableBodyRowProps={{ hover: true }}
-            renderTopToolbar={({ table }) => (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  p: 1,
-                }}
-              >
-                <Typography variant="h6" className='page-title'>
-                  Foreman List
+
+                {/* Body Section */}
+                <CardContent sx={{ p: 1.5 }}>
+                  {/* Details Grid */}
+                  <Grid container spacing={1} sx={{ mb: 2 }}>
+                    <Grid size={12}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                          <PiCurrencyInr size={16} />
+                        </Box>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ color: "text.secondary", fontSize: "0.875rem", minWidth: '114px'}}
+                          >
+                            Per Hour Cost :
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 500, fontSize: "0.875rem" }}
+                          >
+                            ₹{row.per_hour_cost}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+
+                    <Grid size={12}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
+                          <PiCurrencyInr size={16} />
+                        </Box>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ color: "text.secondary", fontSize: "0.875rem", minWidth: '114px'}}
+                          >
+                            Over Time Rate :
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 500, fontSize: "0.875rem" }}
+                          >
+                            ₹{row.overtime_hourly_rate}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  </Grid>
+
+                  <Divider sx={{ mb: 1.5 }} />
+
+                  {/* Action Buttons */}
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Switch
+                      checked={!!row.status}
+                      onChange={(e) => handleStatusChange(row, e.target.checked)}
+                      sx={{
+                        width: 36,
+                        height: 20,
+                        padding: 0,
+                        '& .MuiSwitch-switchBase': {
+                          padding: 0,
+                          margin: '2px',
+                          transitionDuration: '300ms',
+                          '&.Mui-checked': {
+                            transform: 'translateX(16px)',
+                            color: '#fff',
+                            '& + .MuiSwitch-track': {
+                              backgroundColor: '#0d6efd',
+                              opacity: 1,
+                              border: 0,
+                            },
+                          },
+                        },
+                        '& .MuiSwitch-thumb': {
+                          boxSizing: 'border-box',
+                          width: 16,
+                          height: 16,
+                        },
+                        '& .MuiSwitch-track': {
+                          borderRadius: 10,
+                          backgroundColor: '#d9e0e6ff',
+                          opacity: 1,
+                        },
+                      }}
+                    />
+                    <Box sx={{ display: "flex", gap: 1.5 }}>
+                      <Tooltip title="Edit">
+                        <IconButton
+                          size="medium"
+                          onClick={() => handleUpdate(row)}
+                          sx={{
+                            bgcolor: "#e3f2fd",
+                            color: "#1976d2",
+                            "&:hover": { bgcolor: "#bbdefb" },
+                          }}
+                        >
+                          <BiSolidEditAlt size={20} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton
+                          size="medium"
+                          onClick={() => handleDeleteClick(row)}
+                          sx={{
+                            bgcolor: "#ffebee",
+                            color: "#d32f2f",
+                            "&:hover": { bgcolor: "#ffcdd2" },
+                          }}
+                        >
+                          <RiDeleteBinLine size={20} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Empty State */}
+            {!loading && tableData.length === 0 && (
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="body1" color="text.secondary">
+                  No labours found
                 </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print">
-                    <IconButton onClick={handlePrint}>
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download CSV">
-                    <IconButton onClick={downloadCSV}>
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
+              </Paper>
+            )}
+
+            {/* Mobile Pagination */}
+            {!loading && tableData.length > 0 && (
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+                <Pagination
+                  count={Math.ceil(total / pagination.pageSize)}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
               </Box>
             )}
-          />
-        </Paper>
-      </Grid>
-)}
+          </Box>
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
+        <Grid size={12}>
+          <Paper
+            elevation={0}
+            ref={tableContainerRef}
+            sx={{ width: "100%", overflow: "hidden", backgroundColor: "#fff", px: 2, py: 1 }}
+          >
+            <MaterialReactTable
+              columns={columns}
+              data={tableData}
+              getRowId={(row) => row.id}
+              rowCount={total}
+              manualPagination
+              manualFiltering
+              onPaginationChange={setPagination}
+              onGlobalFilterChange={setGlobalFilter}
+              state={{
+                isLoading: loading,
+                pagination,
+                globalFilter,
+              }}
+              enableTopToolbar
+              enableColumnFilters={false}
+              enableSorting={false}
+              enablePagination
+              enableBottomToolbar
+              enableGlobalFilter
+              enableDensityToggle={false}
+              enableColumnActions={false}
+              enableFullScreenToggle={false}
+              initialState={{ density: "compact" }}
+              muiTableContainerProps={{
+                sx: { width: "100%", backgroundColor: "#fff", overflowX: "auto" },
+              }}
+              muiTableBodyCellProps={{ sx: { whiteSpace: "nowrap" } }}
+              muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
+              muiTableBodyRowProps={{ hover: true }}
+              renderTopToolbar={({ table }) => (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="h6" className='page-title'>
+                    Foreman List
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
+                    <Tooltip title="Print">
+                      <IconButton onClick={handlePrint}>
+                        <FiPrinter size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download CSV">
+                      <IconButton onClick={downloadCSV}>
+                        <BsCloudDownload size={20} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              )}
+            />
+          </Paper>
+        </Grid>
+      )}
+
       {/* Add Modal */}
       <BootstrapDialog onClose={handleCloseAdd} open={open} fullWidth maxWidth="sm">
         <BootstrapDialogTitle onClose={handleCloseAdd}>

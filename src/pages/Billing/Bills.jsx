@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import {
   Typography,
   Grid,
@@ -25,8 +25,7 @@ import {
 
 } from "@mui/material";
 import dayjs from "dayjs";
-import { MdOutlineRemoveRedEye, MdDescription, MdLocalShipping, MdCheckCircle } from "react-icons/md";
-import { FaTruck } from "react-icons/fa";
+import { MdOutlineRemoveRedEye, MdDescription, MdLocalShipping } from "react-icons/md";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -43,7 +42,6 @@ import { FiUser, FiCalendar } from 'react-icons/fi';
 import { useDispatch, useSelector } from "react-redux";
 import { deleteBill, fetchBills, markAsDelivered } from "./slice/billsSlice";
 import { useAuth } from "../../context/AuthContext";
-import { IoMdCheckmarkCircleOutline } from "react-icons/io";
 import { MdOutlinePhone } from "react-icons/md";
 
 const Bills = () => {
@@ -55,6 +53,7 @@ const Bills = () => {
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
   const searchInputRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
 
   const { data: bills, loading, totalRecords } = useSelector((state) => state.bill);
 
@@ -69,20 +68,20 @@ const Bills = () => {
   });
 
   const [globalFilter, setGlobalFilter] = useState("");
+  const [mobileSearchFilter, setMobileSearchFilter] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const searchTimeoutRef = useRef(null);
 
   const normalizedBills = Array.isArray(bills) ? bills : [];
   const normalizedTotal = typeof totalRecords === 'number' ? totalRecords : 0;
 
-  const tableKey = `${normalizedBills.length}-${normalizedTotal}-${debouncedSearch}`;
-
+  // Focus search input when shown
   useEffect(() => {
     if (showSearch && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [showSearch]);
 
+  // Debounce desktop search
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -90,7 +89,6 @@ const Bills = () => {
 
     searchTimeoutRef.current = setTimeout(() => {
       setDebouncedSearch(globalFilter);
-      // Reset to first page when search changes
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }, 500);
 
@@ -101,33 +99,55 @@ const Bills = () => {
     };
   }, [globalFilter]);
 
+  // Debounce mobile search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(mobileSearchFilter);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }, 500);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [mobileSearchFilter]);
+
+  // Fetch bills
   useEffect(() => {
     const params = {
       pageIndex: pagination.pageIndex,
       pageLimit: pagination.pageSize,
       search: debouncedSearch,
+      dispatch: false,
     };
 
     dispatch(fetchBills(params));
   }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
-  const handleAddBill = () => {
+  // Navigation handlers
+  const handleAddBill = useCallback(() => {
     navigate("/bill/generate-bill");
-  };
+  }, [navigate]);
 
-  const handleEditBill = (id) => {
+  const handleEditBill = useCallback((id) => {
     navigate(`/bill/edit-bill/${id}`);
-  };
+  }, [navigate]);
 
-  const handleViewBill = (id) => {
+  const handleViewBill = useCallback((id) => {
     navigate(`/bill/view/${id}`);
-  };
+  }, [navigate]);
 
-  const handleChallan = (id) => {
+  const handleChallan = useCallback((id) => {
     navigate(`/bill/challan/${id}`);
-  };
+  }, [navigate]);
 
-  const handleMarkDeliverdBill = async (id) => {
+  // Mark as delivered
+  const handleMarkDeliveredBill = useCallback(async (id) => {
     setMarkingDelivered(id);
     try {
       await dispatch(markAsDelivered(id)).unwrap();
@@ -137,43 +157,64 @@ const Bills = () => {
         pageIndex: pagination.pageIndex,
         pageLimit: pagination.pageSize,
         search: debouncedSearch,
+        dispatch: false,
       }));
-
-      // Optional: Show success message
-      // successMessage("Bill marked as delivered successfully");
     } catch (error) {
       console.error("Mark as delivered failed:", error);
-      // errorMessage("Failed to mark bill as delivered");
     } finally {
       setMarkingDelivered(null);
     }
-  };
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
-
-
-  const handleDelete = async (id) => {
+  // Delete handler
+  const handleDelete = useCallback(async (id) => {
     try {
       await dispatch(deleteBill(id)).unwrap();
       setOpenDelete(false);
+      setDeleteRow(null);
 
       dispatch(fetchBills({
         pageIndex: pagination.pageIndex,
         pageLimit: pagination.pageSize,
         search: debouncedSearch,
+        dispatch: false,
       }));
     } catch (error) {
       console.error("Delete failed:", error);
       setOpenDelete(false);
     }
-  };
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
-  const handleSearchToggle = () => {
+  // Search toggle
+  const handleSearchToggle = useCallback(() => {
     if (showSearch && globalFilter) {
       setGlobalFilter("");
     }
     setShowSearch(!showSearch);
-  };
+  }, [showSearch, globalFilter]);
 
+  // Mobile search change
+  const handleMobileSearchChange = useCallback((value) => {
+    setMobileSearchFilter(value);
+  }, []);
+
+  // Mobile pagination
+  const handleMobilePageChange = useCallback((event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  }, []);
+
+  // Get status config
+  const getStatusConfig = useCallback((status) => {
+    const configs = {
+      0: { text: "Draft", bgColor: "#f5f5f5", textColor: "#666666" },
+      1: { text: "Not Dispatch", bgColor: "#ffe2e2", textColor: "#d23434" },
+      2: { text: "Dispatched", bgColor: "#fff4e5", textColor: "#ff9800" },
+      3: { text: "Delivered", bgColor: "#d4f8e8", textColor: "#008f5a" },
+    };
+    return configs[status] || configs[0];
+  }, []);
+
+  // Table columns
   const columns = useMemo(() => {
     const baseColumns = [
       {
@@ -220,133 +261,123 @@ const Bills = () => {
         header: "Status",
         size: 100,
         Cell: ({ row }) => {
-          const status = row.original.status;
-          let statusText = "Draft";
-          let bgColor = "#f5f5f5";
-          let textColor = "#666666";
-
-          if (status === 1) {
-            statusText = "Not Dispatch";
-            bgColor = "#ffe2e2";
-            textColor = "#d23434";
-          } else if (status === 2) {
-            statusText = "Dispatched";
-            bgColor = "#fff4e5";
-            textColor = "#ff9800";
-          } else if (status === 3) {
-            statusText = "Delivered";
-            bgColor = "#d4f8e8";
-            textColor = "#008f5a";
-          }
-
+          const config = getStatusConfig(row.original.status);
           return (
             <span
               style={{
                 padding: "4px 10px",
                 borderRadius: 6,
-                background: bgColor,
-                color: textColor,
+                background: config.bgColor,
+                color: config.textColor,
                 fontSize: 12,
                 fontWeight: 500,
               }}
             >
-              {statusText}
+              {config.text}
             </span>
           );
         },
       },
     ];
 
-    if (hasAnyPermission(["bills.update", "bills.delete", "bills.create_challan"])) {
-      baseColumns.push(
-        {
-          id: "actions",
-          header: "Actions",
-          enableSorting: false,
-          enableColumnFilter: false,
-          muiTableHeadCellProps: { align: "right" },
-          muiTableBodyCellProps: { align: "right" },
-          Cell: ({ row }) => (
-            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-              {hasPermission("bills.read") && (
-                <Tooltip title="View Bill">
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleViewBill(row.original.id)}
-                  >
-                    <MdOutlineRemoveRedEye size={16} />
-                  </IconButton>
-                </Tooltip>
-              )}
-              {hasPermission("bills.create_challan") && (
-                <Tooltip title="Create Challan">
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleChallan(row.original.id)}
-                  >
-                    <MdDescription size={18} />
-                  </IconButton>
-                </Tooltip>
-              )}
-              {hasPermission("bills.mark_delivered") && row.original.status === 2 && (
-                <Tooltip title="Mark as Delivered">
-                  <IconButton
-                    color="success"
-                    onClick={() => handleMarkDeliverdBill(row.original.id)}
-                    disabled={markingDelivered === row.original.id}
-                  >
-                    {markingDelivered === row.original.id ? (
-                      <CircularProgress size={18} />
-                    ) : (
-                      <MdLocalShipping size={18} />
-                    )}
-                  </IconButton>
-                </Tooltip>
-              )}
-
-
-              {(row.original.status !== 2 && row.original.status !== 3) && (
-                <>
-                  {hasPermission("bills.update") && (
-                    <Tooltip title="Edit">
-                      <IconButton
-                        color="primary"
-                        onClick={() => handleEditBill(row.original.id)}
-                      >
-                        <BiSolidEditAlt size={16} />
-                      </IconButton>
-                    </Tooltip>
+    if (hasAnyPermission(["bills.update", "bills.delete", "bills.create_challan", "bills.read", "bills.mark_delivered"])) {
+      baseColumns.push({
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        enableColumnFilter: false,
+        muiTableHeadCellProps: { align: "right" },
+        muiTableBodyCellProps: { align: "right" },
+        Cell: ({ row }) => (
+          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
+            {hasPermission("bills.read") && (
+              <Tooltip title="View Bill">
+                <IconButton
+                  color="primary"
+                  onClick={() => handleViewBill(row.original.id)}
+                  size="small"
+                >
+                  <MdOutlineRemoveRedEye size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {hasPermission("bills.create_challan") && (
+              <Tooltip title="Create Challan">
+                <IconButton
+                  color="primary"
+                  onClick={() => handleChallan(row.original.id)}
+                  size="small"
+                >
+                  <MdDescription size={18} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {hasPermission("bills.mark_delivered") && row.original.status === 2 && (
+              <Tooltip title="Mark as Delivered">
+                <IconButton
+                  color="success"
+                  onClick={() => handleMarkDeliveredBill(row.original.id)}
+                  disabled={markingDelivered === row.original.id}
+                  size="small"
+                >
+                  {markingDelivered === row.original.id ? (
+                    <CircularProgress size={18} />
+                  ) : (
+                    <MdLocalShipping size={18} />
                   )}
+                </IconButton>
+              </Tooltip>
+            )}
 
-                  {hasPermission("bills.delete") && (
-                    <Tooltip title="Delete">
-                      <IconButton
-                        color="error"
-                        onClick={() => {
-                          setOpenDelete(true);
-                          setDeleteRow(row.original.id);
-                        }}
-                      >
-                        <RiDeleteBinLine size={16} />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+            {(row.original.status !== 2 && row.original.status !== 3) && (
+              <>
+                {hasPermission("bills.update") && (
+                  <Tooltip title="Edit">
+                    <IconButton
+                      color="primary"
+                      onClick={() => handleEditBill(row.original.id)}
+                      size="small"
+                    >
+                      <BiSolidEditAlt size={16} />
+                    </IconButton>
+                  </Tooltip>
+                )}
 
-                </>
-              )}
-            </Box>
-          ),
-        }
-      )
+                {hasPermission("bills.delete") && (
+                  <Tooltip title="Delete">
+                    <IconButton
+                      color="error"
+                      onClick={() => {
+                        setOpenDelete(true);
+                        setDeleteRow(row.original.id);
+                      }}
+                      size="small"
+                    >
+                      <RiDeleteBinLine size={16} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </>
+            )}
+          </Box>
+        ),
+      });
     }
 
     return baseColumns;
-    []
-  }
-  );
+  }, [
+    getStatusConfig,
+    hasAnyPermission,
+    hasPermission,
+    handleViewBill,
+    handleChallan,
+    handleMarkDeliveredBill,
+    handleEditBill,
+    markingDelivered,
+  ]);
 
-  /** Download CSV */
-  const downloadCSV = () => {
+  // Download CSV
+  const downloadCSV = useCallback(() => {
     if (!normalizedBills || normalizedBills.length === 0) {
       alert("No data to export");
       return;
@@ -357,9 +388,9 @@ const Bills = () => {
     const rows = normalizedBills.map((row) => {
       const customerName = row.customer?.name || "N/A";
       const customerMobile = row.customer?.mobile || "N/A";
-      const date = row.date ? new Date(row.date).toLocaleDateString('en-IN') : "N/A";
+      const date = row.created_at ? dayjs(row.created_at).format("YYYY-MM-DD") : "N/A";
       const total = row.grand_total ? `₹ ${Number(row.grand_total).toLocaleString("en-IN")}` : "₹ 0.00";
-      const status = row.status === 1 ? "Paid" : row.status === 2 ? "Completed" : "Pending";
+      const config = getStatusConfig(row.status);
 
       return [
         `"${row.invoice_no || ""}"`,
@@ -367,7 +398,7 @@ const Bills = () => {
         `"${customerMobile}"`,
         `"${date}"`,
         `"${total}"`,
-        `"${status}"`
+        `"${config.text}"`
       ].join(",");
     });
 
@@ -382,25 +413,44 @@ const Bills = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
+  }, [normalizedBills, getStatusConfig]);
 
-  /** Print */
-  const handlePrint = () => {
+  // Print
+  const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
 
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
+    const printWindow = window.open('', '_blank');
+    const tableHTML = tableContainerRef.current.innerHTML;
 
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Bills</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            @media print {
+              button, .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Bills</h2>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
 
-    window.location.reload();
-  };
-  // Mobile pagination handlers
-  const handleMobilePageChange = (event, value) => {
-    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
-  };
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  }, []);
+
   return (
     <>
       <Grid
@@ -427,18 +477,19 @@ const Bills = () => {
           )}
         </Grid>
       </Grid>
+
       {isMobile ? (
         // 🔹 MOBILE VIEW (Cards)
         <>
-          <Box>
+          <Box sx={{ minHeight: '100vh' }}>
             {/* Mobile Search */}
             <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Search purchase orders..."
-                value=""
-                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                placeholder="Search bills..."
+                value={mobileSearchFilter}
+                onChange={(e) => handleMobileSearchChange(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -448,197 +499,227 @@ const Bills = () => {
                 }}
               />
             </Paper>
-            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
-              {/* Header Section - Blue Background */}
-              <Box
-                sx={{
-                  bgcolor: "primary.main",
-                  p: 1.5,
-                  color: "primary.contrastText",
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
-                      INV000003
-                    </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <FiUser size={14} />
-                      <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
-                        Satish Sharma
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Chip
-                    label="Draft"
-                    size="small"
-                    sx={{
-                      bgcolor: "white",
-                      color: "primary.main",
-                      fontWeight: 500,
-                      fontSize: "0.75rem",
-                    }}
-                  />
-                </Box>
+
+            {/* Loading State */}
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
               </Box>
-
-              {/* Body Section */}
-              <CardContent sx={{ p: 1.5 }}>
-                {/* Details Grid */}
-                <Grid container spacing={1} sx={{ mb: 1 }}>
-                  <Grid size={12}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.4,
-                        }}
-                      >
-                        <FiCalendar size={16} />
-                      </Box>
-                      <Box>
-                        {/* <Typography
-                                variant="caption"
-                                sx={{
-                                  color: "text.secondary",
-                                  display: "block",
-                                  fontSize: "0.85rem",
-                                  mb: 0.3,
-                                }}
-                              >
-                                Bill Date
-                              </Typography> */}
-                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
-                          08-12-2025
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                  <Grid size={12}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                        }}
-                      >
-                        <MdOutlinePhone size={16} />
-                      </Box>
-                      <Box>
-                        {/* <Typography
-                                variant="caption"
-                                sx={{
-                                  color: "text.secondary",
-                                  display: "block",
-                                  fontSize: "0.85rem",
-                                  mb: 0.3,
-                                }}
-                              >
-                                Mobile
-                              </Typography> */}
-                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
-                          9876512340
-                        </Typography>
+            ) : normalizedBills.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="body1" color="text.secondary">
+                  No bills found
+                </Typography>
+              </Paper>
+            ) : (
+              normalizedBills.map((bill) => {
+                const statusConfig = getStatusConfig(bill.status);
+                const canEditDelete = bill.status !== 2 && bill.status !== 3;
+                
+                return (
+                  <Card key={bill.id} sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2 }}>
+                    {/* Header Section - Blue Background */}
+                    <Box
+                      sx={{
+                        bgcolor: "primary.main",
+                        p: 1.5,
+                        color: "primary.contrastText",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                            {bill.invoice_no || "N/A"}
+                          </Typography>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <FiUser size={14} />
+                            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                              {bill.customer?.name || "N/A"}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Chip
+                          label={statusConfig.text}
+                          size="small"
+                          sx={{
+                            bgcolor: statusConfig.bgColor,
+                            color: statusConfig.textColor,
+                            fontWeight: 500,
+                            fontSize: "0.75rem",
+                          }}
+                        />
                       </Box>
                     </Box>
-                  </Grid>
 
-                </Grid>
-                {/* Total Section */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    bgcolor: "#f0f7ff",
-                    px: 1,
-                    py: 1,
-                    borderRadius: 1,
-                    mb: 1,
-                    border: "1px solid #e3f2fd",
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {/* <MdCurrencyRupee size={20} color="primary.main" /> */}
-                    <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
-                      Total
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 500, color: "primary.main", fontSize: "1rem" }}
-                  >
-                    ₹45,750.00
-                  </Typography>
-                </Box>
-                <Divider sx={{ mb: 2 }} />
-                {/* Action Buttons */}
-                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
-                  {/* Link / Generate */}
+                    {/* Body Section */}
+                    <CardContent sx={{ p: 1.5 }}>
+                      {/* Details Grid */}
+                      <Grid container spacing={1} sx={{ mb: 1 }}>
+                        <Grid size={12}>
+                          <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                            <Box sx={{ color: "text.secondary", mt: 0.4 }}>
+                              <FiCalendar size={16} />
+                            </Box>
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                                {bill.created_at ? dayjs(bill.created_at).format("DD-MM-YYYY hh:mm A") : "N/A"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                        <Grid size={12}>
+                          <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                            <Box sx={{ color: "text.secondary" }}>
+                              <MdOutlinePhone size={16} />
+                            </Box>
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                                {bill.customer?.mobile || "N/A"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                      </Grid>
 
-                  {/* Edit */}
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#fff3e0",          // light orange
-                      color: "#ff9800",            // warning
-                      "&:hover": { bgcolor: "#ffe0b2" },
-                    }}
-                  >
+                      {/* Total Section */}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          bgcolor: "#f0f7ff",
+                          px: 1,
+                          py: 1,
+                          borderRadius: 1,
+                          mb: 1,
+                          border: "1px solid #e3f2fd",
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
+                            Total
+                          </Typography>
+                        </Box>
+                        <Typography
+                          variant="h6"
+                          sx={{ fontWeight: 500, color: "primary.main", fontSize: "1rem" }}
+                        >
+                          ₹{Number(bill.grand_total || 0).toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </Typography>
+                      </Box>
 
-                    <MdOutlineRemoveRedEye size={20} />
-                  </IconButton>
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#e3f2fd",          // light blue
-                      color: "#1976d2",            // info blue
-                      "&:hover": { bgcolor: "#bbdefb" },
-                    }}
-                  >
-                    <MdDescription size={20} />
-                  </IconButton>
+                      <Divider sx={{ mb: 2 }} />
 
+                      {/* Action Buttons */}
+                      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5, flexWrap: "wrap" }}>
+                        {hasPermission("bills.read") && (
+                          <IconButton
+                            size="medium"
+                            onClick={() => handleViewBill(bill.id)}
+                            sx={{
+                              width: "36px",
+                              height: "36px",
+                              bgcolor: "#fff3e0",
+                              color: "#ff9800",
+                              "&:hover": { bgcolor: "#ffe0b2" },
+                            }}
+                          >
+                            <MdOutlineRemoveRedEye size={20} />
+                          </IconButton>
+                        )}
 
-                  {/* View */}
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#e8eaf6",          // light indigo
-                      color: "#3f51b5",            // primary
-                      "&:hover": { bgcolor: "#c5cae9" },
-                    }}
-                  >
-                    <BiSolidEditAlt size={20} />
-                  </IconButton>
+                        {hasPermission("bills.create_challan") && (
+                          <IconButton
+                            size="medium"
+                            onClick={() => handleChallan(bill.id)}
+                            sx={{
+                              width: "36px",
+                              height: "36px",
+                              bgcolor: "#e3f2fd",
+                              color: "#1976d2",
+                              "&:hover": { bgcolor: "#bbdefb" },
+                            }}
+                          >
+                            <MdDescription size={20} />
+                          </IconButton>
+                        )}
 
-                  {/* Delete */}
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#ffebee",          // light red
-                      color: "#d32f2f",            // error
-                      "&:hover": { bgcolor: "#ffcdd2" },
-                    }}
-                  >
-                    <RiDeleteBinLine size={20} />
-                  </IconButton>
-                </Box>
+                        {hasPermission("bills.mark_delivered") && bill.status === 2 && (
+                          <IconButton
+                            size="medium"
+                            onClick={() => handleMarkDeliveredBill(bill.id)}
+                            disabled={markingDelivered === bill.id}
+                            sx={{
+                              width: "36px",
+                              height: "36px",
+                              bgcolor: "#e8f5e9",
+                              color: "#2e7d32",
+                              "&:hover": { bgcolor: "#c8e6c9" },
+                            }}
+                          >
+                            {markingDelivered === bill.id ? (
+                              <CircularProgress size={18} />
+                            ) : (
+                              <MdLocalShipping size={20} />
+                            )}
+                          </IconButton>
+                        )}
 
-              </CardContent>
-            </Card>
+                        {canEditDelete && hasPermission("bills.update") && (
+                          <IconButton
+                            size="medium"
+                            onClick={() => handleEditBill(bill.id)}
+                            sx={{
+                              width: "36px",
+                              height: "36px",
+                              bgcolor: "#e8eaf6",
+                              color: "#3f51b5",
+                              "&:hover": { bgcolor: "#c5cae9" },
+                            }}
+                          >
+                            <BiSolidEditAlt size={20} />
+                          </IconButton>
+                        )}
+
+                        {canEditDelete && hasPermission("bills.delete") && (
+                          <IconButton
+                            size="medium"
+                            onClick={() => {
+                              setOpenDelete(true);
+                              setDeleteRow(bill.id);
+                            }}
+                            sx={{
+                              width: "36px",
+                              height: "36px",
+                              bgcolor: "#ffebee",
+                              color: "#d32f2f",
+                              "&:hover": { bgcolor: "#ffcdd2" },
+                            }}
+                          >
+                            <RiDeleteBinLine size={20} />
+                          </IconButton>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+
             {/* Mobile Pagination */}
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-              <Pagination
-                count={Math.ceil(10 / pagination.pageSize)}
-                page={pagination.pageIndex + 1}
-                onChange={handleMobilePageChange}
-                color="primary"
-              />
-            </Box>
+            {!loading && normalizedBills.length > 0 && (
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3, pb: 3 }}>
+                <Pagination
+                  count={Math.ceil(normalizedTotal / pagination.pageSize)}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
+              </Box>
+            )}
           </Box>
         </>
       ) : (
@@ -651,7 +732,6 @@ const Bills = () => {
               ref={tableContainerRef}
             >
               <MaterialReactTable
-                key={tableKey}
                 columns={columns}
                 data={normalizedBills}
                 manualPagination
@@ -711,11 +791,6 @@ const Bills = () => {
                   >
                     <Typography variant="h6" className="page-title">
                       Bills
-                      {/* {debouncedSearch && (
-                      <Typography component="span" variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
-                        (Search: "{debouncedSearch}")
-                      </Typography>
-                    )} */}
                     </Typography>
 
                     <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
@@ -762,8 +837,6 @@ const Bills = () => {
                           <BsCloudDownload size={20} />
                         </IconButton>
                       </Tooltip>
-
-
                     </Box>
                   </Box>
                 )}
@@ -772,6 +845,7 @@ const Bills = () => {
           </Grid>
         </Grid>
       )}
+
       {/* Delete Modal */}
       <Dialog open={openDelete} onClose={() => setOpenDelete(false)}>
         <DialogTitle>Delete this bill?</DialogTitle>

@@ -37,6 +37,8 @@ import { successMessage, errorMessage } from "../../toast";
 import { submitFailedQc } from "../../pages/Production/slice/failedQcSlice";
 import FailQcPage from "./FailedQc";
 import { useAuth } from "../../context/AuthContext";
+import { fetchLabourLogs } from "../../pages/Production/slice/labourLogSlice";
+import { forEach } from "lodash";
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   "& .MuiDialogContent-root": {
@@ -227,6 +229,9 @@ export default function ProductDetailsModal({
   const { supervisor: supervisorData = [] } = useSelector(
     (state) => state.user
   );
+  const { data: existingLogs = [], loading: logsLoading } = useSelector(
+    (state) => state.labourLog
+  );
   const { data: materialData = [] } = useSelector((state) => state.material);
 
   const [message, setMessage] = useState("");
@@ -246,6 +251,7 @@ export default function ProductDetailsModal({
       setMessage("");
       setLocalAttachments(product.attachments || []);
       setLocalMessages(product.messages || []);
+      dispatch(fetchLabourLogs(product.id));
     }
   }, [product]);
 
@@ -369,6 +375,23 @@ export default function ProductDetailsModal({
       onRefresh();
     }
   };
+
+  const calculateTotalHours = (logs) => {
+  let overtimeMinutes = 0;
+
+  logs.forEach(log => {
+    overtimeMinutes += Number(log.overtime || 0);
+  });
+
+  const baseMinutes = logs.length * 8 * 60;
+  const totalMinutes = baseMinutes + overtimeMinutes;
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${hours}h ${minutes}m`;
+};
+
 
   const currentDepartment = product
     ? departments.find((d) => d.id === product.department_id)
@@ -495,6 +518,12 @@ export default function ProductDetailsModal({
                       </tr>
                       <tr>
                         <td className="title">
+                          <strong>Working Hours:</strong>
+                        </td>
+                        <td>{calculateTotalHours(existingLogs)}</td>
+                      </tr>
+                      <tr>
+                        <td className="title">
                           <strong>Narration:</strong>
                         </td>
                         <td>{product.narration || "No narration available"}</td>
@@ -574,15 +603,15 @@ export default function ProductDetailsModal({
                           </Box>
                           {hasPermission("productions.add_tentative") && (
                             <IconButton
-                            aria-label="edit"
-                            color="info"
-                            onClick={() => {
-                              onOpenTentative();
-                            }}
-                            style={{ position: "absolute", top: 5, right: 5 }}
-                          >
-                            <FiEdit size={16} />
-                          </IconButton>
+                              aria-label="edit"
+                              color="info"
+                              onClick={() => {
+                                onOpenTentative();
+                              }}
+                              style={{ position: "absolute", top: 5, right: 5 }}
+                            >
+                              <FiEdit size={16} />
+                            </IconButton>
                           )}
                         </td>
                       </tr>
@@ -675,76 +704,76 @@ export default function ProductDetailsModal({
                               ))}
                             {hasPermission("productions.upload_file") && (
                               <Button
-                              component="label"
-                              variant="outlined"
-                              tabIndex={-1}
-                              startIcon={<ImAttachment />}
-                              disabled={uploadingFiles}
-                              sx={{
-                                mt: 0,
-                                fontWeight: 500,
-                                color: "grey.600",
-                                borderColor: "grey.400",
-                                "&:hover": {
-                                  borderColor: "grey.500",
-                                  backgroundColor: "grey.50",
-                                },
-                              }}
-                            >
-                              {uploadingFiles ? "Uploading..." : "Upload files"}
-                              <VisuallyHiddenInput
-                                type="file"
-                                onChange={handleFileUpload}
-                                multiple
-                                accept="image/*,.pdf"
-                              />
-                            </Button>
+                                component="label"
+                                variant="outlined"
+                                tabIndex={-1}
+                                startIcon={<ImAttachment />}
+                                disabled={uploadingFiles}
+                                sx={{
+                                  mt: 0,
+                                  fontWeight: 500,
+                                  color: "grey.600",
+                                  borderColor: "grey.400",
+                                  "&:hover": {
+                                    borderColor: "grey.500",
+                                    backgroundColor: "grey.50",
+                                  },
+                                }}
+                              >
+                                {uploadingFiles ? "Uploading..." : "Upload files"}
+                                <VisuallyHiddenInput
+                                  type="file"
+                                  onChange={handleFileUpload}
+                                  multiple
+                                  accept="image/*,.pdf"
+                                />
+                              </Button>
                             )}
                           </Box>
                         </td>
                       </tr>
                       {hasPermission("productions.send_message") && (
                         <tr>
-                        <td className="title">
-                          <strong>Message:</strong>
-                        </td>
-                        <td>
-                          <TextareaAutosize
-                            maxRows={4}
-                            minRows={3}
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            placeholder="Type your message here..."
-                            style={{
-                              width: "100%",
-                              border: "1px solid #ddd",
-                              borderRadius: "4px",
-                              padding: "10px",
-                              outline: "none",
-                              fontFamily: "inherit",
-                            }}
-                          />
-                          <Grid item xs={12}>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                justifyContent: "end",
-                                marginTop: 0,
+                          <td className="title">
+                            <strong>Message:</strong>
+                          </td>
+                          <td>
+                            <TextareaAutosize
+                              maxRows={4}
+                              minRows={3}
+                              value={message}
+                              onChange={(e) => setMessage(e.target.value)}
+                              placeholder="Type your message here..."
+                              style={{
+                                width: "100%",
+                                border: "1px solid #ddd",
+                                borderRadius: "4px",
+                                padding: "10px",
+                                outline: "none",
+                                fontFamily: "inherit",
                               }}
-                            >
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={handleSendMessage}
-                                disabled={!message.trim()}
-                                sx={{ marginTop: 0 }}
+                            />
+                            <Grid item xs={12}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "end",
+                                  marginTop: 0,
+                                }}
                               >
-                                Send
-                              </Button>
-                            </Box>
-                          </Grid>
-                        </td>
-                      </tr>
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  onClick={handleSendMessage}
+                                  disabled={!message.trim()}
+                                  sx={{ marginTop: 0 }}
+                                >
+                                  Send
+                                </Button>
+                              </Box>
+                            </Grid>
+                          </td>
+                        </tr>
                       )}
                     </tbody>
                   </table>

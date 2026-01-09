@@ -31,6 +31,36 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
+//  Fetch all users
+export const fetchUsersWithSearch = createAsyncThunk(
+  "users/fetchUsersWithSearch",
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const { pageIndex = 1,pageLimit = 10,search = "",} = params;
+
+      const res = await api.get("admin/user/search", {
+        params: {page: pageIndex,limit: pageLimit,search,},
+      });
+
+      const data = res.data?.data || [];
+
+      return {
+        data,
+        totalRecords: res.data?.total ?? 0,
+        currentPage: res.data?.current_page ?? pageIndex,
+        perPage: res.data?.per_page ?? pageLimit,
+        lastPage: res.data?.last_page ?? 1,
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        "Failed to fetch users"
+      );
+    }
+  }
+);
+
 
 //  Fetch all active supervisor
 export const fetchActiveSupervisor = createAsyncThunk(
@@ -117,6 +147,7 @@ const userSlice = createSlice({
     supervisor: [],
     loading: false,
     error: null,
+    totalRows: 0,
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -131,6 +162,19 @@ const userSlice = createSlice({
         state.data = action.payload;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchUsersWithSearch.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUsersWithSearch.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload;
+        state.totalRows = action.payload.totalRecords;
+      })
+      .addCase(fetchUsersWithSearch.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

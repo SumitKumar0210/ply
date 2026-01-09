@@ -48,6 +48,7 @@ export const fetchAllLaboursWithSearch = createAsyncThunk(
         data: Array.isArray(response.data) ? response.data : [],
         total: response.total ?? 0,
         currentPage: response.current_page ?? pageIndex,
+        lastPage: response.last_page ?? 1,
         perPage: response.per_page ?? pageLimit,
       };
     } catch (error) {
@@ -126,10 +127,13 @@ const labourSlice = createSlice({
     data: [],
     activeLabours: [],
     searchResults: {
-      data: [],
-      total: 0,
-      currentPage: 1,
-      perPage: 10,
+      data: {
+        data: [],
+        total: 0,
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+      },
     },
     loading: false,
     error: null,
@@ -164,16 +168,35 @@ const labourSlice = createSlice({
         state.error = action.payload;
       })
 
-      .addCase(fetchAllLaboursWithSearch.pending, (state) => {
+       .addCase(fetchAllLaboursWithSearch.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchAllLaboursWithSearch.fulfilled, (state, action) => {
         state.loading = false;
-        state.searchResults.data = action.payload;
+        state.searchResults = {
+          data: {
+            data: action.payload.data,
+            total: action.payload.total,
+            current_page: action.payload.currentPage,
+            last_page: action.payload.lastPage,
+            per_page: action.payload.perPage,
+          },
+        };
+        state.error = null;
       })
       .addCase(fetchAllLaboursWithSearch.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = action.payload || "Failed to fetch labours";
+        state.searchResults = {
+          data: {
+            data: [],
+            total: 0,
+            current_page: 1,
+            last_page: 1,
+            per_page: 10,
+          },
+        };
       })
 
       .addCase(addLabour.fulfilled, (state, action) => {

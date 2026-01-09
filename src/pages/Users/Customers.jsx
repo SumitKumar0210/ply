@@ -52,8 +52,8 @@ import { fetchStates } from "../settings/slices/stateSlice";
 import { useAuth } from "../../context/AuthContext";
 
 const Customers = () => {
-   const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { hasPermission, hasAnyPermission } = useAuth();
   const [open, setOpen] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({
@@ -69,6 +69,7 @@ const Customers = () => {
     pageSize: 10,
   });
   const [globalFilter, setGlobalFilter] = useState("");
+  const [mobileSearchFilter, setMobileSearchFilter] = useState("");
   const tableContainerRef = useRef(null);
   const searchTimeoutRef = useRef(null);
 
@@ -88,11 +89,13 @@ const Customers = () => {
 
     // Debounce search by 500ms
     searchTimeoutRef.current = setTimeout(() => {
+      const searchTerm = isMobile ? mobileSearchFilter : globalFilter;
       dispatch(
         fetchAllCustomersWithSearch({
-          page: pagination.pageIndex + 1,
-          limit: pagination.pageSize,
-          search: globalFilter || undefined, // Only send if not empty
+          pageIndex: pagination.pageIndex + 1,
+          pageLimit: pagination.pageSize,
+          search: searchTerm || "",
+          active: "",
         })
       );
     }, 500);
@@ -103,7 +106,7 @@ const Customers = () => {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter, mobileSearchFilter, isMobile]);
 
   // Fetch states once on mount
   useEffect(() => {
@@ -112,10 +115,10 @@ const Customers = () => {
 
   // Reset to first page when search changes
   useEffect(() => {
-    if (globalFilter !== "") {
+    if (globalFilter !== "" || mobileSearchFilter !== "") {
       setPagination((prev) => ({ ...prev, pageIndex: 0 }));
     }
-  }, [globalFilter]);
+  }, [globalFilter, mobileSearchFilter]);
 
   // Handle add customer
   const handleAdd = useCallback(async (values, { resetForm }) => {
@@ -185,6 +188,11 @@ const Customers = () => {
     const newStatus = checked ? 1 : 0;
     dispatch(statusUpdate({ ...row, status: newStatus }));
   }, [dispatch]);
+
+  // Handle mobile search change
+  const handleMobileSearchChange = useCallback((value) => {
+    setMobileSearchFilter(value);
+  }, []);
 
   const canUpdate = useMemo(() => hasPermission("customers.update"), [hasPermission]);
 
@@ -267,7 +275,6 @@ const Customers = () => {
     canUpdate,
   ]);
 
-
   // CSV export
   const downloadCSV = useCallback(() => {
     const headers = columns
@@ -344,10 +351,12 @@ const Customers = () => {
   // Close modals handlers
   const handleCloseAdd = useCallback(() => setOpen(false), []);
   const handleOpenAdd = useCallback(() => setOpen(true), []);
-// Mobile pagination handlers
-  const handleMobilePageChange = (event, value) => {
+
+  // Mobile pagination handlers
+  const handleMobilePageChange = useCallback((event, value) => {
     setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
-  };
+  }, []);
+
   return (
     <>
       {/* Header */}
@@ -369,217 +378,185 @@ const Customers = () => {
         )}
       </Grid>
 
-       {isMobile ? (
-              // 🔹 MOBILE VIEW (Cards)
-              <>
-                <Box sx={{ minHeight: '100vh' }}>
-                  {/* Mobile Search */}
-                  <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder="Search customers..."
-                      value=""
-                      // onChange={(e) => handleGlobalFilterChange(e.target.value)}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Paper>
-                  <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
-                    {/* Header Section - Blue Background */}
-                    <Box
-                      sx={{
-                        bgcolor: "primary.main",
-                        p: 1.25,
-                        color: "primary.contrastText",
-                      }}
-                    >
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                          <Avatar
-                            src="/path-to-image.jpg"
-                            alt="Aman"
-                            sx={{ width: 40, height: 40 }}
-                          />
-                          <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
-                            Aman
-                          </Typography>
-                        </Box>
-      
+      {isMobile ? (
+        // 🔹 MOBILE VIEW (Cards)
+        <>
+          <Box sx={{ minHeight: '100vh' }}>
+            {/* Mobile Search */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search customers..."
+                value={mobileSearchFilter}
+                onChange={(e) => handleMobileSearchChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
+
+            {/* Loading State */}
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : customerData.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="body1" color="text.secondary">
+                  No customers found
+                </Typography>
+              </Paper>
+            ) : (
+              customerData.map((customer) => (
+                <Card key={customer.id} sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2 }}>
+                  {/* Header Section - Blue Background */}
+                  <Box
+                    sx={{
+                      bgcolor: "primary.main",
+                      p: 1.25,
+                      color: "primary.contrastText",
+                    }}
+                  >
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <Avatar
+                          sx={{ width: 40, height: 40, bgcolor: "primary.light" }}
+                        >
+                          {customer.name?.charAt(0)?.toUpperCase() || "?"}
+                        </Avatar>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                          {customer.name || "N/A"}
+                        </Typography>
                       </Box>
                     </Box>
-      
-                    {/* Body Section */}
-                    <CardContent sx={{ p: 1.5 }}>
-                      {/* Details Grid */}
-                      <Grid container spacing={1} sx={{ mb: 2 }}>
+                  </Box>
+
+                  {/* Body Section */}
+                  <CardContent sx={{ p: 1.5 }}>
+                    {/* Details Grid */}
+                    <Grid container spacing={1} sx={{ mb: 2 }}>
+                      {customer.email && (
                         <Grid size={12}>
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            {/* Icon */}
                             <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
                               <FiMail size={16} />
                             </Box>
-      
-                            {/* Text */}
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-      
-                              <Typography
-                                variant="body2"
-                                sx={{ fontWeight: 400, fontSize: "0.875rem" }}
-                              >
-                                aman@gmail.com
-                              </Typography>
-                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                              {customer.email}
+                            </Typography>
                           </Box>
                         </Grid>
-      
+                      )}
+
+                      {customer.mobile && (
                         <Grid size={12}>
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            {/* Icon */}
                             <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
                               <FiPhone size={16} />
                             </Box>
-      
-                            {/* Text */}
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-      
-                              <Typography
-                                variant="body2"
-                                sx={{ fontWeight: 400, fontSize: "0.875rem" }}
-                              >
-                                9899570615
-                              </Typography>
-                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                              {customer.mobile}
+                            </Typography>
                           </Box>
                         </Grid>
-      
+                      )}
+
+                      {customer.address && (
                         <Grid size={12}>
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            {/* Icon */}
                             <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
                               <FiMapPin size={16} />
                             </Box>
-      
-                            {/* Text */}
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-      
-                              <Typography
-                                variant="body2"
-                                sx={{ fontWeight: 400, fontSize: "0.875rem" }}
-                              >
-                                Flat No. 204, Green Heights Apartment, Hyderanad, 800020
-                              </Typography>
-                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                              {customer.address}
+                              {customer.city && `, ${customer.city}`}
+                              {customer.state?.name && `, ${customer.state.name}`}
+                              {customer.zip_code && ` - ${customer.zip_code}`}
+                            </Typography>
                           </Box>
                         </Grid>
-      
+                      )}
+
+                      {customer.gst_no && (
                         <Grid size={12}>
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            {/* Icon */}
-                            <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
-                              <FiUser size={16} />
-                            </Box>
-      
-                            {/* Text */}
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-      
-                              <Typography
-                                variant="body2"
-                                sx={{ fontWeight: 400, fontSize: "0.875rem" }}
-                              >
-                                staff
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </Grid>
-                        <Grid size={12}>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            {/* Icon */}
                             <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
                               <HiOutlineReceiptTax size={16} />
                             </Box>
-      
-                            {/* Text */}
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-      
-                              <Typography
-                                variant="body2"
-                                sx={{ fontWeight: 400, fontSize: "0.875rem" }}
-                              >
-                                22AAAAA0000A1Z5
-                              </Typography>
-                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                              {customer.gst_no}
+                            </Typography>
                           </Box>
                         </Grid>
+                      )}
+
+                      {customer.note && (
                         <Grid size={12}>
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            {/* Icon */}
                             <Box sx={{ color: "text.secondary", display: "flex", alignItems: "center" }}>
                               <TbNote size={16} />
                             </Box>
-      
-                            {/* Text */}
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-      
-                              <Typography
-                                variant="body2"
-                                sx={{ fontWeight: 400, fontSize: "0.875rem" }}
-                              >
-                                Lorem Ipsum is simply dummy text of the printing and typesetting industry.
-                              </Typography>
-                            </Box>
+                            <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                              {customer.note}
+                            </Typography>
                           </Box>
                         </Grid>
-                      </Grid>
-      
-                      <Divider sx={{ mb: 1.5 }} />
-                      {/* Action Buttons */}
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <Switch
-                          defaultChecked
-                          sx={{
-                            width: 36,
-                            height: 20,
+                      )}
+                    </Grid>
+
+                    <Divider sx={{ mb: 1.5 }} />
+
+                    {/* Action Buttons */}
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Switch
+                        checked={!!customer.status}
+                        disabled={!canUpdate}
+                        onChange={(e) => handleStatusChange(customer, e.target.checked)}
+                        sx={{
+                          width: 36,
+                          height: 20,
+                          padding: 0,
+                          '& .MuiSwitch-switchBase': {
                             padding: 0,
-                            '& .MuiSwitch-switchBase': {
-                              padding: 0,
-                              margin: '2px',
-                              transitionDuration: '300ms',
-                              '&.Mui-checked': {
-                                transform: 'translateX(16px)',
-                                color: '#fff',
-                                '& + .MuiSwitch-track': {
-                                  backgroundColor: '#0d6efd',
-                                  opacity: 1,
-                                  border: 0,
-                                },
-                              },
-                              '&.Mui-disabled + .MuiSwitch-track': {
-                                opacity: 0.5,
+                            margin: '2px',
+                            transitionDuration: '300ms',
+                            '&.Mui-checked': {
+                              transform: 'translateX(16px)',
+                              color: '#fff',
+                              '& + .MuiSwitch-track': {
+                                backgroundColor: '#0d6efd',
+                                opacity: 1,
+                                border: 0,
                               },
                             },
-                            '& .MuiSwitch-thumb': {
-                              boxSizing: 'border-box',
-                              width: 16,
-                              height: 16,
-                              boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.2)',
+                            '&.Mui-disabled + .MuiSwitch-track': {
+                              opacity: 0.5,
                             },
-                            '& .MuiSwitch-track': {
-                              borderRadius: 10,
-                              backgroundColor: '#d9e0e6ff',
-                              opacity: 1,
-                              transition: 'background-color 0.3s',
-                            },
-                          }}
-                        />
-                        <Box sx={{ display: "flex", gap: 1.5 }}>
+                          },
+                          '& .MuiSwitch-thumb': {
+                            boxSizing: 'border-box',
+                            width: 16,
+                            height: 16,
+                            boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.2)',
+                          },
+                          '& .MuiSwitch-track': {
+                            borderRadius: 10,
+                            backgroundColor: '#d9e0e6ff',
+                            opacity: 1,
+                            transition: 'background-color 0.3s',
+                          },
+                        }}
+                      />
+                      <Box sx={{ display: "flex", gap: 1.5 }}>
+                        {hasPermission("customers.update") && (
                           <IconButton
                             size="medium"
+                            onClick={() => handleUpdate(customer)}
                             sx={{
                               bgcolor: "#e3f2fd",
                               color: "#1976d2",
@@ -588,8 +565,11 @@ const Customers = () => {
                           >
                             <BiSolidEditAlt size={20} />
                           </IconButton>
+                        )}
+                        {hasPermission("customers.delete") && (
                           <IconButton
                             size="medium"
+                            onClick={() => handleDeleteClick(customer)}
                             sx={{
                               bgcolor: "#ffebee",
                               color: "#d32f2f",
@@ -598,104 +578,111 @@ const Customers = () => {
                           >
                             <RiDeleteBinLine size={20} />
                           </IconButton>
-                        </Box>
+                        )}
                       </Box>
-                    </CardContent>
-                  </Card>
-                  {/* Mobile Pagination */}
-                  <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-                    <Pagination
-                      count={Math.ceil(10 / pagination.pageSize)}
-                      page={pagination.pageIndex + 1}
-                      onChange={handleMobilePageChange}
-                      color="primary"
-                    />
-                  </Box>
-                </Box>
-              </>
-            ) : (
-              // 🔹 DESKTOP VIEW (Table)
-      <Grid size={12}>
-        <Paper
-          elevation={0}
-          ref={tableContainerRef}
-          sx={{
-            width: "100%",
-            overflow: "hidden",
-            backgroundColor: "#fff",
-            px: 2,
-            py: 1,
-          }}
-        >
-          <MaterialReactTable
-            columns={columns}
-            data={customerData}
-            getRowId={(row) => row.id}
-            rowCount={totalCount}
-            manualPagination
-            manualFiltering
-            onPaginationChange={setPagination}
-            onGlobalFilterChange={setGlobalFilter}
-            state={{
-              isLoading: loading,
-              pagination,
-              globalFilter,
-            }}
-            enableTopToolbar
-            enableColumnFilters={false}
-            enableSorting={false}
-            enablePagination
-            enableBottomToolbar
-            enableGlobalFilter
-            enableDensityToggle={false}
-            enableColumnActions={false}
-            enableFullScreenToggle={false}
-            initialState={{ density: "compact" }}
-            muiTableContainerProps={{
-              sx: {
-                width: "100%",
-                backgroundColor: "#fff",
-                overflowX: "auto",
-              },
-            }}
-            muiTableBodyCellProps={{
-              sx: { whiteSpace: "nowrap" },
-            }}
-            muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
-            muiTableBodyRowProps={{ hover: true }}
-            renderTopToolbar={({ table }) => (
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  p: 1,
-                }}
-              >
-                <Typography variant="h6" className='page-title'>
-                  Customers
-                </Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <MRT_GlobalFilterTextField table={table} />
-                  <MRT_ToolbarInternalButtons table={table} />
-                  <Tooltip title="Print">
-                    <IconButton onClick={handlePrint}>
-                      <FiPrinter size={20} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Download CSV">
-                    <IconButton onClick={downloadCSV}>
-                      <BsCloudDownload size={20} />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+
+            {/* Mobile Pagination */}
+            {!loading && customerData.length > 0 && (
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3, pb: 3 }}>
+                <Pagination
+                  count={Math.ceil(totalCount / pagination.pageSize)}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
               </Box>
             )}
-          />
-        </Paper>
-      </Grid>
-)}
+          </Box>
+        </>
+      ) : (
+        // 🔹 DESKTOP VIEW (Table)
+        <Grid size={12}>
+          <Paper
+            elevation={0}
+            ref={tableContainerRef}
+            sx={{
+              width: "100%",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+              px: 2,
+              py: 1,
+            }}
+          >
+            <MaterialReactTable
+              columns={columns}
+              data={customerData}
+              getRowId={(row) => row.id}
+              rowCount={totalCount}
+              manualPagination
+              manualFiltering
+              onPaginationChange={setPagination}
+              onGlobalFilterChange={setGlobalFilter}
+              state={{
+                isLoading: loading,
+                pagination,
+                globalFilter,
+              }}
+              enableTopToolbar
+              enableColumnFilters={false}
+              enableSorting={false}
+              enablePagination
+              enableBottomToolbar
+              enableGlobalFilter
+              enableDensityToggle={false}
+              enableColumnActions={false}
+              enableFullScreenToggle={false}
+              initialState={{ density: "compact" }}
+              muiTableContainerProps={{
+                sx: {
+                  width: "100%",
+                  backgroundColor: "#fff",
+                  overflowX: "auto",
+                },
+              }}
+              muiTableBodyCellProps={{
+                sx: { whiteSpace: "nowrap" },
+              }}
+              muiTablePaperProps={{ sx: { backgroundColor: "#fff", boxShadow: "none" } }}
+              muiTableBodyRowProps={{ hover: true }}
+              renderTopToolbar={({ table }) => (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="h6" className='page-title'>
+                    Customers
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
+                    <Tooltip title="Print">
+                      <IconButton onClick={handlePrint}>
+                        <FiPrinter size={20} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Download CSV">
+                      <IconButton onClick={downloadCSV}>
+                        <BsCloudDownload size={20} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+              )}
+            />
+          </Paper>
+        </Grid>
+      )}
+
       {/* Add Customer Modal */}
       <CustomerFormDialog
         open={open}

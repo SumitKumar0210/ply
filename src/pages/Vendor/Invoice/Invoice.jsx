@@ -48,7 +48,6 @@ import { BsCloudDownload } from "react-icons/bs";
 import { IoMdRefresh } from "react-icons/io";
 import { IoMdCheckmarkCircleOutline } from "react-icons/io";
 import { PiCurrencyInr } from "react-icons/pi";
-
 import { RiDeleteBinLine } from "react-icons/ri";
 import { Formik, Form } from "formik";
 import {
@@ -212,7 +211,7 @@ const VendorInvoice = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchData();
-    }, 900); // 900ms debounce
+    }, 500); // 500ms debounce
 
     return () => clearTimeout(timer);
   }, [pagination, globalFilter]);
@@ -371,15 +370,15 @@ const VendorInvoice = () => {
                 >
                   <GrCurrency size={16} />
                 </IconButton>
-              </Tooltip>)}
+              </Tooltip>
+            )}
           </Box>
         ),
-      })
+      });
     }
 
     return baseColumns;
-    [handleViewClick, handleClickOpen, formatDate, getItemCount, getStatusChip, hasPermission,]
-  });
+  }, [handleViewClick, handleClickOpen, hasPermission, hasAnyPermission]);
 
   // CSV Export
   const downloadCSV = useCallback(() => {
@@ -433,17 +432,195 @@ const VendorInvoice = () => {
     try {
       const printWindow = window.open("", "", "height=600,width=1200");
       if (!printWindow) return;
+      printWindow.document.write('<html><head><title>Print</title>');
+      printWindow.document.write('<style>body{font-family: Arial, sans-serif;} table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ddd;padding:8px;text-align:left;}</style>');
+      printWindow.document.write('</head><body>');
       printWindow.document.write(tableContainerRef.current.innerHTML);
+      printWindow.document.write('</body></html>');
       printWindow.document.close();
       printWindow.print();
     } catch (error) {
       console.error("Print error:", error);
     }
   }, []);
+
   // Mobile pagination handlers
   const handleMobilePageChange = (event, value) => {
     setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
   };
+
+  // Render mobile card
+  const renderMobileCard = (row) => (
+    <Card key={row.id} sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2 }}>
+      {/* Header Section */}
+      <Box
+        sx={{
+          bgcolor: "primary.main",
+          p: 1.5,
+          color: "primary.contrastText",
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+              {row.purchase_order?.purchase_no || "N/A"}
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <FiUser size={14} />
+              <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                {row.purchase_order?.vendor?.name || "Unknown Vendor"}
+              </Typography>
+            </Box>
+          </Box>
+          {getStatusChip(row.status)}
+        </Box>
+      </Box>
+
+      {/* Body Section */}
+      <CardContent sx={{ p: 1.5 }}>
+        {/* Details Grid */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={6}>
+            <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+              <Box sx={{ color: "text.secondary", mt: 0.2 }}>
+                <FiCalendar size={16} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                    fontSize: "0.75rem",
+                    mb: 0.3,
+                  }}
+                >
+                  Order Date
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                  {formatDate(row.purchase_order?.order_date)}
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+
+          <Grid item xs={6}>
+            <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+              <Box sx={{ color: "text.secondary", mt: 0.2 }}>
+                <IoMdCheckmarkCircleOutline size={16} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                    fontSize: "0.75rem",
+                    mb: 0.3,
+                  }}
+                >
+                  QC Items
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                  {getItemCount(row.material_items)}
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+
+          <Grid item xs={6}>
+            <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+              <Box sx={{ color: "text.secondary", mt: 0.2 }}>
+                <PiCurrencyInr size={16} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                    fontSize: "0.75rem",
+                    mb: 0.3,
+                  }}
+                >
+                  Vendor Invoice
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                  {row.vendor_invoice_no || "N/A"}
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+
+          <Grid item xs={6}>
+            <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+              <Box sx={{ color: "text.secondary", mt: 0.2 }}>
+                <FiCalendar size={16} />
+              </Box>
+              <Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                    fontSize: "0.75rem",
+                    mb: 0.3,
+                  }}
+                >
+                  Invoice Date
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
+                  {formatDate(row.vendor_invoice_date)}
+                </Typography>
+              </Box>
+            </Box>
+          </Grid>
+        </Grid>
+
+        <Divider sx={{ mb: 2 }} />
+
+        {/* Action Buttons */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+          {hasPermission("vendor_invoices.read") && (
+            <Tooltip title="View Invoice">
+              <IconButton
+                size="small"
+                onClick={() => handleViewClick(row.purchase_order?.id)}
+                sx={{
+                  width: "36px",
+                  height: "36px",
+                  bgcolor: "#fff3e0",
+                  color: "#ff9800",
+                  "&:hover": { bgcolor: "#ffe0b2" },
+                }}
+              >
+                <MdOutlineRemoveRedEye size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          {hasPermission("vendor_invoices.collect_payment") && (
+            <Tooltip title="Make Payment">
+              <IconButton
+                size="small"
+                onClick={() => handleClickOpen(row)}
+                sx={{
+                  width: "36px",
+                  height: "36px",
+                  bgcolor: "#e8f5e9",
+                  color: "#48c24eff",
+                  "&:hover": { bgcolor: "#c8e6c9" },
+                }}
+              >
+                <GrCurrency size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <>
       {/* Header */}
@@ -463,6 +640,7 @@ const VendorInvoice = () => {
             startIcon={<AddIcon />}
             component={Link}
             to="/vendor/purchase-order/create"
+            size={isMobile ? "small" : "medium"}
           >
             Create PO
           </Button>
@@ -471,217 +649,54 @@ const VendorInvoice = () => {
 
       {isMobile ? (
         // 🔹 MOBILE VIEW (Cards)
-        <>
-          <Box sx={{ minHeight: '100vh' }}>
-            {/* Mobile Search */}
-            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Search purchase orders..."
-                value=""
-                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Paper>
-            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
-              {/* Header Section - Blue Background */}
-              <Box
-                sx={{
-                  bgcolor: "primary.main",
-                  p: 1.5,
-                  color: "primary.contrastText",
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
-                      PO-001
-                    </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <FiUser size={14} />
-                      <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
-                        ABC Suppliers Ltd.
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Chip
-                    label="Partially Paid"
-                    size="small"
-                    sx={{
-                      bgcolor: "white",
-                      color: "primary.main",
-                      fontWeight: 500,
-                      fontSize: "0.75rem",
-                    }}
-                  />
-                </Box>
-              </Box>
+        <Box sx={{ minHeight: '100vh' }}>
+          {/* Mobile Search */}
+          <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Search vendor invoices..."
+              value={globalFilter}
+              onChange={(e) => handleGlobalFilterChange(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Paper>
 
-              {/* Body Section */}
-              <CardContent sx={{ p: 1.5 }}>
-                {/* Details Grid */}
-                <Grid container spacing={2} sx={{ mb: 2 }}>
-                  <Grid size={6}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.2,
-                        }}
-                      >
-                        <FiCalendar size={16} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          Order Date
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                          Dec 15, 2024
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                  <Grid size={6}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.2,
-                        }}
-                      >
-                        <IoMdCheckmarkCircleOutline size={16} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          QC Items
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                          20
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                  <Grid size={6}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.2,
-                        }}
-                      >
-                        <PiCurrencyInr size={16} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          Vendor Invoice
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                          INV - 000914
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-
-                  <Grid size={6}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.2,
-                        }}
-                      >
-                        <FiCalendar size={16} />
-                      </Box>
-                      <Box>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          Invoice Date
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 500, fontSize: "0.875rem" }}>
-                          Dec 15, 2024
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                </Grid>
-                <Divider sx={{ mb: 2 }} />
-                {/* Action Buttons */}
-                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      bgcolor: "#fff3e0",
-                      color: "#ff9800",
-                      "&:hover": { bgcolor: "#ffe0b2" },
-                    }}
-                  >
-                    <MdOutlineRemoveRedEye size={20} />
-                  </IconButton>
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      bgcolor: "#e8f5e9",      // light green
-                      color: "#48c24eff",       // success dark
-                      "&:hover": { bgcolor: "#c8e6c9" },
-                    }}
-                  >
-                    <GrCurrency size={20} />
-                  </IconButton>
-                </Box>
-              </CardContent>
-            </Card>
-            {/* Mobile Pagination */}
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-              <Pagination
-                count={Math.ceil(10 / pagination.pageSize)}
-                page={pagination.pageIndex + 1}
-                onChange={handleMobilePageChange}
-                color="primary"
-              />
+          {/* Loading State */}
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
             </Box>
-          </Box>
-        </>
+          ) : tableData.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <Typography color="text.secondary">No vendor invoices found</Typography>
+            </Paper>
+          ) : (
+            <>
+              {/* Render Cards */}
+              {tableData.map((row) => renderMobileCard(row))}
+
+              {/* Mobile Pagination */}
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+                <Pagination
+                  count={Math.ceil(totalRows / pagination.pageSize)}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
+              </Box>
+            </>
+          )}
+        </Box>
       ) : (
         // 🔹 DESKTOP VIEW (Table)
-        <Grid size={12}>
+        <Grid item xs={12}>
           <Paper
             elevation={0}
             ref={tableContainerRef}
@@ -713,6 +728,7 @@ const VendorInvoice = () => {
               enableGlobalFilter
               enableDensityToggle={false}
               enableColumnActions={false}
+              enableFullScreenToggle={false}
               enableColumnVisibilityToggle={false}
               initialState={{ density: "compact" }}
               muiTableContainerProps={{
@@ -734,12 +750,14 @@ const VendorInvoice = () => {
                     justifyContent: "space-between",
                     width: "100%",
                     p: 1,
+                    flexWrap: "wrap",
+                    gap: 1,
                   }}
                 >
                   <Typography variant="h6" className='page-title'>
                     Vendor Invoices/Payments
                   </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
                     <MRT_GlobalFilterTextField table={table} />
                     <MRT_ToolbarInternalButtons table={table} />
                     <Tooltip title="Refresh">
@@ -803,7 +821,7 @@ const VendorInvoice = () => {
                 <Grid container spacing={2}>
                   {/* Payment Form - Show when due_amount is null OR > 0 */}
                   {shouldShowForm && (
-                    <Grid size={12} md={shouldShowHistory ? 6 : 12}>
+                    <Grid item xs={12} md={shouldShowHistory ? 6 : 12}>
                       <Typography
                         variant="subtitle2"
                         sx={{ mb: 2, fontWeight: 600 }}
@@ -876,7 +894,7 @@ const VendorInvoice = () => {
 
                   {/* Payment History - Show when due_amount is NOT null */}
                   {shouldShowHistory && (
-                    <Grid size={12} md={shouldShowForm ? 6 : 12}>
+                    <Grid item xs={12} md={shouldShowForm ? 6 : 12}>
                       <Typography
                         variant="subtitle2"
                         sx={{ mb: 2, fontWeight: 600 }}

@@ -24,32 +24,37 @@ export const fetchAllRequestItems = createAsyncThunk(
   "materialRequest/fetchAllRequestItems",
   async (params = {}, { rejectWithValue }) => {
     try {
-      const query = new URLSearchParams();
+      const queryParams = new URLSearchParams();
 
+      // Add pageIndex as 'pageIndex' for backend
       if (params.pageIndex !== undefined) {
-        query.append("page", params.pageIndex + 1);
+        queryParams.append("pageIndex", params.pageIndex);
       }
+      
+      // Add pageLimit as 'pageLimit' for backend
       if (params.pageLimit) {
-        query.append("per_page", params.pageLimit);
+        queryParams.append("pageLimit", params.pageLimit);
       }
+      
+      // Add search parameter
       if (params.search) {
-        query.append("search", params.search);
+        queryParams.append("search", params.search);
       }
 
-      const url = query.toString()
-        ? `admin/production-order/get-all-material-request?${query}`
-        : `admin/production-order/get-all-material-request`;
+      const url = `admin/production-order/get-all-material-request?${queryParams.toString()}`;
 
       console.log("API URL:", url);
       
       const res = await api.post(url);
       
-      console.log("result:", res.data.data);
+      console.log("API Response:", res.data);
+      
       return {
         data: res.data.data.data ?? [],
         total: res.data.data.total ?? 0,
-        page: res.data.data.current_page ?? 1,
-        per_page: res.data.data.per_page ?? params.pageLimit ?? 10,
+        currentPage: res.data.data.current_page ?? 1,
+        lastPage: res.data.data.last_page ?? 1,
+        perPage: res.data.data.per_page ?? params.pageLimit ?? 10,
       };
     } catch (error) {
       const errMsg = getErrorMessage(error);
@@ -100,6 +105,13 @@ const materialRequestSlice = createSlice({
   name: "materialRequest",
   initialState: {
     data: [],
+    requestItems: {
+      data: [],
+      current_page: 1,
+      last_page: 1,
+      per_page: 10,
+      total: 0,
+    },
     loading: false,
     error: null,
     activeBatch: null,
@@ -112,18 +124,34 @@ const materialRequestSlice = createSlice({
       // -------------------------
       // FETCH ITEMS
       // -------------------------
+       // Fetch all request items
       .addCase(fetchAllRequestItems.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchAllRequestItems.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload ?? [];
-         state.totalRecords = action.payload.total ?? 0;
+        state.requestItems = {
+          data: action.payload.data,
+          current_page: action.payload.currentPage,
+          last_page: action.payload.lastPage,
+          per_page: action.payload.perPage,
+          total: action.payload.total,
+        };
+        state.totalRecords = action.payload.total;
+        state.error = null;
       })
       .addCase(fetchAllRequestItems.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = action.payload || "Failed to fetch material requests";
+        state.data = {
+          data: [],
+          current_page: 1,
+          last_page: 1,
+          per_page: 10,
+          total: 0,
+        };
+        state.totalRecords = 0;
       })
       .addCase(fetchRequestItems.fulfilled, (state, action) => {
         state.loading = false;

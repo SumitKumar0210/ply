@@ -94,11 +94,11 @@ const DispatchProduct = () => {
     pageSize: 10,
   });
   const [globalFilter, setGlobalFilter] = useState("");
+  const [mobileSearchFilter, setMobileSearchFilter] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const normalizedBills = Array.isArray(bills) ? bills : [];
   const normalizedTotal = typeof totalRecords === "number" ? totalRecords : 0;
-  const tableKey = `${normalizedBills.length}-${normalizedTotal}-${debouncedSearch}`;
 
   // Focus search input when shown
   useEffect(() => {
@@ -107,7 +107,7 @@ const DispatchProduct = () => {
     }
   }, [showSearch]);
 
-  // Debounce search
+  // Debounce search for desktop
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -124,6 +124,24 @@ const DispatchProduct = () => {
       }
     };
   }, [globalFilter]);
+
+  // Debounce search for mobile
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(mobileSearchFilter);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }, 500);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [mobileSearchFilter]);
 
   // Fetch bills data
   const fetchData = useCallback(() => {
@@ -160,7 +178,7 @@ const DispatchProduct = () => {
   );
 
   // Mark as delivered handler
-  const handleMarkDeliverdBill = useCallback(
+  const handleMarkDeliveredBill = useCallback(
     async (id) => {
       setMarkingDelivered(id);
       try {
@@ -207,7 +225,6 @@ const DispatchProduct = () => {
     },
     [dispatch]
   );
-
 
   const handleClosePayment = useCallback(() => {
     setOpenPayment(false);
@@ -271,6 +288,16 @@ const DispatchProduct = () => {
     }
     setShowSearch(!showSearch);
   }, [showSearch, globalFilter]);
+
+  // Handle mobile search change
+  const handleMobileSearchChange = useCallback((value) => {
+    setMobileSearchFilter(value);
+  }, []);
+
+  // Mobile pagination handlers
+  const handleMobilePageChange = useCallback((event, value) => {
+    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
+  }, []);
 
   // Format status
   const getStatusConfig = useCallback((status) => {
@@ -398,7 +425,7 @@ const DispatchProduct = () => {
               <Tooltip title="Mark as Delivered">
                 <IconButton
                   color="success"
-                  onClick={() => handleMarkDeliverdBill(row.original.id)}
+                  onClick={() => handleMarkDeliveredBill(row.original.id)}
                   disabled={markingDelivered === row.original.id}
                   size="small"
                 >
@@ -428,16 +455,17 @@ const DispatchProduct = () => {
     }
 
     return baseColumns;
-    [
-      getStatusConfig,
-      handleViewBill,
-      handleChallan,
-      handleMarkDeliverdBill,
-      handleOpenPayment,
-      markingDelivered,
-    ]
-  }
-  );
+  }, [
+    getStatusConfig,
+    handleViewBill,
+    handleChallan,
+    handleMarkDeliveredBill,
+    handleOpenPayment,
+    markingDelivered,
+    hasPermission,
+    hasAnyPermission,
+    getCustomerId,
+  ]);
 
   // Download CSV
   const downloadCSV = useCallback(() => {
@@ -449,7 +477,6 @@ const DispatchProduct = () => {
     const headers = ["Invoice No", "Customer Name", "Mobile", "Bill Date", "Total", "Status"];
 
     const rows = normalizedBills.map((row) => {
-      const customerId = row.customer?.id || "N/A";
       const customerName = row.customer?.name || "N/A";
       const customerMobile = row.customer?.mobile || "N/A";
       const date = row.date
@@ -462,7 +489,6 @@ const DispatchProduct = () => {
 
       return [
         `"${row.invoice_no || ""}"`,
-        `"${customerId}"`,
         `"${customerName}"`,
         `"${customerMobile}"`,
         `"${date}"`,
@@ -477,7 +503,7 @@ const DispatchProduct = () => {
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Bills_${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `Dispatch_Bills_${new Date().toISOString().split("T")[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -488,19 +514,38 @@ const DispatchProduct = () => {
   const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
 
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
+    const printWindow = window.open('', '_blank');
+    const tableHTML = tableContainerRef.current.innerHTML;
 
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Dispatched Products</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            @media print {
+              button, .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Dispatched Products</h2>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
 
-    window.location.reload();
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
   }, []);
-  // Mobile pagination handlers
-  const handleMobilePageChange = (event, value) => {
-    setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
-  };
+
   return (
     <>
       <Grid
@@ -527,18 +572,19 @@ const DispatchProduct = () => {
           )}
         </Grid>
       </Grid>
+
       {isMobile ? (
         // 🔹 MOBILE VIEW (Cards)
         <>
-          <Box>
+          <Box sx={{ minHeight: '100vh' }}>
             {/* Mobile Search */}
             <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Search purchase orders..."
-                value=""
-                // onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                placeholder="Search bills..."
+                value={mobileSearchFilter}
+                onChange={(e) => handleMobileSearchChange(e.target.value)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -548,197 +594,214 @@ const DispatchProduct = () => {
                 }}
               />
             </Paper>
-            <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
-              {/* Header Section - Blue Background */}
-              <Box
-                sx={{
-                  bgcolor: "primary.main",
-                  p: 1.5,
-                  color: "primary.contrastText",
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
-                      INV000003
-                    </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <FiUser size={14} />
-                      <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
-                        Satish Sharma
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Chip
-                    label="Delivered"
-                    size="small"
-                    sx={{
-                      bgcolor: "white",
-                      color: "primary.main",
-                      fontWeight: 500,
-                      fontSize: "0.75rem",
-                    }}
-                  />
-                </Box>
+
+            {/* Loading State */}
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
               </Box>
-
-              {/* Body Section */}
-              <CardContent sx={{ p: 1.5 }}>
-                {/* Details Grid */}
-                <Grid container spacing={1} sx={{ mb: 1 }}>
-                  <Grid size={12}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                          mt: 0.4,
-                        }}
-                      >
-                        <FiCalendar size={16} />
-                      </Box>
-                      <Box>
-                        {/* <Typography
-                                variant="caption"
-                                sx={{
-                                  color: "text.secondary",
-                                  display: "block",
-                                  fontSize: "0.85rem",
-                                  mb: 0.3,
-                                }}
-                              >
-                                Bill Date
-                              </Typography> */}
-                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
-                          08-12-2025
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                  <Grid size={12}>
-                    <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                      <Box
-                        sx={{
-                          color: "text.secondary",
-                        }}
-                      >
-                        <MdOutlinePhone size={16} />
-                      </Box>
-                      <Box>
-                        {/* <Typography
-                                variant="caption"
-                                sx={{
-                                  color: "text.secondary",
-                                  display: "block",
-                                  fontSize: "0.85rem",
-                                  mb: 0.3,
-                                }}
-                              >
-                                Mobile
-                              </Typography> */}
-                        <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
-                          9876512340
-                        </Typography>
+            ) : normalizedBills.length === 0 ? (
+              <Paper sx={{ p: 4, textAlign: 'center' }}>
+                <Typography variant="body1" color="text.secondary">
+                  No bills found
+                </Typography>
+              </Paper>
+            ) : (
+              normalizedBills.map((bill) => {
+                const statusConfig = getStatusConfig(bill.status);
+                return (
+                  <Card key={bill.id} sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2 }}>
+                    {/* Header Section - Blue Background */}
+                    <Box
+                      sx={{
+                        bgcolor: "primary.main",
+                        p: 1.5,
+                        color: "primary.contrastText",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                        <Box>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: "white", mb: 0.5 }}>
+                            {bill.invoice_no || "N/A"}
+                          </Typography>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                            <FiUser size={14} />
+                            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                              {bill.customer?.name || "N/A"}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Chip
+                          label={statusConfig.text}
+                          size="small"
+                          sx={{
+                            bgcolor: statusConfig.bgColor,
+                            color: statusConfig.textColor,
+                            fontWeight: 500,
+                            fontSize: "0.75rem",
+                          }}
+                        />
                       </Box>
                     </Box>
-                  </Grid>
 
-                </Grid>
-                {/* Total Section */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    bgcolor: "#f0f7ff",
-                    px: 1,
-                    py: 1,
-                    borderRadius: 1,
-                    mb: 1,
-                    border: "1px solid #e3f2fd",
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {/* <MdCurrencyRupee size={20} color="primary.main" /> */}
-                    <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
-                      Total
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 500, color: "primary.main", fontSize: "1rem" }}
-                  >
-                    ₹45,750.00
-                  </Typography>
-                </Box>
-                <Divider sx={{ mb: 2 }} />
-                {/* Action Buttons */}
-                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
-                  {/* Link / Generate */}
+                    {/* Body Section */}
+                    <CardContent sx={{ p: 1.5 }}>
+                      {/* Details Grid */}
+                      <Grid container spacing={1} sx={{ mb: 1 }}>
+                        <Grid size={12}>
+                          <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                            <Box sx={{ color: "text.secondary", mt: 0.4 }}>
+                              <FiCalendar size={16} />
+                            </Box>
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                                {bill.date ? new Date(bill.date).toLocaleDateString("en-IN") : "N/A"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                        <Grid size={12}>
+                          <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                            <Box sx={{ color: "text.secondary" }}>
+                              <MdOutlinePhone size={16} />
+                            </Box>
+                            <Box>
+                              <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                                {bill.customer?.mobile || "N/A"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                      </Grid>
 
-                  {/* Edit */}
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#fff3e0",          // light orange
-                      color: "#ff9800",            // warning
-                      "&:hover": { bgcolor: "#ffe0b2" },
-                    }}
-                  >
+                      {/* Total Section */}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          bgcolor: "#f0f7ff",
+                          px: 1,
+                          py: 1,
+                          borderRadius: 1,
+                          mb: 1,
+                          border: "1px solid #e3f2fd",
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
+                            Total
+                          </Typography>
+                        </Box>
+                        <Typography
+                          variant="h6"
+                          sx={{ fontWeight: 500, color: "primary.main", fontSize: "1rem" }}
+                        >
+                          ₹{Number(bill.grand_total || 0).toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </Typography>
+                      </Box>
+                      
+                      <Divider sx={{ mb: 2 }} />
 
-                    <MdOutlineRemoveRedEye size={20} />
-                  </IconButton>
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#e3f2fd",          // light blue
-                      color: "#1976d2",            // info blue
-                      "&:hover": { bgcolor: "#bbdefb" },
-                    }}
-                  >
-                    <MdDescription size={20} />
-                  </IconButton>
+                      {/* Action Buttons */}
+                      <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5, flexWrap: "wrap" }}>
+                        {hasPermission("dispatch_product.read") && (
+                          <IconButton
+                            size="medium"
+                            onClick={() => handleViewBill(bill.id)}
+                            sx={{
+                              width: "36px", 
+                              height: "36px",
+                              bgcolor: "#fff3e0",
+                              color: "#ff9800",
+                              "&:hover": { bgcolor: "#ffe0b2" },
+                            }}
+                          >
+                            <MdOutlineRemoveRedEye size={20} />
+                          </IconButton>
+                        )}
 
-                  <IconButton
-                    size="medium"
-                   sx={{
-                      width: "36px", height: "36px",
-                      bgcolor: "#e3f2fd",          // light blue
-                      color: "#1976d2",            // info blue
-                      "&:hover": { bgcolor: "#bbdefb" },
-                    }}
-                  >
-                    <LinkGenerator size={20} />
-                  </IconButton>
+                        {hasPermission("dispatch_product.view_challan") && (
+                          <IconButton
+                            size="medium"
+                            onClick={() => handleChallan(bill.id)}
+                            sx={{
+                              width: "36px", 
+                              height: "36px",
+                              bgcolor: "#e3f2fd",
+                              color: "#1976d2",
+                              "&:hover": { bgcolor: "#bbdefb" },
+                            }}
+                          >
+                            <MdDescription size={20} />
+                          </IconButton>
+                        )}
 
-                  {/* Delete */}
-                  <IconButton
-                    size="medium"
-                    sx={{
-                      width: "36px",
-                      height: "36px",
-                      bgcolor: "#e8f5e9",      // light green
-                      color: "#37a73cff",        // success dark
-                      "&:hover": { bgcolor: "#c8e6c9" },
-                    }}
-                  >
-                    <GrCurrency size={20} />
-                  </IconButton>
+                        <Box sx={{ width: "36px", height: "36px" }}>
+                          <LinkGenerator
+                            id={bill.id}
+                            customerId={getCustomerId(bill.id) ?? null}
+                            entity="challan"
+                          />
+                        </Box>
 
-                </Box>
+                        {(hasPermission("dispatch_product.mark_delivered") && bill.status === 2) && (
+                          <IconButton
+                            size="medium"
+                            onClick={() => handleMarkDeliveredBill(bill.id)}
+                            disabled={markingDelivered === bill.id}
+                            sx={{
+                              width: "36px",
+                              height: "36px",
+                              bgcolor: "#e8f5e9",
+                              color: "#2e7d32",
+                              "&:hover": { bgcolor: "#c8e6c9" },
+                            }}
+                          >
+                            {markingDelivered === bill.id ? (
+                              <CircularProgress size={18} />
+                            ) : (
+                              <MdLocalShipping size={20} />
+                            )}
+                          </IconButton>
+                        )}
 
-              </CardContent>
-            </Card>
+                        {hasPermission("dispatch_product.collect_payment") && (
+                          <IconButton
+                            size="medium"
+                            onClick={() => handleOpenPayment(bill)}
+                            sx={{
+                              width: "36px",
+                              height: "36px",
+                              bgcolor: "#e8f5e9",
+                              color: "#37a73cff",
+                              "&:hover": { bgcolor: "#c8e6c9" },
+                            }}
+                          >
+                            <GrCurrency size={20} />
+                          </IconButton>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+
             {/* Mobile Pagination */}
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-              <Pagination
-                count={Math.ceil(10 / pagination.pageSize)}
-                page={pagination.pageIndex + 1}
-                onChange={handleMobilePageChange}
-                color="primary"
-              />
-            </Box>
+            {!loading && normalizedBills.length > 0 && (
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3, pb: 3 }}>
+                <Pagination
+                  count={Math.ceil(normalizedTotal / pagination.pageSize)}
+                  page={pagination.pageIndex + 1}
+                  onChange={handleMobilePageChange}
+                  color="primary"
+                />
+              </Box>
+            )}
           </Box>
         </>
       ) : (
@@ -751,7 +814,6 @@ const DispatchProduct = () => {
               ref={tableContainerRef}
             >
               <MaterialReactTable
-                key={tableKey}
                 columns={columns}
                 data={normalizedBills}
                 manualPagination
@@ -865,6 +927,7 @@ const DispatchProduct = () => {
           </Grid>
         </Grid>
       )}
+
       {/* Payment Modal */}
       <Dialog
         onClose={handleClosePayment}

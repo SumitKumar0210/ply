@@ -19,6 +19,7 @@ import {
   Divider,
   Pagination,
   InputAdornment,
+  CircularProgress,
   useMediaQuery,
   useTheme
 } from "@mui/material";
@@ -99,7 +100,8 @@ const Vendor = () => {
     total: totalRows = 0,
     loading = false
   } = useSelector((state) => state.vendor);
-  console.log("vendorData", vendorData);
+  
+
   // Get initial values from URL
   const getInitialPage = () => {
     const page = searchParams.get("page");
@@ -152,7 +154,7 @@ const Vendor = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchData();
-    }, 900); // 900ms debounce
+    }, 500); // 500ms debounce
 
     return () => clearTimeout(timer);
   }, [pagination, globalFilter]);
@@ -181,7 +183,111 @@ const Vendor = () => {
     navigate('/vendor/ledger/' + id);
   };
 
-  //  Table columns
+  // Render mobile card - FIXED: Added return statement
+  const renderMobileCard = (row) => {
+    return (
+      <Card key={row.id} sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2 }}>
+        {/* Header Section - Blue Background */}
+        <Box
+          sx={{
+            bgcolor: "primary.main",
+            p: 1.5,
+            color: "primary.contrastText",
+          }}
+        >
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 500, color: "white", mb: 0.5 }}>
+                {row.name || "N/A"}
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <HiOutlineReceiptTax size={14} />
+                <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
+                  {row.gst || "N/A"}
+                </Typography>
+              </Box>
+            </Box>
+            {row.category?.name && (
+              <Chip
+                label={row.category.name}
+                size="small"
+                sx={{
+                  bgcolor: "white",
+                  color: "primary.main",
+                  fontWeight: 500,
+                  fontSize: "0.75rem",
+                }}
+              />
+            )}
+          </Box>
+        </Box>
+
+        {/* Body Section */}
+        <CardContent sx={{ p: 1.5 }}>
+          {/* Details Grid */}
+          <Grid container spacing={1} sx={{ mb: 2 }}>
+            <Grid item xs={12}>
+              <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                <Box
+                  sx={{
+                    color: "text.secondary",
+                    mt: 0.2,
+                  }}
+                >
+                  <BsTelephone size={16} />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                    {row.mobile || "N/A"}
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
+            <Grid item xs={12}>
+              <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
+                <Box
+                  sx={{
+                    color: "text.secondary",
+                    mt: 0.2,
+                  }}
+                >
+                  <MdAlternateEmail size={16} />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
+                    {row.email || "N/A"}
+                  </Typography>
+                </Box>
+              </Box>
+            </Grid>
+          </Grid>
+          <Divider sx={{ mb: 1 }} />
+          {/* Action Buttons */}
+          {hasPermission("vendor_lists.read") && (
+            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
+              <Tooltip title="Ledger">
+                <IconButton
+                  size="small"
+                  onClick={() => handleLedger(row.id)}
+                  sx={{
+                    width: "36px",
+                    height: "36px",
+                    bgcolor: "#e3f2fd",
+                    color: "#1976d2",
+                    "&:hover": { bgcolor: "#bbdefb" },
+                  }}
+                >
+                  <RiListOrdered size={18} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  //  Table columns - FIXED: Added dependency array
   const columns = useMemo(() => {
     const baseColumns = [
       { accessorKey: "name", header: "Vendor Name" },
@@ -207,24 +313,23 @@ const Vendor = () => {
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
             <Tooltip title="Ledger">
-              <IconButton color="primary" onClick={() => handleLedger(row.original.id)}>
+              <IconButton color="primary" onClick={() => handleLedger(row.original.id)} size="small">
                 <RiListOrdered size={16} />
               </IconButton>
             </Tooltip>
           </Box>
         ),
-      })
+      });
     }
 
     return baseColumns;
-    []
-  });
+  }, [hasPermission]);
 
   //  CSV download
   const downloadCSV = useCallback(() => {
     try {
       const headers = ["Vendor Name", "Mobile", "Email", "Category", "GST"];
-      const rows = (vendorData.data || []).map((row) => [
+      const rows = (vendorData || []).map((row) => [
         row.name || "",
         row.mobile || "",
         row.email || "",
@@ -256,23 +361,29 @@ const Vendor = () => {
     }
   }, [vendorData]);
 
-  //  Print
+  //  Print - FIXED: Added proper HTML structure
   const handlePrint = useCallback(() => {
     if (!tableContainerRef.current) return;
     try {
       const printWindow = window.open("", "", "height=600,width=1200");
       if (!printWindow) return;
+      printWindow.document.write('<html><head><title>Print</title>');
+      printWindow.document.write('<style>body{font-family: Arial, sans-serif;} table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ddd;padding:8px;text-align:left;}</style>');
+      printWindow.document.write('</head><body>');
       printWindow.document.write(tableContainerRef.current.innerHTML);
+      printWindow.document.write('</body></html>');
       printWindow.document.close();
       printWindow.print();
     } catch (error) {
       console.error("Print error:", error);
     }
   }, []);
+
   // Mobile pagination handlers
   const handleMobilePageChange = (event, value) => {
     setPagination((prev) => ({ ...prev, pageIndex: value - 1 }));
   };
+
   return (
     <>
       <Grid
@@ -282,7 +393,7 @@ const Vendor = () => {
         justifyContent="space-between"
         sx={{ mb: 2 }}
       >
-        <Grid size="12">
+        <Grid item xs={12}>
           <Typography variant="h6" className="page-title">Vendor</Typography>
         </Grid>
       </Grid>
@@ -290,152 +401,54 @@ const Vendor = () => {
 
         {isMobile ? (
           // 🔹 MOBILE VIEW (Cards)
-          <>
-            <Box>
-              {/* Mobile Search */}
-              <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Search purchase orders..."
-                  value=""
-                  // onChange={(e) => handleGlobalFilterChange(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Paper>
-              <Card sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2, maxWidth: 600 }}>
-                {/* Header Section - Blue Background */}
-                <Box
-                  sx={{
-                    bgcolor: "primary.main",
-                    p: 1.5,
-                    color: "primary.contrastText",
-                  }}
-                >
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                    <Box>
-                      <Typography variant="h6" sx={{ fontWeight: 500, color: "white", mb: 0.5 }}>
-                        SteelMart Industries
-                      </Typography>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                        <HiOutlineReceiptTax size={14} />
-                        <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)" }}>
-                          29AACCS9876K1Z9
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Chip
-                      label="Raw Materials"
-                      size="small"
-                      sx={{
-                        bgcolor: "white",
-                        color: "primary.main",
-                        fontWeight: 500,
-                        fontSize: "0.75rem",
-                      }}
-                    />
-                  </Box>
-                </Box>
+          <Box>
+            {/* Mobile Search - FIXED: Connected value and onChange */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Search vendors..."
+                value={globalFilter}
+                onChange={(e) => handleGlobalFilterChange(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Paper>
 
-                {/* Body Section */}
-                <CardContent sx={{ p: 1.5 }}>
-                  {/* Details Grid */}
-                  <Grid container spacing={1} sx={{ mb: 2 }}>
-                    <Grid size={12}>
-                      <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                        <Box
-                          sx={{
-                            color: "text.secondary",
-                            mt: 0.2,
-                          }}
-                        >
-                          <BsTelephone size={16} />
-                        </Box>
-                        <Box>
-                          {/* <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          Order Date
-                        </Typography> */}
-                          <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
-                            9988776655
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                    <Grid size={12}>
-                      <Box sx={{ display: "flex", alignItems: "start", gap: 1 }}>
-                        <Box
-                          sx={{
-                            color: "text.secondary",
-                            mt: 0.2,
-                          }}
-                        >
-                          <MdAlternateEmail size={16} />
-                        </Box>
-                        <Box>
-                          {/* <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                            display: "block",
-                            fontSize: "0.85rem",
-                            mb: 0.3,
-                          }}
-                        >
-                          QC Items
-                        </Typography> */}
-                          <Typography variant="body2" sx={{ fontWeight: 400, fontSize: "0.875rem" }}>
-                            info@steelmart.co.in
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-
-                  </Grid>
-                  <Divider sx={{ mb: 1 }} />
-                  {/* Action Buttons */}
-                  <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1.5 }}>
-
-                    <IconButton
-                      size="medium"
-                      sx={{
-                        bgcolor: "#e3f2fd",
-                        color: "#1976d2",
-                        "&:hover": { bgcolor: "#bbdefb" },
-                      }}
-                    >
-                      <RiListOrdered size={20} />
-                    </IconButton>
-                  </Box>
-                </CardContent>
-              </Card>
-              {/* Mobile Pagination */}
-              <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-                <Pagination
-                  count={Math.ceil(10 / pagination.pageSize)}
-                  page={pagination.pageIndex + 1}
-                  onChange={handleMobilePageChange}
-                  color="primary"
-                />
+            {/* Loading State */}
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
               </Box>
-            </Box>
-          </>
+            ) : vendorData.length === 0 ? (
+              <Paper sx={{ p: 3, textAlign: 'center' }}>
+                <Typography color="text.secondary">No vendors found</Typography>
+              </Paper>
+            ) : (
+              <>
+                {/* Render Cards */}
+                {vendorData.map((row) => renderMobileCard(row))}
+
+                {/* Mobile Pagination - FIXED: Use totalRows instead of hardcoded 10 */}
+                <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+                  <Pagination
+                    count={Math.ceil(totalRows / pagination.pageSize)}
+                    page={pagination.pageIndex + 1}
+                    onChange={handleMobilePageChange}
+                    color="primary"
+                  />
+                </Box>
+              </>
+            )}
+          </Box>
         ) : (
           // 🔹 DESKTOP VIEW (Table)
-          <Grid size={12}>
+          <Grid item xs={12}>
             <Paper
               elevation={0}
               sx={{
@@ -452,7 +465,7 @@ const Vendor = () => {
             >
               <MaterialReactTable
                 columns={columns}
-                data={vendorData.data || []}
+                data={vendorData || []}
                 getRowId={(row) => row.id}
                 manualPagination
                 manualFiltering
@@ -472,6 +485,7 @@ const Vendor = () => {
                 enableGlobalFilter
                 enableDensityToggle={false}
                 enableColumnActions={false}
+                enableFullScreenToggle={false}
                 enableColumnVisibilityToggle={false}
                 initialState={{ density: "compact" }}
                 muiTableContainerProps={{
@@ -494,10 +508,12 @@ const Vendor = () => {
                       justifyContent: "space-between",
                       width: "100%",
                       p: 1,
+                      flexWrap: "wrap",
+                      gap: 1,
                     }}
                   >
                     <Typography variant="h6" className="page-title">Vendor</Typography>
-                    <Box sx={{ display: "flex", gap: 1 }}>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                       <MRT_GlobalFilterTextField table={table} />
                       <MRT_ToolbarInternalButtons table={table} />
                       <Tooltip title="Refresh">

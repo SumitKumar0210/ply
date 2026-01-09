@@ -84,7 +84,7 @@ export const updateVendor = createAsyncThunk(
 // Delete vendor
 export const deleteVendor = createAsyncThunk(
   "vendor/delete",
-  async (id) => {
+  async (id, { rejectWithValue }) => {
     try {
       const res = await api.post(`admin/vendor/delete/${id}`, id);
       successMessage(res.data.message);
@@ -121,23 +121,34 @@ const vendorSlice = createSlice({
   name: "vendor",
   initialState: {
     data: [],
+    total: 0,
+    page: 1,
+    per_page: 10,
     loading: false,
     error: null,
   },
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // Fetch
+
+      // Fetch Vendors
       .addCase(fetchVendors.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchVendors.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload;
+        state.data = action.payload.data;
+        state.total = action.payload.total;
+        state.page = action.payload.page;
+        state.per_page = action.payload.per_page;
+        state.error = null;
       })
       .addCase(fetchVendors.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || action.error.message;
+        state.data = [];
+        state.total = 0;
       })
 
       .addCase(addVendor.pending, (state) => {
@@ -145,7 +156,7 @@ const vendorSlice = createSlice({
       })
       .addCase(addVendor.fulfilled, (state, action) => {
         state.loading = false;
-        state.data.unshift(action.payload);
+        state.data = action.payload;
 
 
         state.total += 1;
@@ -165,8 +176,14 @@ const vendorSlice = createSlice({
       })
 
       .addCase(deleteVendor.fulfilled, (state, action) => {
-        state.data = state.data.filter((item) => item.id !== action.payload);
-        state.total -= 1;
+        const vendorId = action.payload;
+        // Add safety check to ensure data is an array
+        if (Array.isArray(state.data)) {
+          state.data = state.data.filter((item) => item.id !== vendorId);
+        }
+      })
+      .addCase(deleteVendor.rejected, (state, action) => {
+        console.error("Delete vendor failed:", action.payload);
       })
 
       // Status update
@@ -176,5 +193,8 @@ const vendorSlice = createSlice({
       });
   },
 });
+// Export actions
+export const { clearVendorError, resetVendorState } = vendorSlice.actions;
 
+// Export reducer
 export default vendorSlice.reducer;
