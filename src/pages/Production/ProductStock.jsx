@@ -189,11 +189,12 @@ const ProductStocks = () => {
                       setDeleteRow(row.original);
                       setOpenDelete(true);
                     }}
-                  >
+                    >
                     <RiDeleteBinLine size={16} />
                   </IconButton>
                 </Tooltip>
               )}
+              {hasPermission("discarded_product.update") && (
               <Tooltip title="Discard Stock">
                 <IconButton
                   color="warning"
@@ -205,6 +206,7 @@ const ProductStocks = () => {
                   <MdDeleteSweep size={16} />
                 </IconButton>
               </Tooltip>
+              )}
             </Box>
           );
         },

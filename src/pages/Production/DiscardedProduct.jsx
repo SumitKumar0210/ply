@@ -17,6 +17,7 @@ import {
   Chip,
   Avatar,
   Skeleton,
+  Button,
 } from "@mui/material";
 import {
   MaterialReactTable,
@@ -27,6 +28,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import { MdOutlineQrCode2, MdStraighten } from "react-icons/md";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { useDispatch, useSelector } from "react-redux";
 import { getDiscardedData } from "../settings/slices/productSlice";
 import ImagePreviewDialog from "../../components/ImagePreviewDialog/ImagePreviewDialog";
@@ -56,6 +59,7 @@ const DiscardedProduct = () => {
     pageIndex: 0,
     pageSize: 10,
   });
+  const [expandedCards, setExpandedCards] = useState({});
 
   // Debounce search
   useEffect(() => {
@@ -84,6 +88,13 @@ const DiscardedProduct = () => {
 
   const handlePageChange = (event, newPage) => {
     setPagination((prev) => ({ ...prev, pageIndex: newPage - 1 }));
+  };
+
+  const toggleCardExpanded = (id) => {
+    setExpandedCards((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
   const columns = useMemo(() => {
@@ -123,14 +134,6 @@ const DiscardedProduct = () => {
         accessorKey: "qty",
         header: "Quantity",
         size: 100,
-        // Cell: ({ row }) => (
-        //   <Chip
-        //     label={row.original.qty}
-        //     size="small"
-        //     color="error"
-        //     variant="outlined"
-        //   />
-        // ),
       },
       {
         accessorKey: "remark",
@@ -170,18 +173,6 @@ const DiscardedProduct = () => {
           </Typography>
         ),
       },
-    //   {
-    //     accessorKey: "revised",
-    //     header: "Status",
-    //     size: 100,
-    //     Cell: ({ row }) => (
-    //       <Chip
-    //         label={row.original.revised === 1 ? "Revised" : "Pending"}
-    //         size="small"
-    //         color={row.original.revised === 1 ? "success" : "warning"}
-    //       />
-    //     ),
-    //   },
     ];
 
     return baseColumns;
@@ -189,14 +180,14 @@ const DiscardedProduct = () => {
 
   // Download CSV
   const downloadCSV = () => {
-    const headers = ["Product Name", "Model", "Quantity", "Remark", "Date", "Status"];
+    const headers = ["Product Name", "Model", "Quantity", "Remark", "Date", "Action By"];
     const rows = discardedData.map((row) => [
       row.product?.name || "N/A",
       row.product?.model || "N/A",
       row.qty,
       row.remark || "No remark",
       row.date ? format(new Date(row.date), "dd MMM yyyy") : "N/A",
-      row.revised === 1 ? "Revised" : "Pending",
+      row.user?.name || "N/A",
     ]);
     const csvContent = [
       headers.join(","),
@@ -215,28 +206,32 @@ const DiscardedProduct = () => {
   // Print handler
   const handlePrint = () => {
     if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
+    const printWindow = window.open("", "", "height=600,width=1200");
+    if (!printWindow) {
+      alert("Failed to open print window. Please check popup blocker.");
+      return;
+    }
+    printWindow.document.write(tableContainerRef.current.innerHTML);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   return (
     <>
       <Grid container spacing={2} alignItems="center" sx={{ mb: 2 }}>
         <Grid item xs={12}>
-          <Typography variant="h6" className="page-title">
-            Discarded Products
-          </Typography>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography variant="h6" className="page-title">
+              Discarded Products
+            </Typography>
+          </Box>
         </Grid>
       </Grid>
 
       {isMobile ? (
         // MOBILE VIEW
         <Box sx={{ minHeight: "100vh" }}>
-          {/* Mobile Search */}
+          {/* Mobile Search - Always Visible */}
           <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
             <TextField
               fullWidth
@@ -271,83 +266,144 @@ const DiscardedProduct = () => {
 
           {/* Mobile Cards */}
           {!discardedLoading &&
-            discardedData.map((item) => (
-              <Card
-                key={item.id}
-                sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2 }}
-              >
-                {/* Header */}
-                <Box sx={{ bgcolor: "error.main", p: 1.5, color: "white" }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle1" fontWeight={600}>
-                        {item.product?.name || "Unknown Product"}
-                      </Typography>
-                      <Box sx={{ display: "flex", gap: 0.5, mt: 0.5, flexWrap: "wrap" }}>
-                        <Chip
-                          label={`Qty: ${item.qty}`}
-                          size="small"
-                          sx={{
-                            bgcolor: "white",
-                            color: "error.main",
-                            fontWeight: 600,
-                            fontSize: "0.75rem",
-                          }}
-                        />
-                        <Chip
-                          label={item.revised === 1 ? "Revised" : "Pending"}
-                          size="small"
-                          sx={{
-                            bgcolor: item.revised === 1 ? "success.light" : "warning.light",
-                            color: "white",
-                            fontSize: "0.75rem",
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                    <Avatar
-                      src={
-                        item.product?.image
-                          ? mediaUrl + item.product.image
-                          : Profile
-                      }
-                      alt={item.product?.name}
-                      sx={{ width: 56, height: 56, border: "2px solid white" }}
-                    />
-                  </Box>
-                </Box>
+            discardedData.map((item) => {
+              const isExpanded = expandedCards[item.id] || false;
+              const remarkText = item.remark || "No remark";
+              const shouldShowReadMore = remarkText.length > 100;
 
-                {/* Body */}
-                <CardContent sx={{ px: 1.5 }}>
-                  <Box sx={{ display: "flex", gap: 1.5 }}>
-                    <Box sx={{ flex: 1 }}>
+              return (
+                <Card
+                  key={item.id}
+                  sx={{ mb: 2, boxShadow: 2, overflow: "hidden", borderRadius: 2 }}
+                >
+                  {/* Header */}
+                  <Box
+                    sx={{
+                      background: "linear-gradient(135deg, #ef5350 0%, #d32f2f 100%)",
+                      p: 1.5,
+                      color: "white",
+                    }}
+                  >
+                    <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                          {item.product?.name || "Unknown Product"}
+                        </Typography>
+                        <Box sx={{ display: "flex", gap: 0.5, mt: 0.5, flexWrap: "wrap" }}>
+                          <Chip
+                            label={`Qty: ${item.qty}`}
+                            size="small"
+                            sx={{
+                              bgcolor: "white",
+                              color: "error.main",
+                              fontWeight: 600,
+                              fontSize: "0.75rem",
+                            }}
+                          />
+                          {item.revised !== undefined && (
+                            <Chip
+                              label={item.revised === 1 ? "Revised" : "Pending"}
+                              size="small"
+                              sx={{
+                                bgcolor: item.revised === 1 ? "#4caf50" : "#ffa726",
+                                color: "white",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </Box>
+                      <Avatar
+                        src={
+                          item.product?.image
+                            ? mediaUrl + item.product.image
+                            : Profile
+                        }
+                        alt={item.product?.name}
+                        sx={{ width: 56, height: 56, border: "2px solid white" }}
+                      />
+                    </Box>
+                  </Box>
+
+                  {/* Body */}
+                  <CardContent sx={{ px: 1.5, pb: 1.5 }}>
+                    <Box>
                       {/* Model */}
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mb: 0.5 }}>
-                        <MdOutlineQrCode2 size={14} color="#666" />
-                        <Typography variant="body2" fontWeight={500}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.6, mb: 0.8 }}>
+                        <MdOutlineQrCode2 size={16} color="#666" />
+                        <Typography variant="body2" fontWeight={500} color="text.secondary">
+                          Model:
+                        </Typography>
+                        <Typography variant="body2" fontWeight={600}>
                           {item.product?.model || "N/A"}
                         </Typography>
                       </Box>
 
                       {/* Date */}
-                      <Typography variant="caption" color="text.secondary">
-                        {item.date ? format(new Date(item.date), "dd MMM yyyy, hh:mm a") : "N/A"}
-                      </Typography>
-
-                      {/* Remark */}
-                      {item.remark && (
-                        <Typography
-                          variant="body2"
-                          sx={{ mt: 1, color: "text.secondary", fontStyle: "italic" }}
-                        >
-                          "{item.remark}"
+                      <Box sx={{ mb: 0.8 }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                          Date:
                         </Typography>
+                        <Typography variant="body2" component="span" sx={{ ml: 0.5 }}>
+                          {item.date ? format(new Date(item.date), "dd MMM yyyy, hh:mm a") : "N/A"}
+                        </Typography>
+                      </Box>
+
+                      {/* Action By */}
+                      <Box sx={{ mb: 1 }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                          Action By:
+                        </Typography>
+                        <Typography variant="body2" component="span" sx={{ ml: 0.5 }} fontWeight={500}>
+                          {item.user?.name || "N/A"}
+                        </Typography>
+                      </Box>
+
+                      {/* Remark with Read More/Less */}
+                      {item.remark && (
+                        <Box
+                          sx={{
+                            bgcolor: "#fff3e0",
+                            p: 1.5,
+                            borderRadius: 1,
+                            border: "1px solid #ffe0b2",
+                            mt: 1,
+                          }}
+                        >
+                          <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                            Remark:
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              mt: 0.5,
+                              color: "text.primary",
+                              fontStyle: "italic",
+                              wordWrap: "break-word",
+                            }}
+                          >
+                            {shouldShowReadMore && !isExpanded
+                              ? `${remarkText.substring(0, 100)}...`
+                              : remarkText}
+                          </Typography>
+                          {shouldShowReadMore && (
+                            <Button
+                              size="small"
+                              onClick={() => toggleCardExpanded(item.id)}
+                              endIcon={isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                              sx={{ mt: 0.5, p: 0, minWidth: "auto", textTransform: "none" }}
+                            >
+                              {isExpanded ? "Read Less" : "Read More"}
+                            </Button>
+                          )}
+                        </Box>
                       )}
                     </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
 
           {/* Empty State */}
           {!discardedLoading && discardedData.length === 0 && (
@@ -387,14 +443,15 @@ const DiscardedProduct = () => {
               columns={columns}
               data={discardedData}
               enableTopToolbar
-              enableColumnFilters
-              enableSorting
+              enableColumnFilters={false}
+              enableSorting={false}
               enablePagination
               enableBottomToolbar
               enableGlobalFilter
               enableDensityToggle={false}
               enableColumnActions={false}
               manualPagination
+              manualFiltering
               rowCount={discardedTotal}
               state={{
                 isLoading: discardedLoading,
@@ -402,11 +459,13 @@ const DiscardedProduct = () => {
                   pageIndex: pagination.pageIndex,
                   pageSize: pagination.pageSize,
                 },
+                globalFilter: searchQuery,
               }}
               onPaginationChange={setPagination}
+              onGlobalFilterChange={handleSearchChange}
               initialState={{ density: "compact" }}
               muiTableContainerProps={{
-                sx: { backgroundColor: "#fff" },
+                sx: { backgroundColor: "#fff", minWidth: "1200px" },
               }}
               muiTablePaperProps={{
                 sx: { backgroundColor: "#fff", boxShadow: "none" },
@@ -414,7 +473,7 @@ const DiscardedProduct = () => {
               muiTableBodyRowProps={() => ({
                 hover: true,
               })}
-              renderTopToolbar={() => (
+              renderTopToolbar={({ table }) => (
                 <Box
                   sx={{
                     display: "flex",
@@ -428,27 +487,15 @@ const DiscardedProduct = () => {
                   </Typography>
 
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <TextField
-                      size="small"
-                      placeholder="Search..."
-                      value={searchQuery}
-                      onChange={(e) => handleSearchChange(e.target.value)}
-                      InputProps={{
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon />
-                          </InputAdornment>
-                        ),
-                      }}
-                      sx={{ minWidth: 250 }}
-                    />
+                    <MRT_GlobalFilterTextField table={table} />
+                    <MRT_ToolbarInternalButtons table={table} />
                     <Tooltip title="Print">
-                      <IconButton onClick={handlePrint}>
+                      <IconButton onClick={handlePrint} size="small">
                         <FiPrinter size={20} />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Download CSV">
-                      <IconButton onClick={downloadCSV}>
+                      <IconButton onClick={downloadCSV} size="small">
                         <BsCloudDownload size={20} />
                       </IconButton>
                     </Tooltip>

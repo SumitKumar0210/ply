@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -17,6 +17,7 @@ import {
 import ProductionLogTab from "../../components/Logs/ProductionLogTab/ProductionLogTab";
 import VendorPaymentLogTab from "../../components/Logs/VendorPaymentLogTab/VendorPaymentLogTab";
 import CustomerPaymentLogTab from "../../components/Logs/CustomerPaymentLogTab/CustomerPaymentLogTab";
+import { useAuth } from '../../context/AuthContext';
 
 function TabPanel({ children, value, index }) {
   return (
@@ -32,16 +33,64 @@ function TabPanel({ children, value, index }) {
 }
 
 const LogsPage = () => {
+  const { hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Define available tabs based on permissions
+  const availableTabs = useMemo(() => {
+    const tabs = [];
+    
+    if (hasPermission("logs.production")) {
+      tabs.push({
+        id: 'production',
+        label: 'Production Logs',
+        icon: <FactoryIcon />,
+        component: <ProductionLogTab />
+      });
+    }
+    
+    if (hasPermission("logs.vendor_payment")) {
+      tabs.push({
+        id: 'vendor_payment',
+        label: 'Vendor Payment Logs',
+        icon: <PaymentIcon />,
+        component: <VendorPaymentLogTab />
+      });
+    }
+    
+    if (hasPermission("logs.customer_payment")) {
+      tabs.push({
+        id: 'customer_payment',
+        label: 'Customer Payment Logs',
+        icon: <ReceiptIcon />,
+        component: <CustomerPaymentLogTab />
+      });
+    }
+    
+    return tabs;
+  }, [hasPermission]);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
 
+  // If no tabs are available, show message
+  if (availableTabs.length === 0) {
+    return (
+      <Container maxWidth="xl" sx={{ pt: 4 }}>
+        <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary">
+            You don't have permission to view any logs.
+          </Typography>
+        </Paper>
+      </Container>
+    );
+  }
+
   return (
-    <Container maxWidth="xll" sx={{ pt: 4 }}>
+    <Container maxWidth="xl" sx={{ pt: 4 }}>
       {/* Header */}
       <Paper
         elevation={2}
@@ -80,42 +129,25 @@ const LogsPage = () => {
               }
             }}
           >
-            <Tab
-              icon={<FactoryIcon />}
-              iconPosition="start"
-              label="Production Logs"
-              id="log-tab-0"
-              aria-controls="log-tabpanel-0"
-            />
-            <Tab
-              icon={<PaymentIcon />}
-              iconPosition="start"
-              label="Vendor Payment Logs"
-              id="log-tab-1"
-              aria-controls="log-tabpanel-1"
-            />
-            <Tab
-              icon={<ReceiptIcon />}
-              iconPosition="start"
-              label="Customer Payment Logs"
-              id="log-tab-2"
-              aria-controls="log-tabpanel-2"
-            />
+            {availableTabs.map((tab, index) => (
+              <Tab
+                key={tab.id}
+                icon={tab.icon}
+                iconPosition="start"
+                label={tab.label}
+                id={`log-tab-${index}`}
+                aria-controls={`log-tabpanel-${index}`}
+              />
+            ))}
           </Tabs>
         </Box>
 
         {/* Tab Panels */}
-        <TabPanel value={activeTab} index={0}>
-          <ProductionLogTab />
-        </TabPanel>
-
-        <TabPanel value={activeTab} index={1}>
-          <VendorPaymentLogTab />
-        </TabPanel>
-
-        <TabPanel value={activeTab} index={2}>
-          <CustomerPaymentLogTab />
-        </TabPanel>
+        {availableTabs.map((tab, index) => (
+          <TabPanel key={tab.id} value={activeTab} index={index}>
+            {tab.component}
+          </TabPanel>
+        ))}
       </Paper>
     </Container>
   );

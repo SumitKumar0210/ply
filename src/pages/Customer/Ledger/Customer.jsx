@@ -107,7 +107,7 @@ const Customer = () => {
   const [mobileSearchFilter, setMobileSearchFilter] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState(getInitialSearch());
 
-  // Update URL params
+  // Update URL params - setSearchParams is stable, no need in deps
   const updateURLParams = useCallback(
     (page, pageSize, search) => {
       const params = new URLSearchParams();
@@ -116,9 +116,9 @@ const Customer = () => {
       if (search) {
         params.set("search", search);
       }
-      setSearchParams(params);
+      setSearchParams(params, { replace: true });
     },
-    [setSearchParams]
+    []
   );
 
   // Debounce desktop search
@@ -157,8 +157,8 @@ const Customer = () => {
     };
   }, [mobileSearchFilter]);
 
-  // Fetch Data
-  const fetchData = useCallback(() => {
+  // Fetch Data - Single useEffect to prevent double calls
+  useEffect(() => {
     const params = {
       pageIndex: pagination.pageIndex + 1,
       pageLimit: pagination.pageSize,
@@ -169,11 +169,6 @@ const Customer = () => {
     dispatch(fetchAllCustomersWithSearch(params));
     updateURLParams(pagination.pageIndex, pagination.pageSize, debouncedSearch);
   }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch, updateURLParams]);
-
-  // Fetch on pagination or search change
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // Handlers
   const handlePaginationChange = useCallback((updater) => {
@@ -189,8 +184,14 @@ const Customer = () => {
   }, []);
 
   const handleRefresh = useCallback(() => {
-    fetchData();
-  }, [fetchData]);
+    const params = {
+      pageIndex: pagination.pageIndex + 1,
+      pageLimit: pagination.pageSize,
+      active: true,
+      search: debouncedSearch || "",
+    };
+    dispatch(fetchAllCustomersWithSearch(params));
+  }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
 
   const handleLedger = useCallback(
     (id) => {

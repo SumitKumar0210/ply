@@ -108,17 +108,21 @@ const AppRoutes = () => {
 
         <Route
           path="/logs"
-          element={<SecurePage><Logs /></SecurePage>}
+          element={<SecurePage anyPermissions={[
+           "logs.customer_payment",
+          "logs.production",
+          "logs.vendor_payment",
+        ]}><Logs /></SecurePage>}
         />
         
         <Route
           path="/discarded-product"
-          element={<SecurePage><DiscardedProduct /></SecurePage>}
+          element={<SecurePage permission="discarded_product.read"><DiscardedProduct /></SecurePage>}
         />
 
         <Route
-          path="/package-list/:id"
-          element={<SecurePage><PackageList /></SecurePage>}
+          path="bill/package-list/:id"
+          element={<SecurePage><PackageList permission="dispatch_product.package_list"/></SecurePage>}
         />
 
         {/* Auth (public) */}

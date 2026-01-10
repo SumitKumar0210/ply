@@ -232,6 +232,9 @@ const menuSections = [
           {
             text: "Product Stocks", to: "/product/stocks", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
           },
+          {
+            text: "Discarded Product", to: "/discarded-product", icon: <BsBoxSeam />, anyPermissions: ["product_stocks.read"]
+          },
         ],
       },
       {
@@ -297,7 +300,9 @@ const menuSections = [
       },
       {
         text: "Logs", to: "/logs", icon: <MdOutlineDashboard />, anyPermissions: [
-          "groups.read",
+          "logs.customer_payment",
+          "logs.production",
+          "logs.vendor_payment",
         ]
       },
       {

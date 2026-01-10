@@ -29,11 +29,13 @@ import {
   useMediaQuery,
   useTheme
 } from "@mui/material";
+import { FaBoxOpen } from "react-icons/fa";
 import { GrCurrency } from "react-icons/gr";
 import { MdOutlineRemoveRedEye, MdDescription, MdLocalShipping } from "react-icons/md";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
+  MRT_GlobalFilterTextField,
 } from "material-react-table";
 import { useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
@@ -77,14 +79,12 @@ const DispatchProduct = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
-  const searchInputRef = useRef(null);
   const searchTimeoutRef = useRef(null);
 
   const { data: bills, loading, totalRecords } = useSelector((state) => state.bill);
   const { payments = [], paymentLoading = false } = useSelector((state) => state.payment);
 
   // State management
-  const [showSearch, setShowSearch] = useState(false);
   const [markingDelivered, setMarkingDelivered] = useState(null);
   const [openPayment, setOpenPayment] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -99,13 +99,6 @@ const DispatchProduct = () => {
 
   const normalizedBills = Array.isArray(bills) ? bills : [];
   const normalizedTotal = typeof totalRecords === "number" ? totalRecords : 0;
-
-  // Focus search input when shown
-  useEffect(() => {
-    if (showSearch && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [showSearch]);
 
   // Debounce search for desktop
   useEffect(() => {
@@ -281,14 +274,6 @@ const DispatchProduct = () => {
     [bills]
   );
 
-  // Search toggle
-  const handleSearchToggle = useCallback(() => {
-    if (showSearch && globalFilter) {
-      setGlobalFilter("");
-    }
-    setShowSearch(!showSearch);
-  }, [showSearch, globalFilter]);
-
   // Handle mobile search change
   const handleMobileSearchChange = useCallback((value) => {
     setMobileSearchFilter(value);
@@ -446,6 +431,17 @@ const DispatchProduct = () => {
                   size="small"
                 >
                   <GrCurrency size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {hasPermission("dispatch_product.package_list") && (
+              <Tooltip title="Package List">
+                <IconButton
+                  color="success"
+                  onClick={() => navigate(`/bill/package-list/${row.original.id}`)}
+                  size="small"
+                >
+                  <FaBoxOpen size={16} />
                 </IconButton>
               </Tooltip>
             )}
@@ -703,7 +699,7 @@ const DispatchProduct = () => {
                           })}
                         </Typography>
                       </Box>
-                      
+
                       <Divider sx={{ mb: 2 }} />
 
                       {/* Action Buttons */}
@@ -713,7 +709,7 @@ const DispatchProduct = () => {
                             size="medium"
                             onClick={() => handleViewBill(bill.id)}
                             sx={{
-                              width: "36px", 
+                              width: "36px",
                               height: "36px",
                               bgcolor: "#fff3e0",
                               color: "#ff9800",
@@ -729,7 +725,7 @@ const DispatchProduct = () => {
                             size="medium"
                             onClick={() => handleChallan(bill.id)}
                             sx={{
-                              width: "36px", 
+                              width: "36px",
                               height: "36px",
                               bgcolor: "#e3f2fd",
                               color: "#1976d2",
@@ -832,7 +828,7 @@ const DispatchProduct = () => {
                 enableSorting={false}
                 enablePagination
                 enableBottomToolbar
-                enableGlobalFilter={false}
+                enableGlobalFilter
                 enableDensityToggle={false}
                 enableColumnActions={false}
                 enableColumnVisibilityToggle={false}
@@ -876,36 +872,7 @@ const DispatchProduct = () => {
                     </Typography>
 
                     <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                      {showSearch && (
-                        <TextField
-                          inputRef={searchInputRef}
-                          size="small"
-                          placeholder="Search..."
-                          value={globalFilter}
-                          onChange={(e) => setGlobalFilter(e.target.value)}
-                          InputProps={{
-                            endAdornment: globalFilter && (
-                              <InputAdornment position="end">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => setGlobalFilter("")}
-                                  edge="end"
-                                >
-                                  <CloseIcon fontSize="small" />
-                                </IconButton>
-                              </InputAdornment>
-                            ),
-                          }}
-                          sx={{ width: 250 }}
-                        />
-                      )}
-
-                      <Tooltip title={showSearch ? "Close Search" : "Search"}>
-                        <IconButton onClick={handleSearchToggle}>
-                          <SearchIcon size={20} />
-                        </IconButton>
-                      </Tooltip>
-
+                      <MRT_GlobalFilterTextField table={table} />
                       <MRT_ToolbarInternalButtons table={table} />
 
                       <Tooltip title="Print">

@@ -1,538 +1,239 @@
-import * as React from "react";
-import { useMemo, useRef, useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import Grid from "@mui/material/Grid";
 import {
-  Typography,
-  Grid,
-  Paper,
-  Box,
-  Button,
-  IconButton,
-  TextField,
-  Tooltip,
-  MenuItem,
+    Button,
+    Typography,
+    Box,
+    CircularProgress,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
 } from "@mui/material";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import CloseIcon from "@mui/icons-material/Close";
-import { styled } from "@mui/material/styles";
-import {
-  MaterialReactTable,
-  MRT_ToolbarInternalButtons,
-  MRT_GlobalFilterTextField,
-} from "material-react-table";
-import AddIcon from "@mui/icons-material/Add";
-import { BiSolidEditAlt } from "react-icons/bi";
-import { RiDeleteBinLine } from "react-icons/ri";
-import { FiPrinter } from "react-icons/fi";
-import { BsCloudDownload } from "react-icons/bs";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
-import { Formik, Form } from "formik";
-import * as Yup from "yup";
-import { fetchBillById } from "./slice/billsSlice";
+import { AiOutlinePrinter } from "react-icons/ai";
+import { useReactToPrint } from "react-to-print";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-
-const BootstrapDialog = styled(Dialog)(({ theme }) => ({
-  "& .MuiDialogContent-root": {
-    padding: theme.spacing(2),
-  },
-  "& .MuiDialogActions-root": {
-    padding: theme.spacing(1),
-  },
-}));
-
-// Dummy Product Data
-// const data = [
-//   {
-//     name: "Product A",
-//     model: "MD-100",
-//     size: "20 x 20",
-//     color: "Red",
-//     hsn: "123456",
-//     rrp: "5000",
-//     type: "Electronics",
-//     dealer: "Dealer1",
-//     grade: "A",
-//     image: "https://placehold.co/400", // sample
-//   },
-//   {
-//     name: "Product B",
-//     model: "MD-200",
-//     size: "10 x 10",
-//     color: "Blue",
-//     hsn: "789012",
-//     rrp: "3000",
-//     type: "Hardware",
-//     dealer: "Dealer2",
-//     grade: "B",
-//     image: "https://placehold.co/400", // sample
-//   },
-// ];
+import { useParams } from "react-router-dom";
+import { fetchBillById } from "./slice/billsSlice";
+import { useAuth } from "../../context/AuthContext";
 
 const PackageList = () => {
-  // Validation Schema
-  const validationSchema = Yup.object({
-    name: Yup.string().required("Name is required"),
-    model: Yup.string().required("Model is required"),
-    size: Yup.string().required("Size is required"),
-    color: Yup.string().required("Color is required"),
-    hsn: Yup.string().required("HSN Code is required"),
-    rrp: Yup.number()
-      .typeError("RRP must be a number")
-      .required("RRP is required"),
-    type: Yup.string().required("Product Type is required"),
-    dealer: Yup.string().required("Dealer is required"),
-    grade: Yup.string().required("Grade is required"),
-    image: Yup.mixed()
-      .required("Image is required")
-      .test("fileType", "Only images are allowed", (value) =>
-        value
-          ? ["image/jpeg", "image/png", "image/jpg"].includes(value.type)
-          : false
-      ),
-  });
+    const { id } = useParams();
+    const { appDetails } = useAuth();
+    const dispatch = useDispatch();
+    const contentRef = useRef(null);
 
-  const tableContainerRef = useRef(null);
-  const [open, setOpen] = useState(false);
+    const { selected: billData = {}, loading: billLoading } = useSelector((state) => state.bill);
+    const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
-  const handleClickOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
-  const dispatch = useDispatch();
-  const { id } = useParams();
+    const [items, setItems] = useState([]);
+    const [quotationDetails, setQuotationDetails] = useState(null);
 
-  const { selected: billData = {}, loading: billLoading, errors } = useSelector((state) => state.bill);
-console.log(billData);
-const data = billData.product;
-  useEffect(() => {
-    dispatch(fetchBillById(id));
-  },[])
+    // Fetch bill data
+    useEffect(() => {
+        if (id) {
+            dispatch(fetchBillById(id));
+        }
+    }, [dispatch, id]);
 
-  const columns = useMemo(
-    () => [
-        {
-            accessorKey: "image",
-            header: "Image",
-            size: 80,
-            Cell: ({ row }) => (
-                <img
-                src={row.original.image}
-                alt={row.original.name}
-                style={{
-                    width: "40px",
-                    height: "40px",
-                    objectFit: "cover",
-                    borderRadius: "4px",
-                    border: "1px solid #ddd",
-                }}
-                />
-            ),
-        },
-        { accessorKey: "name", header: "Name", size: 150 },
-        { accessorKey: "model", header: "Model", size: 120 },
-        { accessorKey: "size", header: "Size", size: 100 },
-        { accessorKey: "color", header: "Color", size: 100 },
-        { accessorKey: "hsn", header: "HSN Code", size: 120 },
-        {
-            id: "actions",
-            header: "Actions",
-            enableSorting: false,
-            enableColumnFilter: false,
-            muiTableHeadCellProps: { align: "right" },
-            muiTableBodyCellProps: { align: "right" },
-            Cell: ({ row }) => (
-            <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                <Tooltip title="Edit">
-                <IconButton
-                    color="primary"
-                    onClick={() => alert(`Edit ${row.original.name}`)}
-                >
-                    <BiSolidEditAlt size={16} />
-                </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                <IconButton
-                    color="error"
-                    onClick={() => alert(`Delete ${row.original.name}`)}
-                >
-                    <RiDeleteBinLine size={16} />
-                </IconButton>
-                </Tooltip>
+    // Set items and details from Redux
+    useEffect(() => {
+        if (billData && billData.id) {
+            setItems(billData.product || []);
+            setQuotationDetails(billData);
+        }
+    }, [billData]);
+
+    // Format date helper
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        });
+    };
+
+    const handlePrint = useReactToPrint({
+        contentRef,
+        documentTitle: `PackingList_${quotationDetails?.invoice_no || "Invoice"}`,
+        pageStyle: `
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+            @media print {
+                body {
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                .no-print {
+                    display: none !important;
+                }
+                table {
+                    page-break-inside: auto;
+                }
+                tr {
+                    page-break-inside: avoid;
+                    page-break-after: auto;
+                }
+            }
+        `,
+    });
+
+    if (billLoading) {
+        return (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+                <CircularProgress size={60} />
             </Box>
-            ),
-        },
-    ],
-    []
-  );
-    // Function to download CSV from data
-  const downloadCSV = () => {
-    // Prepare csv header
-    const headers = columns
-      .filter((col) => col.accessorKey)
-      .map((col) => col.header);
-    // Prepare csv rows
-    const rows = data.map((row) =>
-      columns
-        .filter((col) => col.accessorKey)
-        .map((col) => `"${row[col.accessorKey] ?? ""}"`)
-        .join(",")
-    );
-    const csvContent = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+        );
+    }
 
-    // Create link and trigger download
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "Material_data.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    return (
+        <>
+            {/* Header with Print Button - Not in print */}
+            <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: 2 }} className="no-print">
+                <Grid>
+                    <Typography variant="h6">Packing List</Typography>
+                </Grid>
+                <Grid>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<AiOutlinePrinter />}
+                        onClick={handlePrint}
+                    >
+                        Print
+                    </Button>
+                </Grid>
+            </Grid>
 
-  // Print handler
-  const handlePrint = () => {
-    if (!tableContainerRef.current) return;
-    const printContents = tableContainerRef.current.innerHTML;
-    const originalContents = document.body.innerHTML;
-
-    document.body.innerHTML = printContents;
-    window.print();
-    document.body.innerHTML = originalContents;
-    window.location.reload();
-  };
-  return (
-    <>
-      <Grid container spacing={1}>
-        <Grid size={12}>
-            <Paper
-            elevation={0}
-            sx={{ width: "100%", overflowX: "auto", backgroundColor: "#fff" }}
-            ref={tableContainerRef}
-            >
-            <MaterialReactTable
-                columns={columns}
-                data={data}
-                enableTopToolbar={true}
-                enableColumnFilters={true}
-                enableSorting={true}
-                enablePagination={true}
-                enableBottomToolbar={true}
-                enableGlobalFilter={true}
-                enableDensityToggle={false} // Remove density toggle
-                enableColumnActions={false} // Remove column actions
-                enableColumnVisibilityToggle={false}
-
-                initialState={{
-                density: "compact",
-                }}
-                muiTableContainerProps={{
-                    sx: { 
-                        width: "100%",
-                        backgroundColor: "#fff",
-                        overflowX: "auto",
-                        
-                    },
-                }}
-                muiTableBodyCellProps={{
-                    sx: {
-                        whiteSpace: "wrap",
-                        width:"100px"
-                    },
-                }}
-                muiTablePaperProps={{
-                sx: { backgroundColor: "#fff" },
-                }}
-                renderTopToolbar={({ table }) => (
-                <Box
-                    sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    width: "100%",
-                    p: 1,
-                    }}
-                >
-                    <Typography variant="h6" className='page-title'>
-                    Package List
+            {/* Print Content */}
+            <Box ref={contentRef} sx={{ bgcolor: 'white', p: 3 }}>
+                {/* Header */}
+                <Box sx={{ textAlign: 'center', mb: 2, borderBottom: '2px solid #000', pb: 2 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                        {appDetails?.application_name || '-'}
                     </Typography>
+                    <Typography variant="body2">
+                        {appDetails?.company_address || '-'}
+                    </Typography>
+                    <Typography variant="body2">
+                        Haryana - 122051
+                    </Typography>
+                </Box>
 
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <MRT_GlobalFilterTextField table={table} />
+                {/* Title Section */}
+                <Box sx={{ textAlign: 'center', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, textDecoration: 'underline' }}>
+                        PACKING LIST FOR M/S. {quotationDetails?.customer?.name ?? 'INVESCON'}
+                        {/* INVESCON */}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                        Invoice # : {quotationDetails?.invoice_no || 'N/A'}
+                    </Typography>
+                </Box>
 
-                    <MRT_ToolbarInternalButtons table={table} />
-                    <Tooltip title="Print">
-                        <IconButton color="light" onClick={handlePrint}>
-                        <FiPrinter size={20} />
-                        </IconButton>
-                    </Tooltip>
+                {/* Date */}
+                <Box sx={{ textAlign: 'right', mb: 3 }}>
+                    <Typography variant="body2">
+                        <strong>Date:</strong> {new Date().toLocaleString()}
+                    </Typography>
+                </Box>
 
-                    <Tooltip title="Download CSV">
-                        <IconButton color="light" onClick={downloadCSV}>
-                        <BsCloudDownload size={20} />
-                        </IconButton>
-                    </Tooltip>
+                {/* Items Table */}
+                {items.length > 0 && (
+                    <TableContainer component={Paper} 
+                    // sx={{ border: '1px solid #000' }}
+                    >
+                        <Table sx={{ 
+                            '& .MuiTableCell-root': { 
+                                border: '1px solid #000',
+                                padding: '8px',
+                            } 
+                        }}>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell sx={{ fontWeight: 600, bgcolor: '#f5f5f5' }}>S.No</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, bgcolor: '#f5f5f5' }}>Item Code</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, bgcolor: '#f5f5f5' }}>Description</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#f5f5f5' }}>Size</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#f5f5f5' }}>Qty</TableCell>
+                                    {/* <TableCell sx={{ fontWeight: 600, bgcolor: '#f5f5f5' }}>Remark</TableCell> */}
+                                    <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#f5f5f5' }}>Image</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {items.map((item, index) => (
+                                    <TableRow key={item.id}>
+                                        <TableCell>{index + 1}</TableCell>
+                                        <TableCell>{item.product?.model || 'N/A'}</TableCell>
+                                        <TableCell>{item.product?.name || 'N/A'}</TableCell>
+                                        <TableCell align="center">{item.product?.size || '-'}</TableCell>
+                                        <TableCell align="center">{item.qty}</TableCell>
+                                        {/* <TableCell>-</TableCell> */}
+                                        <TableCell align="center">
+                                            {item.product?.image ? (
+                                                <Box
+                                                    component="img"
+                                                    src={mediaUrl + item.product?.image}
+                                                    alt={item.product?.name}
+                                                    sx={{
+                                                        width: 60,
+                                                        height: 60,
+                                                        objectFit: 'cover',
+                                                        borderRadius: 1,
+                                                        display: 'block',
+                                                        margin: '0 auto',
+                                                    }}
+                                                />
+                                            ) : (
+                                                "-"
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
+
+                {/* Footer Note */}
+                <Box sx={{ mt: 4 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        Note:
+                    </Typography>
+                    <Typography variant="body2">
+                        This is a computer-generated packing list and does not require a signature.
+                    </Typography>
+                </Box>
+
+                {/* Company Signature Section */}
+                <Box sx={{ mt: 5, display: 'flex', justifyContent: 'space-between' }}>
+                    <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            Prepared By
+                        </Typography>
+                        <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 1, minWidth: '150px' }}>
+                            <Typography variant="body2">Signature</Typography>
+                        </Box>
+                    </Box>
+                    <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            Verified By
+                        </Typography>
+                        <Box sx={{ mt: 4, borderTop: '1px solid #000', pt: 1, minWidth: '150px' }}>
+                            <Typography variant="body2">Signature</Typography>
+                        </Box>
                     </Box>
                 </Box>
-                )}
-            />
-            </Paper>
-        </Grid>
-      </Grid>
-      {/* Dialog */}
-      <BootstrapDialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ m: 0, p: 1.5 }}>Add Product</DialogTitle>
-        <IconButton
-          aria-label="close"
-          onClick={handleClose}
-          sx={(theme) => ({
-            position: "absolute",
-            right: 8,
-            top: 8,
-            color: theme.palette.grey[500],
-          })}
-        >
-          <CloseIcon />
-        </IconButton>
-
-        <Formik
-          initialValues={{
-            name: "",
-            model: "",
-            size: "",
-            color: "",
-            hsn: "",
-            rrp: "",
-            type: "",
-            dealer: "",
-            grade: "",
-            image: "",
-          }}
-          validationSchema={validationSchema}
-          onSubmit={(values, { setSubmitting }) => {
-            console.log("Form Submitted:", values);
-            setSubmitting(false);
-            handleClose();
-          }}
-        >
-          {({ values, errors, touched, handleChange, setFieldValue }) => (
-            <Form>
-              <DialogContent dividers>
-                <Grid container spacing={2}>
-                  {/* Name */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      id="name"
-                      name="name"
-                      label="Name"
-                      variant="standard"
-                      value={values.name}
-                      onChange={handleChange}
-                      error={touched.name && Boolean(errors.name)}
-                      helperText={touched.name && errors.name}
-                    />
-                  </Grid>
-
-                  {/* Model */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      id="model"
-                      name="model"
-                      label="Model"
-                      variant="standard"
-                      value={values.model}
-                      onChange={handleChange}
-                      error={touched.model && Boolean(errors.model)}
-                      helperText={touched.model && errors.model}
-                    />
-                  </Grid>
-
-                  {/* Size */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      id="size"
-                      name="size"
-                      label="Size"
-                      variant="standard"
-                      value={values.size}
-                      onChange={handleChange}
-                      error={touched.size && Boolean(errors.size)}
-                      helperText={touched.size && errors.size}
-                    />
-                  </Grid>
-
-                  {/* Color */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      id="color"
-                      name="color"
-                      label="Color"
-                      variant="standard"
-                      value={values.color}
-                      onChange={handleChange}
-                      error={touched.color && Boolean(errors.color)}
-                      helperText={touched.color && errors.color}
-                    />
-                  </Grid>
-
-                  {/* HSN Code */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      id="hsn"
-                      name="hsn"
-                      label="HSN Code"
-                      variant="standard"
-                      value={values.hsn}
-                      onChange={handleChange}
-                      error={touched.hsn && Boolean(errors.hsn)}
-                      helperText={touched.hsn && errors.hsn}
-                    />
-                  </Grid>
-
-                  {/* RRP */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      id="rrp"
-                      name="rrp"
-                      label="RRP"
-                      type="number"
-                      variant="standard"
-                      value={values.rrp}
-                      onChange={handleChange}
-                      error={touched.rrp && Boolean(errors.rrp)}
-                      helperText={touched.rrp && errors.rrp}
-                    />
-                  </Grid>
-
-                  {/* Product Type */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      select
-                      fullWidth
-                      id="type"
-                      name="type"
-                      label="Product Type"
-                      variant="standard"
-                      value={values.type}
-                      onChange={handleChange}
-                      error={touched.type && Boolean(errors.type)}
-                      helperText={touched.type && errors.type}
-                    >
-                      <MenuItem value="Electronics">Electronics</MenuItem>
-                      <MenuItem value="Hardware">Hardware</MenuItem>
-                      <MenuItem value="Software">Software</MenuItem>
-                    </TextField>
-                  </Grid>
-
-                  {/* Dealer */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      fullWidth
-                      id="dealer"
-                      name="dealer"
-                      label="Dealer"
-                      variant="standard"
-                      value={values.dealer}
-                      onChange={handleChange}
-                      error={touched.dealer && Boolean(errors.dealer)}
-                      helperText={touched.dealer && errors.dealer}
-                    />
-                  </Grid>
-
-                  {/* Grade */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      select
-                      fullWidth
-                      id="grade"
-                      name="grade"
-                      label="Grade"
-                      variant="standard"
-                      value={values.grade}
-                      onChange={handleChange}
-                      error={touched.grade && Boolean(errors.grade)}
-                      helperText={touched.grade && errors.grade}
-                    >
-                      <MenuItem value="A">A</MenuItem>
-                      <MenuItem value="B">B</MenuItem>
-                      <MenuItem value="C">C</MenuItem>
-                    </TextField>
-                  </Grid>
-
-                  {/* Image Upload */}
-                  <Grid size={{ xs: 12, md: 6 }} sx={{mb:3}}>
-                    <Grid container spacing={1} alignItems="center">
-                      <Grid size={{ xs: 8 }}>
-                        <Button
-                          variant="contained"
-                          component="label"
-                          startIcon={<UploadFileIcon />}
-                          fullWidth
-                        >
-                          Upload Image
-                          <input
-                            hidden
-                            accept="image/*"
-                            type="file"
-                            id="image"
-                            name="image"
-                            onChange={(event) => {
-                              const file = event.currentTarget.files[0];
-                              setFieldValue("image", file);
-                            }}
-                          />
-                        </Button>
-                        {touched.image && errors.image && (
-                          <div
-                            style={{ color: "red", fontSize: "0.8rem" }}
-                          >
-                            {errors.image}
-                          </div>
-                        )}
-                      </Grid>
-                      <Grid size={{ xs: 4 }}>
-                        {values.image && (
-                          <img
-                            src={URL.createObjectURL(values.image)}
-                            alt="Preview"
-                            onLoad={() => URL.revokeObjectURL(values.image)}
-                            style={{
-                              width: "45px",
-                              height: "45px",
-                              objectFit: "cover",
-                              borderRadius: "4px",
-                              border: "1px solid #ddd",
-                            }}
-                          />
-                        )}
-                      </Grid>
-                    </Grid>
-                  </Grid>
-                </Grid>
-              </DialogContent>
-
-              <DialogActions sx={{ gap: 1, mb: 1 }}>
-                <Button variant="outlined" color="error" onClick={handleClose}>
-                  Close
-                </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Submit
-                </Button>
-              </DialogActions>
-            </Form>
-          )}
-        </Formik>
-      </BootstrapDialog>
-    </>
-  );
+            </Box>
+        </>
+    );
 };
 
 export default PackageList;

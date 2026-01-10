@@ -29,6 +29,7 @@ import { MdOutlineRemoveRedEye, MdDescription, MdLocalShipping } from "react-ico
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
+  MRT_GlobalFilterTextField,
 } from "material-react-table";
 import { useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
@@ -37,7 +38,6 @@ import { RiDeleteBinLine } from "react-icons/ri";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
 import SearchIcon from "@mui/icons-material/Search";
-import CloseIcon from "@mui/icons-material/Close";
 import { FiUser, FiCalendar } from 'react-icons/fi';
 import { useDispatch, useSelector } from "react-redux";
 import { deleteBill, fetchBills, markAsDelivered } from "./slice/billsSlice";
@@ -52,14 +52,12 @@ const Bills = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const tableContainerRef = useRef(null);
-  const searchInputRef = useRef(null);
   const searchTimeoutRef = useRef(null);
 
   const { data: bills, loading, totalRecords } = useSelector((state) => state.bill);
 
   const [openDelete, setOpenDelete] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
-  const [showSearch, setShowSearch] = useState(false);
   const [markingDelivered, setMarkingDelivered] = useState(null);
 
   const [pagination, setPagination] = useState({
@@ -73,13 +71,6 @@ const Bills = () => {
 
   const normalizedBills = Array.isArray(bills) ? bills : [];
   const normalizedTotal = typeof totalRecords === 'number' ? totalRecords : 0;
-
-  // Focus search input when shown
-  useEffect(() => {
-    if (showSearch && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [showSearch]);
 
   // Debounce desktop search
   useEffect(() => {
@@ -184,14 +175,6 @@ const Bills = () => {
       setOpenDelete(false);
     }
   }, [dispatch, pagination.pageIndex, pagination.pageSize, debouncedSearch]);
-
-  // Search toggle
-  const handleSearchToggle = useCallback(() => {
-    if (showSearch && globalFilter) {
-      setGlobalFilter("");
-    }
-    setShowSearch(!showSearch);
-  }, [showSearch, globalFilter]);
 
   // Mobile search change
   const handleMobileSearchChange = useCallback((value) => {
@@ -750,7 +733,7 @@ const Bills = () => {
                 enableSorting={false}
                 enablePagination
                 enableBottomToolbar
-                enableGlobalFilter={false}
+                enableGlobalFilter
                 enableDensityToggle={false}
                 enableColumnActions={false}
                 enableColumnVisibilityToggle={false}
@@ -794,36 +777,7 @@ const Bills = () => {
                     </Typography>
 
                     <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
-                      {showSearch && (
-                        <TextField
-                          inputRef={searchInputRef}
-                          size="small"
-                          placeholder="Search..."
-                          value={globalFilter}
-                          onChange={(e) => setGlobalFilter(e.target.value)}
-                          InputProps={{
-                            endAdornment: globalFilter && (
-                              <InputAdornment position="end">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => setGlobalFilter("")}
-                                  edge="end"
-                                >
-                                  <CloseIcon fontSize="small" />
-                                </IconButton>
-                              </InputAdornment>
-                            ),
-                          }}
-                          sx={{ width: 250 }}
-                        />
-                      )}
-
-                      <Tooltip title={showSearch ? "Close Search" : "Search"}>
-                        <IconButton onClick={handleSearchToggle}>
-                          <SearchIcon size={20} />
-                        </IconButton>
-                      </Tooltip>
-
+                      <MRT_GlobalFilterTextField table={table} />
                       <MRT_ToolbarInternalButtons table={table} />
 
                       <Tooltip title="Print">
