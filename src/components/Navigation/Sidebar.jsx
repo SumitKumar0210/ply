@@ -149,7 +149,7 @@ const menuSections = [
       },
       {
         text: "Production",
-        icon: <PiGearFine  />,
+        icon: <PiGearFine />,
         anyPermissions: [
           "company_orders.read",
           "company_orders.update",
