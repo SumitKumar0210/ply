@@ -79,8 +79,10 @@ const LogsPage = () => {
   // If no tabs are available, show message
   if (availableTabs.length === 0) {
     return (
-      <Container maxWidth="xl" sx={{ pt: 4 }}>
-        <Paper elevation={2} sx={{ p: 4, textAlign: 'center' }}>
+      <Container maxWidth="xxl" sx={{ pt: 4, pl:0, pr:0 }}>
+        <Paper elevation={2} sx={{ 
+          // p: 4, 
+          textAlign: 'center' }}>
           <Typography variant="h6" color="text.secondary">
             You don't have permission to view any logs.
           </Typography>
@@ -90,7 +92,7 @@ const LogsPage = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ pt: 4 }}>
+    <Container maxWidth="xxl" sx={{ pt: 4 }}>
       {/* Header */}
       <Paper
         elevation={2}

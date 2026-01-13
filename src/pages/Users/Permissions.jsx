@@ -68,6 +68,7 @@ const MODULES = [
   { value: "machines", label: "Machines" },
   { value: "material_request", label: "Material Request" },
   { value: "materials", label: "Materials" },
+  { value: "powered_by", label: "Powered By" },
   { value: "productions", label: "Productions" },
   { value: "product", label: "Product" },
   { value: "product_stocks", label: "Product stocks" },

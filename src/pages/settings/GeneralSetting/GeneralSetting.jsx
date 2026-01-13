@@ -46,7 +46,7 @@ const GeneralSetting = () => {
     powered_by_name: "",
   });
 
-  const { refreshAppDetails } = useAuth();
+  const { refreshAppDetails, hasPermission } = useAuth();
 
   const [successMessage, setSuccessMessage] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
@@ -94,11 +94,9 @@ const GeneralSetting = () => {
     contact: Yup.string()
       .required("Contact is required")
       .matches(
-        /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/,
-        "Please enter a valid phone number"
-      )
-      .min(10, "Contact number must be at least 10 digits")
-      .max(15, "Contact number must not exceed 15 digits"),
+        /^[0-9]{10}$/,
+        "Contact number must be exactly 10 digits"
+      ),
 
     gst_no: Yup.string()
       .required("GST number is required")
@@ -113,20 +111,36 @@ const GeneralSetting = () => {
       .min(10, "Address must be at least 10 characters")
       .max(500, "Address must not exceed 500 characters"),
 
-    powered_by_link: Yup.string().when('is_powered_by', {
-      is: true,
-      then: (schema) => schema
-        .required("Link is required when Powered By is enabled")
-        .url("Please enter a valid URL"),
-      otherwise: (schema) => schema.nullable()
-    }),
+    powered_by_link: Yup.string()
+      .nullable()
+      .when('is_powered_by', {
+        is: true,
+        then: (schema) =>
+          schema
+            .required("Link is required when Powered By is enabled")
+            .test(
+              'is-valid-url',
+              'Please enter a valid URL',
+              (value) => {
+                if (!value) return false;
+                try {
+                  new URL(value);
+                  return true;
+                } catch {
+                  return false;
+                }
+              }
+            ),
+        otherwise: (schema) => schema.notRequired(),
+      }),
+
 
     powered_by_name: Yup.string().when('is_powered_by', {
       is: true,
       then: (schema) => schema
         .required("Name is required when Powered By is enabled")
         .min(2, "Name must be at least 2 characters"),
-      otherwise: (schema) => schema.nullable()
+      otherwise: (schema) => schema.notRequired()
     }),
   });
 
@@ -156,10 +170,11 @@ const GeneralSetting = () => {
     return errors;
   };
 
-  const handleSubmit = async (values, { setSubmitting, resetForm }) => {
+  const handleSubmit = async (values, { setSubmitting }) => {
     try {
       // Clear previous validation errors
       setValidationErrors({});
+      setSuccessMessage("");
 
       // Validate files
       const fileErrors = {};
@@ -192,21 +207,38 @@ const GeneralSetting = () => {
       }
 
       const formData = new FormData();
+
+      // Append all values to formData
       Object.entries(values).forEach(([key, value]) => {
-        formData.append(key, value);
+        // Skip file fields if they are strings (existing files)
+        if (key === 'logo' || key === 'horizontal_logo' || key === 'favicon') {
+          if (typeof value === 'object' && value !== null) {
+            formData.append(key, value);
+          }
+          // Don't append string values for files (they're already stored)
+        } else {
+          formData.append(key, value);
+        }
       });
 
       formData.append("id", data[0].id);
+
       const res = await dispatch(updateSetting(formData));
 
       if (!res.error) {
-        refreshAppDetails();
+        await refreshAppDetails();
         setSuccessMessage("Settings updated successfully!");
+
+        // Refresh the data to show updated values
+        await dispatch(fetchSettings());
+
         setTimeout(() => setSuccessMessage(""), 3000);
-        setInitialData(values);
+      } else {
+        setValidationErrors({ submit: "Failed to update settings. Please try again." });
       }
     } catch (error) {
       console.error("Failed to update settings:", error);
+      setValidationErrors({ submit: "An error occurred while updating settings." });
     } finally {
       setSubmitting(false);
     }
@@ -269,11 +301,11 @@ const GeneralSetting = () => {
             <Grid container spacing={2}>
               {/* Logo & Favicon Section */}
               <Grid size={12}>
-                <Card>
+                <Card sx={{ p: 2 }}>
                   <Grid container spacing={4}>
                     {/* Square Logo Upload */}
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                         Square Logo
                       </Typography>
                       <Button
@@ -302,12 +334,14 @@ const GeneralSetting = () => {
                           name="logo"
                           onChange={(event) => {
                             const file = event.currentTarget.files[0];
-                            setFieldValue("logo", file);
-                            setValidationErrors(prev => ({ ...prev, logo: undefined }));
+                            if (file) {
+                              setFieldValue("logo", file);
+                              setValidationErrors(prev => ({ ...prev, logo: undefined }));
+                            }
                           }}
                         />
                       </Button>
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.875rem' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.75rem' }}>
                         Recommended: 200x200px, PNG or JPG (Max 5MB)
                       </Typography>
                       {validationErrors.logo && (
@@ -366,7 +400,7 @@ const GeneralSetting = () => {
 
                     {/* Horizontal Logo Upload */}
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                         Horizontal Logo
                       </Typography>
                       <Button
@@ -395,12 +429,14 @@ const GeneralSetting = () => {
                           name="horizontal_logo"
                           onChange={(event) => {
                             const file = event.currentTarget.files[0];
-                            setFieldValue("horizontal_logo", file);
-                            setValidationErrors(prev => ({ ...prev, horizontal_logo: undefined }));
+                            if (file) {
+                              setFieldValue("horizontal_logo", file);
+                              setValidationErrors(prev => ({ ...prev, horizontal_logo: undefined }));
+                            }
                           }}
                         />
                       </Button>
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.875rem' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.75rem' }}>
                         Recommended: 400x100px, PNG or JPG (Max 5MB)
                       </Typography>
                       {validationErrors.horizontal_logo && (
@@ -459,7 +495,7 @@ const GeneralSetting = () => {
 
                     {/* Favicon Upload */}
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 0 }}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                         Favicon
                       </Typography>
                       <Button
@@ -488,12 +524,14 @@ const GeneralSetting = () => {
                           name="favicon"
                           onChange={(event) => {
                             const file = event.currentTarget.files[0];
-                            setFieldValue("favicon", file);
-                            setValidationErrors(prev => ({ ...prev, favicon: undefined }));
+                            if (file) {
+                              setFieldValue("favicon", file);
+                              setValidationErrors(prev => ({ ...prev, favicon: undefined }));
+                            }
                           }}
                         />
                       </Button>
-                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.875rem' }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.2, fontSize: '0.75rem' }}>
                         Recommended: 32x32px, ICO or PNG (Max 5MB)
                       </Typography>
                       {validationErrors.favicon && (
@@ -550,25 +588,27 @@ const GeneralSetting = () => {
                   </Grid>
                 </Card>
               </Grid>
-              <Divider sx={{ width: '100%', mt: 1 }} />
-              
+
+              <Grid size={12}>
+                <Divider />
+              </Grid>
+
               {/* Company Information */}
               <Grid size={12}>
-                <Card>
+                <Card sx={{ p: 2 }}>
                   <Typography variant="h6" className="page-title" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
                     Company Information
                   </Typography>
 
                   <Grid container spacing={2}>
                     {/* App Name */}
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <TextField
                         fullWidth
                         label="Application Name"
                         name="app_name"
                         variant="outlined"
                         size="small"
-                        sx={{ mb: 1 }}
                         value={values.app_name}
                         onChange={handleChange}
                         error={touched.app_name && Boolean(errors.app_name)}
@@ -584,7 +624,7 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Email */}
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <TextField
                         fullWidth
                         label="Email Address"
@@ -592,7 +632,6 @@ const GeneralSetting = () => {
                         type="email"
                         variant="outlined"
                         size="small"
-                        sx={{ mb: 1 }}
                         value={values.email}
                         onChange={handleChange}
                         error={touched.email && Boolean(errors.email)}
@@ -608,22 +647,19 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Contact */}
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <TextField
                         fullWidth
                         label="Contact Number"
                         name="contact"
                         variant="outlined"
                         size="small"
-                        sx={{ mb: 1 }}
                         type="text"
                         value={values.contact}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, "");
                           if (value.length <= 10) {
-                            handleChange({
-                              target: { name: "contact", value }
-                            });
+                            setFieldValue("contact", value);
                           }
                         }}
                         error={touched.contact && Boolean(errors.contact)}
@@ -640,14 +676,13 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* GST Number */}
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                       <TextField
                         fullWidth
                         label="GST Number"
                         name="gst_no"
                         variant="outlined"
                         size="small"
-                        sx={{ mb: 1 }}
                         value={values.gst_no}
                         onChange={(e) => {
                           const upperValue = e.target.value.toUpperCase();
@@ -670,7 +705,7 @@ const GeneralSetting = () => {
                     </Grid>
 
                     {/* Address */}
-                    <Grid size={6}>
+                    <Grid size={12}>
                       <TextField
                         fullWidth
                         label="Company Address"
@@ -679,7 +714,6 @@ const GeneralSetting = () => {
                         minRows={3}
                         variant="outlined"
                         size="small"
-                        sx={{ mb: 1 }}
                         value={values.address}
                         onChange={handleChange}
                         error={touched.address && Boolean(errors.address)}
@@ -701,84 +735,94 @@ const GeneralSetting = () => {
               </Grid>
 
               {/* Powered By Section */}
-              <Grid size={12}>
-                <Card>
-                  <Typography variant="h6" className="page-title" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
-                    Powered By
-                  </Typography>
-
-                  <Grid container spacing={2} alignItems="center">
-                    {/* Enable/Disable Switch */}
-                    <Grid size={{ xs: 12, md: 3 }}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={Boolean(values.is_powered_by)}
-                            onChange={(e) => {
-                              setFieldValue('is_powered_by', e.target.checked);
-                            }}
-                            name="is_powered_by"
-                            color="primary"
-                          />
-                        }
-                        label="Enable Powered By"
-                        sx={{ mb: 1 }}
-                      />
-                    </Grid>
-
-                    {/* Powered By Name */}
-                    <Grid size={{ xs: 12, md: 3 }}>
-                      <TextField
-                        fullWidth
-                        label="Powered By Name"
-                        name="powered_by_name"
-                        variant="outlined"
-                        size="small"
-                        sx={{ mb: 1 }}
-                        value={values.powered_by_name}
-                        onChange={handleChange}
-                        error={touched.powered_by_name && Boolean(errors.powered_by_name)}
-                        helperText={touched.powered_by_name && errors.powered_by_name}
-                        disabled={!values.is_powered_by}
-                        placeholder="Company Name"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <BusinessIcon color="action" />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-
-                    {/* Powered By Link */}
-                    <Grid size={{ xs: 12, md: 3 }}>
-                      <TextField
-                        fullWidth
-                        label="Link"
-                        name="powered_by_link"
-                        type="url"
-                        variant="outlined"
-                        size="small"
-                        sx={{ mb: 1 }}
-                        value={values.powered_by_link}
-                        onChange={handleChange}
-                        error={touched.powered_by_link && Boolean(errors.powered_by_link)}
-                        helperText={touched.powered_by_link && errors.powered_by_link}
-                        disabled={!values.is_powered_by}
-                        placeholder="https://example.com"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <LinkIcon color="action" />
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
+              {hasPermission('powered_by.update') && (
+                <>
+                  <Grid size={12}>
+                    <Divider />
                   </Grid>
-                </Card>
-              </Grid>
+                  <Grid size={12}>
+                    <Card sx={{ p: 2 }}>
+                      <Typography variant="h6" className="page-title" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
+                        Powered By
+                      </Typography>
+
+                      <Grid container spacing={2}>
+                        {/* Enable/Disable Switch */}
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={Boolean(values.is_powered_by)}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setFieldValue('is_powered_by', checked);
+                                  // Clear fields when disabling
+                                  if (!checked) {
+                                    setFieldValue('powered_by_name', '');
+                                    setFieldValue('powered_by_link', '');
+                                  }
+                                }}
+                                name="is_powered_by"
+                                color="primary"
+                              />
+                            }
+                            label="Enable Powered By"
+                          />
+                        </Grid>
+
+                        {/* Powered By Name */}
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <TextField
+                            fullWidth
+                            label="Powered By Name"
+                            name="powered_by_name"
+                            variant="outlined"
+                            size="small"
+                            value={values.powered_by_name}
+                            onChange={handleChange}
+                            error={touched.powered_by_name && Boolean(errors.powered_by_name)}
+                            helperText={touched.powered_by_name && errors.powered_by_name}
+                            disabled={!values.is_powered_by}
+                            placeholder="Company Name"
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <BusinessIcon color="action" />
+                                </InputAdornment>
+                              ),
+                            }}
+                          />
+                        </Grid>
+
+                        {/* Powered By Link */}
+                        <Grid size={{ xs: 12, md: 4 }}>
+                          <TextField
+                            fullWidth
+                            label="Link"
+                            name="powered_by_link"
+                            type="url"
+                            variant="outlined"
+                            size="small"
+                            value={values.powered_by_link}
+                            onChange={handleChange}
+                            error={touched.powered_by_link && Boolean(errors.powered_by_link)}
+                            helperText={touched.powered_by_link && errors.powered_by_link}
+                            disabled={!values.is_powered_by}
+                            placeholder="https://example.com"
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <LinkIcon color="action" />
+                                </InputAdornment>
+                              ),
+                            }}
+                          />
+                        </Grid>
+                      </Grid>
+                    </Card>
+                  </Grid>
+                </>
+              )}
 
               {/* Submit Button */}
               <Grid size={12}>
@@ -790,15 +834,6 @@ const GeneralSetting = () => {
                     mt: 0
                   }}
                 >
-                  <Button
-                    type="button"
-                    variant="outlined"
-                    color="error"
-                    size="large"
-                    disabled={isSubmitting}
-                  >
-                    Close
-                  </Button>
                   <Button
                     type="submit"
                     variant="contained"

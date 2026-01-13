@@ -63,6 +63,7 @@ const CreateOrder = () => {
     if (!row) {
       setItemRowData(null);
       setItems([]);
+      setPreviousPOData([]);
       return;
     }
 
@@ -70,8 +71,11 @@ const CreateOrder = () => {
     try {
       setItemRowData(row);
 
-      const res = await dispatch(getPreviousPO({ id:row.id }));
-      setPreviousPOData(res.payload);
+      const res = await dispatch(getPreviousPO({ id: row.id }));
+      setPreviousPOData(res.payload || []);
+    } catch (error) {
+      console.error("Error fetching previous PO data:", error);
+      setPreviousPOData([]);
     } finally {
       // Small delay to show loader for better UX
       setTimeout(() => setIsLoadingQuote(false), 300);
@@ -97,10 +101,12 @@ const CreateOrder = () => {
     }
   }, [itemRowData]);
 
-  const handleProductionQtyChange = (rowId, value, totalQty, prevProducedQty = 0) => {
+  const handleProductionQtyChange = (rowId, value, totalQty, prevProducedQty = 0, completedQty = 0) => {
     let qty = Number(value);
 
-    const remainingQty = totalQty - prevProducedQty;
+    // Calculate remaining quantity considering both in-production and completed quantities
+    const totalUsedQty = prevProducedQty + completedQty;
+    const remainingQty = totalQty - totalUsedQty;
 
     if (isNaN(qty) || qty < 0) qty = 0;
     if (qty > remainingQty) qty = remainingQty;
@@ -111,7 +117,6 @@ const CreateOrder = () => {
       )
     );
   };
-
 
   const handleStartDateChange = (rowId, value) => {
     setItems(items.map(item =>
@@ -141,7 +146,6 @@ const CreateOrder = () => {
       alert("Please select a quotation");
       return false;
     }
-
 
     if (!creationDate) {
       alert("Please select project start date");
@@ -175,7 +179,6 @@ const CreateOrder = () => {
           return false;
         }
       }
-
     }
 
     return true;
@@ -220,6 +223,7 @@ const CreateOrder = () => {
       setItems([]);
       setCreationDate(null);
       setEddDate(null);
+      setPreviousPOData([]);
 
     } catch (error) {
       console.error("Error creating production order:", error);
@@ -236,14 +240,29 @@ const CreateOrder = () => {
     return (
       <Stack spacing={1} sx={{ mt: 2 }}>
         {items.map((item) => {
+          // Find in-production match (status = 1)
           const prevMatch = previousPOData.find(
             (p) =>
+              p.status === 1 &&
               p.product_id == item.product_id &&
               p.group.trim() === item.group.trim()
           );
 
+          // Find completed match (status = 2)
+          const completedMatch = previousPOData.find(
+            (p) =>
+              p.status === 2 &&
+              p.product_id == item.product_id &&
+              p.group.trim() === item.group.trim()
+          );
+
+          const inProductionQty = prevMatch ? parseInt(prevMatch.total_qty || 0) : 0;
+          const completedQty = completedMatch ? parseInt(completedMatch.total_qty || 0) : 0;
+          const totalUsedQty = inProductionQty + completedQty;
+          const isFullyProduced = totalUsedQty >= parseInt(item.qty);
+
           return (
-            <Card key={item.rowId} variant="outlined" sx={{ position: 'relative',bgcolor: '#f7f7f7',pb:2 }}>
+            <Card key={item.rowId} variant="outlined" sx={{ position: 'relative', bgcolor: '#f7f7f7', pb: 2 }}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                   <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
@@ -283,21 +302,39 @@ const CreateOrder = () => {
                     </Box>
 
                     {previousPOData.length > 0 && (
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="caption" color="text.secondary">Qty in Production</Typography>
-                        <Box sx={{ mt: 0.5 }}>
-                          {prevMatch ? (
-                            <Chip
-                              label={prevMatch.total_qty}
-                              color="info"
-                              size="small"
-                              variant="outlined"
-                            />
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">0</Typography>
-                          )}
+                      <>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary">Qty in Production</Typography>
+                          <Box sx={{ mt: 0.5 }}>
+                            {prevMatch ? (
+                              <Chip
+                                label={prevMatch.total_qty}
+                                color="info"
+                                size="small"
+                                variant="outlined"
+                              />
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">0</Typography>
+                            )}
+                          </Box>
                         </Box>
-                      </Box>
+
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="caption" color="text.secondary">Completed Product</Typography>
+                          <Box sx={{ mt: 0.5 }}>
+                            {completedMatch ? (
+                              <Chip
+                                label={completedMatch.total_qty}
+                                color="success"
+                                size="small"
+                                variant="outlined"
+                              />
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">0</Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      </>
                     )}
                   </Box>
 
@@ -307,7 +344,7 @@ const CreateOrder = () => {
                     <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                       Production Qty
                     </Typography>
-                    {prevMatch && parseInt(prevMatch.total_qty) === parseInt(item.qty) ? (
+                    {isFullyProduced ? (
                       <Typography
                         variant="body2"
                         color="success.main"
@@ -326,15 +363,15 @@ const CreateOrder = () => {
                             item.rowId,
                             e.target.value,
                             item.qty,
-                            prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
+                            inProductionQty,
+                            completedQty
                           )
                         }
                         inputProps={{
                           min: 0,
-                          max: prevMatch
-                            ? item.qty - parseInt(prevMatch.total_qty || 0)
-                            : item.qty,
+                          max: item.qty - totalUsedQty,
                         }}
+                        helperText={totalUsedQty > 0 ? `Remaining: ${item.qty - totalUsedQty}` : ''}
                       />
                     )}
                   </Box>
@@ -457,7 +494,7 @@ const CreateOrder = () => {
                         {...params}
                         label="Select Quote"
                         variant="outlined"
-                       sx={{ width: { xs: "100%", md: 300 } }}
+                        sx={{ width: { xs: "100%", md: 300 } }}
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -472,7 +509,6 @@ const CreateOrder = () => {
                     sx={{ width: { xs: "100%", md: 300 } }}
                   />
 
-
                   <LocalizationProvider dateAdapter={AdapterDateFns}>
                     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                       <DatePicker
@@ -483,7 +519,7 @@ const CreateOrder = () => {
                         slotProps={{
                           textField: {
                             size: 'small',
-                            sx: { width: { xs: "100%", md: 300 } , height: 40 },
+                            sx: { width: { xs: "100%", md: 300 }, height: 40 },
                           },
                         }}
                       />
@@ -496,7 +532,7 @@ const CreateOrder = () => {
                         slotProps={{
                           textField: {
                             size: 'small',
-                            sx: { width: { xs: "100%", md: 300 } , height: 40 },
+                            sx: { width: { xs: "100%", md: 300 }, height: 40 },
                           },
                         }}
                       />
@@ -542,6 +578,7 @@ const CreateOrder = () => {
                               <Th>Unique Code</Th>
                               <Th>Qty</Th>
                               {previousPOData.length > 0 && <Th>Qty in Production</Th>}
+                              {previousPOData.length > 0 && <Th>Completed Product</Th>}
                               <Th>Production Qty</Th>
                               <Th>Size</Th>
                               <Th>Document</Th>
@@ -552,11 +589,26 @@ const CreateOrder = () => {
                           </Thead>
                           <Tbody>
                             {items.map((item) => {
+                              // Find in-production match (status = 1)
                               const prevMatch = previousPOData.find(
                                 (p) =>
+                                  p.status === 1 &&
                                   p.product_id == item.product_id &&
                                   p.group.trim() === item.group.trim()
                               );
+
+                              // Find completed match (status = 2)
+                              const completedMatch = previousPOData.find(
+                                (p) =>
+                                  p.status === 2 &&
+                                  p.product_id == item.product_id &&
+                                  p.group.trim() === item.group.trim()
+                              );
+
+                              const inProductionQty = prevMatch ? parseInt(prevMatch.total_qty || 0) : 0;
+                              const completedQty = completedMatch ? parseInt(completedMatch.total_qty || 0) : 0;
+                              const totalUsedQty = inProductionQty + completedQty;
+                              const isFullyProduced = totalUsedQty >= parseInt(item.qty);
 
                               return (
                                 <Tr key={item.rowId}>
@@ -565,6 +617,8 @@ const CreateOrder = () => {
                                   <Td>{item.model}</Td>
                                   <Td>{item.unique_code}</Td>
                                   <Td>{item.qty}</Td>
+
+                                  {/* Qty in Production Column */}
                                   {previousPOData.length > 0 && (
                                     <Td style={{ textAlign: "center" }}>
                                       {prevMatch ? (
@@ -586,8 +640,31 @@ const CreateOrder = () => {
                                     </Td>
                                   )}
 
+                                  {/* Completed Product Column */}
+                                  {previousPOData.length > 0 && (
+                                    <Td style={{ textAlign: "center" }}>
+                                      {completedMatch ? (
+                                        <Chip
+                                          label={completedMatch.total_qty}
+                                          color="success"
+                                          size="small"
+                                          variant="outlined"
+                                        />
+                                      ) : (
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{ display: "inline-block", textAlign: "center" }}
+                                        >
+                                          0
+                                        </Typography>
+                                      )}
+                                    </Td>
+                                  )}
+
+                                  {/* Production Qty Column */}
                                   <Td style={{ textAlign: "center" }}>
-                                    {prevMatch && parseInt(prevMatch.total_qty) === parseInt(item.qty) ? (
+                                    {isFullyProduced ? (
                                       <Typography
                                         variant="body2"
                                         color="success.main"
@@ -605,20 +682,20 @@ const CreateOrder = () => {
                                             item.rowId,
                                             e.target.value,
                                             item.qty,
-                                            prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
+                                            inProductionQty,
+                                            completedQty
                                           )
                                         }
                                         sx={{ width: 100 }}
                                         inputProps={{
                                           min: 0,
-                                          max: prevMatch
-                                            ? item.qty - parseInt(prevMatch.total_qty || 0)
-                                            : item.qty,
+                                          max: item.qty - totalUsedQty,
                                         }}
+                                        helperText={totalUsedQty > 0 ? `Max: ${item.qty - totalUsedQty}` : ''}
                                       />
-
                                     )}
                                   </Td>
+
                                   <Td>{item.size}</Td>
                                   <Td>
                                     {item.document && (
@@ -675,7 +752,7 @@ const CreateOrder = () => {
                 </Grid>
               )}
 
-              <Grid size={12} sx={{ mt: 4, mb:2 }}>
+              <Grid size={12} sx={{ mt: 4, mb: 2 }}>
                 <Stack
                   direction="row"
                   spacing={2}

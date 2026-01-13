@@ -84,10 +84,10 @@ const VendorPaymentLogTab = () => {
     };
 
     const handleChangeRowsPerPage = (event) => {
-        setFilters(prev => ({ 
-            ...prev, 
-            rowsPerPage: parseInt(event.target.value, 10), 
-            page: 0 
+        setFilters(prev => ({
+            ...prev,
+            rowsPerPage: parseInt(event.target.value, 10),
+            page: 0
         }));
     };
 
@@ -97,7 +97,7 @@ const VendorPaymentLogTab = () => {
             upi: { color: 'info', label: 'UPI' },
             cheque: { color: 'warning', label: 'Cheque' },
         };
-        
+
         const config = modeConfig[mode?.toLowerCase()] || { color: 'default', label: mode || 'N/A' };
         return <Chip label={config.label} color={config.color} size="small" />;
     };
@@ -137,15 +137,26 @@ const VendorPaymentLogTab = () => {
                             direction="row"
                             spacing={2}
                             alignItems="center"
-                            flexWrap="nowrap"
+                            flexWrap="wrap"
+                            useFlexGap
+                            sx={{
+                                width: "100%",
+                                "& > *": {
+                                    flexGrow: { sm: 1, md: 0 },
+                                },
+                            }}
                         >
+                            {/* Search */}
                             <TextField
                                 size="small"
                                 placeholder="Search by ID, Vendor, Reference..."
                                 value={searchText}
                                 onChange={(e) => setSearchText(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                sx={{ width: 320 }}
+                                sx={{
+                                    width: { xs: "100%", sm: 320 },
+                                    minWidth: 220,
+                                }}
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">
@@ -155,17 +166,23 @@ const VendorPaymentLogTab = () => {
                                 }}
                             />
 
+                            {/* Payment Mode */}
                             <TextField
                                 select
                                 size="small"
                                 label="Payment Mode"
                                 value={filters.paymentMode}
-                                onChange={(e) => setFilters(prev => ({ 
-                                    ...prev, 
-                                    paymentMode: e.target.value, 
-                                    page: 0 
-                                }))}
-                                sx={{ width: 160 }}
+                                onChange={(e) =>
+                                    setFilters((prev) => ({
+                                        ...prev,
+                                        paymentMode: e.target.value,
+                                        page: 0,
+                                    }))
+                                }
+                                sx={{
+                                    width: { xs: "100%", sm: 160 },
+                                    minWidth: 140,
+                                }}
                             >
                                 <MenuItem value="">All</MenuItem>
                                 <MenuItem value="cash">Cash</MenuItem>
@@ -173,52 +190,71 @@ const VendorPaymentLogTab = () => {
                                 <MenuItem value="cheque">Cheque</MenuItem>
                             </TextField>
 
+                            {/* Start Date */}
                             <DatePicker
                                 label="Start Date"
                                 value={filters.startDate}
                                 onChange={(date) =>
-                                    setFilters(prev => ({ ...prev, startDate: date, page: 0 }))
+                                    setFilters((prev) => ({ ...prev, startDate: date, page: 0 }))
                                 }
                                 slotProps={{
                                     textField: {
                                         size: "small",
-                                        sx: { width: 160 },
+                                        sx: {
+                                            width: { xs: "100%", sm: 160 },
+                                            minWidth: 140,
+                                        },
                                     },
                                 }}
                             />
 
+                            {/* End Date */}
                             <DatePicker
                                 label="End Date"
                                 value={filters.endDate}
                                 onChange={(date) =>
-                                    setFilters(prev => ({ ...prev, endDate: date, page: 0 }))
+                                    setFilters((prev) => ({ ...prev, endDate: date, page: 0 }))
                                 }
                                 slotProps={{
                                     textField: {
                                         size: "small",
-                                        sx: { width: 160 },
+                                        sx: {
+                                            width: { xs: "100%", sm: 160 },
+                                            minWidth: 140,
+                                        },
                                     },
                                 }}
                             />
 
+                            {/* Search Button */}
                             <Button
                                 variant="contained"
                                 startIcon={<SearchIcon />}
-                                sx={{ whiteSpace: "nowrap" }}
                                 onClick={handleSearch}
+                                sx={{
+                                    width: { xs: "100%", sm: "auto" },
+                                    whiteSpace: "nowrap",
+                                    mt: 0
+                                }}
                             >
                                 Search
                             </Button>
 
+                            {/* Reset Button */}
                             <Button
                                 variant="outlined"
                                 startIcon={<RefreshIcon />}
-                                sx={{ whiteSpace: "nowrap" }}
                                 onClick={handleReset}
+                                sx={{
+                                    width: { xs: "100%", sm: "auto" },
+                                    whiteSpace: "nowrap",
+                                    mt: 0
+                                }}
                             >
                                 Reset
                             </Button>
                         </Stack>
+
                     </Stack>
                 </Paper>
 
@@ -276,9 +312,9 @@ const VendorPaymentLogTab = () => {
                                         <TableCell sx={{ fontWeight: 600, color: 'success.main' }}>
                                             {formatCurrency(row.paid_amount)}
                                         </TableCell>
-                                        <TableCell sx={{ 
-                                            fontWeight: 600, 
-                                            color: parseFloat(row.due) > 0 ? 'error.main' : 'text.secondary' 
+                                        <TableCell sx={{
+                                            fontWeight: 600,
+                                            color: parseFloat(row.due) > 0 ? 'error.main' : 'text.secondary'
                                         }}>
                                             {formatCurrency(row.due)}
                                         </TableCell>

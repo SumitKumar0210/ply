@@ -18,11 +18,9 @@ import {
   TextField,
   MenuItem,
   CircularProgress,
-  useMediaQuery, useTheme
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
-import { styled } from "@mui/material/styles";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -46,39 +44,10 @@ import { fetchActiveGroup } from "../../settings/slices/groupSlice";
 import { successMessage, errorMessage } from "../../../toast";
 import ImagePreviewDialog from "../../../components/ImagePreviewDialog/ImagePreviewDialog";
 import ProductFormDialog from "../../../components/Product/ProductFormDialog";
-
-// Styled Dialog
-const BootstrapDialog = styled(Dialog)(({ theme }) => ({
-  "& .MuiDialogContent-root": {
-    padding: theme.spacing(2),
-    paddingBottom: theme.spacing(4),
-  },
-  "& .MuiDialogActions-root": {
-    padding: theme.spacing(1),
-  },
-}));
-
-function BootstrapDialogTitle({ children, onClose, ...other }) {
-  return (
-    <DialogTitle sx={{ m: 0, p: 2 }} {...other}>
-      {children}
-      {onClose && (
-        <IconButton
-          aria-label="close"
-          onClick={onClose}
-          sx={{
-            position: "absolute",
-            right: 8,
-            top: 8,
-            color: (theme) => theme.palette.grey[500],
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      )}
-    </DialogTitle>
-  );
-}
+import CustomerFormDialog, {
+  getInitialCustomerValues,
+} from "../../../components/Customer/CustomerFormDialog";
+import { Table, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
 
 // Validation Schemas
 const itemValidationSchema = Yup.object({
@@ -91,36 +60,10 @@ const itemValidationSchema = Yup.object({
   narration: Yup.string(),
 });
 
-const customerValidationSchema = Yup.object({
-  name: Yup.string()
-    .min(2, "Name must be at least 2 characters")
-    .required("Name is required"),
-  mobile: Yup.string()
-    .matches(/^[0-9]{10}$/, "Mobile must be 10 digits")
-    .required("Mobile is required"),
-  email: Yup.string()
-    .email("Invalid email format")
-    .required("E-mail is required"),
-  address: Yup.string().required("Address is required"),
-  alternate_mobile: Yup.string().matches(
-    /^[0-9]{10}$/,
-    "Alternate Mobile must be 10 digits"
-  ),
-  city: Yup.string().required("City is required"),
-  state_id: Yup.string().required("State is required"),
-  zip_code: Yup.string()
-    .matches(/^[0-9]{6}$/, "ZIP must be 6 digits")
-    .required("ZIP code is required"),
-  note: Yup.string(),
-});
-
 const quoteValidationSchema = Yup.object({
   orderTerms: Yup.string().max(500, "Order terms cannot exceed 500 characters"),
   discount: Yup.number().min(0, "Discount cannot be negative"),
-  additionalCharges: Yup.number().min(
-    0,
-    "Additional charges cannot be negative"
-  ),
+  additionalCharges: Yup.number().min(0, "Additional charges cannot be negative"),
   gstRate: Yup.number().required("GST rate is required"),
 });
 
@@ -138,8 +81,9 @@ const EditQuote = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   // Date and Priority State
   const [creationDate, setCreationDate] = useState(new Date());
   const [deliveryDate, setDeliveryDate] = useState(null);
@@ -179,8 +123,9 @@ const theme = useTheme();
   const imageUrl = import.meta.env.VITE_MEDIA_URL;
 
   // Redux selectors
-  const { selected: quotationData = {}, loading: quotationLoading } =
-    useSelector((state) => state.quotation);
+  const { selected: quotationData = {}, loading: quotationLoading } = useSelector(
+    (state) => state.quotation
+  );
   const { data: customerData = [], loading: customersLoading } = useSelector(
     (state) => state.customer
   );
@@ -217,11 +162,7 @@ const theme = useTheme();
 
   // Populate form when quotation data and dependencies are loaded
   useEffect(() => {
-    if (
-      !quotationData?.id ||
-      customerData.length === 0 ||
-      products.length === 0
-    ) {
+    if (!quotationData?.id || customerData.length === 0 || products.length === 0) {
       return;
     }
 
@@ -257,14 +198,12 @@ const theme = useTheme();
           cost: parseNumericValue(item.cost),
           unitPrice: parseNumericValue(item.unitPrice),
           narration: item.narration || "",
-          document:
-            typeof item.document === "string" ? imageUrl + item.document : "",
+          document: typeof item.document === "string" ? imageUrl + item.document : "",
           documentFile: typeof item.document === "string" ? item.document : null,
           documentName:
-            typeof item.document === "string"
-              ? item.document.split("/").pop()
-              : "",
-          existing_document: typeof item.document === "string" ? item.document : null,
+            typeof item.document === "string" ? item.document.split("/").pop() : "",
+          existing_document:
+            typeof item.document === "string" ? item.document : null,
         };
       });
 
@@ -280,9 +219,7 @@ const theme = useTheme();
 
       setPriority(quotationData.priority || "Normal");
 
-      const customer = customerData.find(
-        (c) => c.id === quotationData.customer_id
-      );
+      const customer = customerData.find((c) => c.id === quotationData.customer_id);
       if (customer) {
         setSelectedCustomer(customer);
       }
@@ -310,20 +247,6 @@ const theme = useTheme();
     }
   }, [dispatch]);
 
-  // Open product modal and load groups
-  const openProductModal = async () => {
-    await dispatch(fetchActiveGroup());
-    setOpenAddProduct(true);
-  };
-
-  // Handle product success (after adding new product)
-  const handleProductSuccess = async () => {
-    setOpenAddProduct(false);
-    setSelectedProduct(null);
-    // Fetch latest products
-    await dispatch(fetchActiveProducts());
-  };
-
   const handleAddCustomer = useCallback(
     async (values, { resetForm }) => {
       try {
@@ -341,6 +264,19 @@ const theme = useTheme();
     [dispatch]
   );
 
+  // Open product modal and load groups
+  const openProductModal = async () => {
+    await dispatch(fetchActiveGroup());
+    setOpenAddProduct(true);
+  };
+
+  // Handle product success (after adding new product)
+  const handleProductSuccess = async () => {
+    setOpenAddProduct(false);
+    setSelectedProduct(null);
+    await dispatch(fetchActiveProducts());
+  };
+
   // Item Management Handlers
   const isDuplicateItem = useCallback(
     (product_id, group) => {
@@ -352,8 +288,7 @@ const theme = useTheme();
         const existingProduct = String(item.product_id).trim();
 
         return (
-          existingProduct === normalizedProduct &&
-          existingGroup === normalizedGroup
+          existingProduct === normalizedProduct && existingGroup === normalizedGroup
         );
       });
     },
@@ -388,7 +323,6 @@ const theme = useTheme();
         return;
       }
 
-      // Use product image from API
       const productImageUrl = product.image ? `${imageUrl}${product.image}` : "";
 
       const unitPrice = parseNumericValue(product.rrp);
@@ -482,13 +416,9 @@ const theme = useTheme();
     (values) => {
       const subTotal = items.reduce((sum, item) => sum + item.cost, 0);
       const discountAmount = parseNumericValue(values.discount);
-      const additionalChargesAmount = parseNumericValue(
-        values.additionalCharges
-      );
-      const afterDiscount =
-        subTotal - discountAmount + additionalChargesAmount;
-      const gstAmount =
-        (afterDiscount * parseNumericValue(values.gstRate)) / 100;
+      const additionalChargesAmount = parseNumericValue(values.additionalCharges);
+      const afterDiscount = subTotal - discountAmount + additionalChargesAmount;
+      const gstAmount = (afterDiscount * parseNumericValue(values.gstRate)) / 100;
       const grandTotal = afterDiscount + gstAmount;
 
       return {
@@ -549,33 +479,23 @@ const theme = useTheme();
         items.forEach((item, index) => {
           formData.append(`items[${index}][id]`, String(item.id || ""));
           formData.append(`items[${index}][group]`, String(item.group || ""));
-          formData.append(
-            `items[${index}][product_id]`,
-            String(item.product_id || "")
-          );
+          formData.append(`items[${index}][product_id]`, String(item.product_id || ""));
           formData.append(`items[${index}][name]`, String(item.name || ""));
           formData.append(`items[${index}][model]`, String(item.model || ""));
-          formData.append(
-            `items[${index}][unique_code]`,
-            String(item.unique_code || "")
-          );
+          formData.append(`items[${index}][unique_code]`, String(item.unique_code || ""));
           formData.append(`items[${index}][qty]`, String(item.qty || 0));
           formData.append(`items[${index}][size]`, String(item.size || ""));
           formData.append(`items[${index}][cost]`, String(item.cost || 0));
-          formData.append(
-            `items[${index}][unitPrice]`,
-            String(item.unitPrice || 0)
-          );
-          formData.append(
-            `items[${index}][narration]`,
-            String(item.narration || "")
-          );
+          formData.append(`items[${index}][unitPrice]`, String(item.unitPrice || 0));
+          formData.append(`items[${index}][narration]`, String(item.narration || ""));
 
-          // Send product image path to server
           if (item.documentFile && item.documentFile !== "-") {
             formData.append(`items[${index}][document]`, item.documentFile);
           } else if (item.existing_document) {
-            formData.append(`items[${index}][existing_document]`, item.existing_document);
+            formData.append(
+              `items[${index}][existing_document]`,
+              item.existing_document
+            );
           }
         });
 
@@ -609,7 +529,7 @@ const theme = useTheme();
   );
 
   const isLoading =
-    quotationLoading || customersLoading || productsLoading || gstsLoading;
+    quotationLoading  || productsLoading || gstsLoading;
 
   if (isLoading) {
     return (
@@ -642,7 +562,9 @@ const theme = useTheme();
         sx={{ mb: 2 }}
       >
         <Grid size={12}>
-          <Typography variant="h6" className="page-title">Edit Quote</Typography>
+          <Typography variant="h6" className="page-title">
+            Edit Quote
+          </Typography>
         </Grid>
       </Grid>
 
@@ -728,15 +650,10 @@ const theme = useTheme();
                       onChange={(e, value) => setPriority(value)}
                       sx={{ width: { xs: "100%", md: 200 } }}
                       renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Priority"
-                          variant="outlined"
-                        />
+                        <TextField {...params} label="Priority" variant="outlined" />
                       )}
                     />
                   </Box>
-
                 </LocalizationProvider>
               </Box>
 
@@ -853,7 +770,6 @@ const theme = useTheme();
                         )}
                       />
 
-
                       <TextField
                         label="Item Name"
                         variant="outlined"
@@ -902,9 +818,7 @@ const theme = useTheme();
                           width: "250px",
                           padding: "8px",
                           borderColor:
-                            touched.narration && errors.narration
-                              ? "red"
-                              : "#ccc",
+                            touched.narration && errors.narration ? "red" : "#ccc",
                           borderRadius: "4px",
                           fontFamily: "inherit",
                         }}
@@ -938,16 +852,12 @@ const theme = useTheme();
                 <>
                   {uniqueGroups.map((group) => (
                     <Box key={group} sx={{ mb: 3 }}>
-                      <Typography
-                        variant="subtitle1"
-                        sx={{ fontWeight: 600, mb: 1 }}
-                      >
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
                         {group}
                       </Typography>
 
                       {isMobile ? (
-                              // 🔹 MOBILE VIEW (Cards)
-                              // Mobile Card View
+                        // Mobile Card View
                         <Box sx={{ p: 0 }}>
                           {items
                             .filter((item) => item.group === group)
@@ -1181,150 +1091,141 @@ const theme = useTheme();
                               );
                             })}
                         </Box>
-                            ) : (
-                      <Table>
-                        <Thead>
-                          <Tr>
-                            <Th>Item Name</Th>
-                            <Th>Item Code</Th>
-                            <Th>Qty</Th>
-                            <Th>Size</Th>
-                            <Th>Unit Price</Th>
-                            <Th>Total Cost</Th>
-                            <Th>Documents</Th>
-                            <Th>Narration</Th>
-                            <Th>Action</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {items
-                            .filter((item) => item.group === group)
-                            .map((item) => {
-                              const isEditing = editingItemId === item.id;
-                              const displayQty = isEditing
-                                ? editedQty
-                                : item.qty;
-                              const displayCost = isEditing
-                                ? item.unitPrice *
-                                (parseInt(editedQty, 10) || 0)
-                                : item.cost;
+                      ) : (
+                        <Table>
+                          <Thead>
+                            <Tr>
+                              <Th>Item Name</Th>
+                              <Th>Item Code</Th>
+                              <Th>Qty</Th>
+                              <Th>Size</Th>
+                              <Th>Unit Price</Th>
+                              <Th>Total Cost</Th>
+                              <Th>Documents</Th>
+                              <Th>Narration</Th>
+                              <Th>Action</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {items
+                              .filter((item) => item.group === group)
+                              .map((item) => {
+                                const isEditing = editingItemId === item.id;
+                                const displayQty = isEditing ? editedQty : item.qty;
+                                const displayCost = isEditing
+                                  ? item.unitPrice * (parseInt(editedQty, 10) || 0)
+                                  : item.cost;
 
-                              return (
-                                <Tr key={item.id}>
-                                  <Td>{item.name}</Td>
-                                  <Td>{item.model}</Td>
-                                  <Td>
-                                    {isEditing ? (
-                                      <TextField
-                                        type="number"
-                                        value={displayQty}
-                                        onChange={handleQtyChange}
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter")
-                                            handleSaveEdit();
-                                          if (e.key === "Escape")
-                                            handleCancelEdit();
-                                        }}
-                                        size="small"
-                                        autoFocus
-                                        error={!!qtyError}
-                                        helperText={qtyError}
-                                        inputProps={{ min: 1 }}
-                                        sx={{ width: "100px" }}
-                                      />
-                                    ) : (
-                                      displayQty
-                                    )}
-                                  </Td>
-                                  <Td>{item.size}</Td>
-                                  <Td>
-                                    ₹{item.unitPrice.toLocaleString("en-IN")}
-                                  </Td>
-                                  <Td>
-                                    ₹{displayCost.toLocaleString("en-IN")}
-                                  </Td>
-                                  <Td>
-                                    {item.document ? (
-                                      <Box
-                                        sx={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: 1,
-                                        }}
-                                      >
-                                        <ImagePreviewDialog
-                                          imageUrl={item.document}
-                                          alt={item.documentName || "Document"}
-                                        />
-                                        <Typography variant="caption">
-                                          {item.documentName || "Document"}
-                                        </Typography>
-                                      </Box>
-                                    ) : (
-                                      "-"
-                                    )}
-                                  </Td>
-                                  <Td>{item.narration || "-"}</Td>
-                                  <Td>
-                                    <Box sx={{ display: "flex", gap: 0.5 }}>
+                                return (
+                                  <Tr key={item.id}>
+                                    <Td>{item.name}</Td>
+                                    <Td>{item.model}</Td>
+                                    <Td>
                                       {isEditing ? (
-                                        <>
-                                          <Tooltip title="Save">
-                                            <IconButton
-                                              color="success"
-                                              size="small"
-                                              onClick={handleSaveEdit}
-                                              disabled={!!qtyError}
-                                            >
-                                              <MdCheck size={18} />
-                                            </IconButton>
-                                          </Tooltip>
-                                          <Tooltip title="Cancel">
-                                            <IconButton
-                                              color="default"
-                                              size="small"
-                                              onClick={handleCancelEdit}
-                                            >
-                                              <MdClose size={18} />
-                                            </IconButton>
-                                          </Tooltip>
-                                        </>
+                                        <TextField
+                                          type="number"
+                                          value={displayQty}
+                                          onChange={handleQtyChange}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") handleSaveEdit();
+                                            if (e.key === "Escape") handleCancelEdit();
+                                          }}
+                                          size="small"
+                                          autoFocus
+                                          error={!!qtyError}
+                                          helperText={qtyError}
+                                          inputProps={{ min: 1 }}
+                                          sx={{ width: "100px" }}
+                                        />
                                       ) : (
-                                        <>
-                                          <Tooltip title="Edit Quantity">
-                                            <IconButton
-                                              color="primary"
-                                              size="small"
-                                              onClick={() =>
-                                                handleEditItem(item.id, item.qty)
-                                              }
-                                            >
-                                              <MdEdit size={16} />
-                                            </IconButton>
-                                          </Tooltip>
-                                          <Tooltip title="Delete">
-                                            <IconButton
-                                              color="error"
-                                              size="small"
-                                              onClick={() =>
-                                                setDeleteDialog({
-                                                  open: true,
-                                                  itemId: item.id,
-                                                })
-                                              }
-                                            >
-                                              <RiDeleteBinLine size={16} />
-                                            </IconButton>
-                                          </Tooltip>
-                                        </>
+                                        displayQty
                                       )}
-                                    </Box>
-                                  </Td>
-                                </Tr>
-                              );
-                            })}
-                        </Tbody>
-                      </Table>
+                                    </Td>
+                                    <Td>{item.size}</Td>
+                                    <Td>₹{item.unitPrice.toLocaleString("en-IN")}</Td>
+                                    <Td>₹{displayCost.toLocaleString("en-IN")}</Td>
+                                    <Td>
+                                      {item.document ? (
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 1,
+                                          }}
+                                        >
+                                          <ImagePreviewDialog
+                                            imageUrl={item.document}
+                                            alt={item.documentName || "Document"}
+                                          />
+                                          <Typography variant="caption">
+                                            {item.documentName || "Document"}
+                                          </Typography>
+                                        </Box>
+                                      ) : (
+                                        "-"
+                                      )}
+                                    </Td>
+                                    <Td>{item.narration || "-"}</Td>
+                                    <Td>
+                                      <Box sx={{ display: "flex", gap: 0.5 }}>
+                                        {isEditing ? (
+                                          <>
+                                            <Tooltip title="Save">
+                                              <IconButton
+                                                color="success"
+                                                size="small"
+                                                onClick={handleSaveEdit}
+                                                disabled={!!qtyError}
+                                              >
+                                                <MdCheck size={18} />
+                                              </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Cancel">
+                                              <IconButton
+                                                color="default"
+                                                size="small"
+                                                onClick={handleCancelEdit}
+                                              >
+                                                <MdClose size={18} />
+                                              </IconButton>
+                                            </Tooltip>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Tooltip title="Edit Quantity">
+                                              <IconButton
+                                                color="primary"
+                                                size="small"
+                                                onClick={() =>
+                                                  handleEditItem(item.id, item.qty)
+                                                }
+                                              >
+                                                <MdEdit size={16} />
+                                              </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Delete">
+                                              <IconButton
+                                                color="error"
+                                                size="small"
+                                                onClick={() =>
+                                                  setDeleteDialog({
+                                                    open: true,
+                                                    itemId: item.id,
+                                                  })
+                                                }
+                                              >
+                                                <RiDeleteBinLine size={16} />
+                                              </IconButton>
+                                            </Tooltip>
+                                          </>
+                                        )}
+                                      </Box>
+                                    </Td>
+                                  </Tr>
+                                );
+                              })}
+                          </Tbody>
+                        </Table>
                       )}
                     </Box>
                   ))}
@@ -1388,9 +1289,7 @@ const theme = useTheme();
                               }}
                             >
                               <span>Sub Total</span>
-                              <span>
-                                ₹{totals.subTotal.toLocaleString("en-IN")}
-                              </span>
+                              <span>₹{totals.subTotal.toLocaleString("en-IN")}</span>
                             </Box>
 
                             <Box
@@ -1416,9 +1315,9 @@ const theme = useTheme();
                               />
                               <span>
                                 ₹
-                                {(
-                                  totals.subTotal - totals.discountAmount
-                                ).toLocaleString("en-IN")}
+                                {(totals.subTotal - totals.discountAmount).toLocaleString(
+                                  "en-IN"
+                                )}
                               </span>
                             </Box>
 
@@ -1439,21 +1338,17 @@ const theme = useTheme();
                                 value={values.additionalCharges}
                                 onChange={handleChange}
                                 error={
-                                  touched.additionalCharges &&
-                                  !!errors.additionalCharges
+                                  touched.additionalCharges && !!errors.additionalCharges
                                 }
                                 helperText={
-                                  touched.additionalCharges &&
-                                  errors.additionalCharges
+                                  touched.additionalCharges && errors.additionalCharges
                                 }
                                 sx={{ width: "55%" }}
                                 inputProps={{ min: 0 }}
                               />
                               <span>
                                 ₹
-                                {totals.additionalChargesAmount.toLocaleString(
-                                  "en-IN"
-                                )}
+                                {totals.additionalChargesAmount.toLocaleString("en-IN")}
                               </span>
                             </Box>
 
@@ -1463,7 +1358,6 @@ const theme = useTheme();
                                 justifyContent: "space-between",
                                 gap: 1,
                                 alignItems: "center",
-                                
                               }}
                             >
                               <TextField
@@ -1478,17 +1372,12 @@ const theme = useTheme();
                                 sx={{ width: "55%" }}
                               >
                                 {gsts.map((item) => (
-                                  <MenuItem
-                                    key={item.id}
-                                    value={item.percentage}
-                                  >
+                                  <MenuItem key={item.id} value={item.percentage}>
                                     {item.percentage}%
                                   </MenuItem>
                                 ))}
                               </TextField>
-                              <span>
-                                ₹{totals.gstAmount.toLocaleString("en-IN")}
-                              </span>
+                              <span>₹{totals.gstAmount.toLocaleString("en-IN")}</span>
                             </Box>
 
                             <Box
@@ -1502,9 +1391,7 @@ const theme = useTheme();
                               }}
                             >
                               <span>Grand Total</span>
-                              <span>
-                                ₹{totals.grandTotal.toLocaleString("en-IN")}
-                              </span>
+                              <span>₹{totals.grandTotal.toLocaleString("en-IN")}</span>
                             </Box>
                           </Box>
                         </Box>
@@ -1520,17 +1407,11 @@ const theme = useTheme();
                           variant="contained"
                           color="secondary"
                           onClick={() => handleSubmitQuote(values, true)}
-                          disabled={
-                            savingDraft || savingFinal || items.length === 0
-                          }
+                          disabled={savingDraft || savingFinal || items.length === 0}
                         >
                           {savingDraft ? (
                             <>
-                              <CircularProgress
-                                size={20}
-                                color="inherit"
-                                sx={{ mr: 1 }}
-                              />
+                              <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
                               Saving...
                             </>
                           ) : (
@@ -1541,17 +1422,11 @@ const theme = useTheme();
                           type="submit"
                           variant="contained"
                           color="primary"
-                          disabled={
-                            savingDraft || savingFinal || items.length === 0
-                          }
+                          disabled={savingDraft || savingFinal || items.length === 0}
                         >
                           {savingFinal ? (
                             <>
-                              <CircularProgress
-                                size={20}
-                                color="inherit"
-                                sx={{ mr: 1 }}
-                              />
+                              <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
                               Updating...
                             </>
                           ) : (
@@ -1569,190 +1444,14 @@ const theme = useTheme();
       </Grid>
 
       {/* Add Customer Modal */}
-      <BootstrapDialog
+      <CustomerFormDialog
         open={openAddCustomer}
         onClose={() => setOpenAddCustomer(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <BootstrapDialogTitle onClose={() => setOpenAddCustomer(false)}>
-          Add Customer
-        </BootstrapDialogTitle>
-        <Formik
-          initialValues={{
-            name: "",
-            mobile: "",
-            email: "",
-            address: "",
-            alternate_mobile: "",
-            city: "",
-            state_id: "",
-            zip_code: "",
-            note: "",
-          }}
-          validationSchema={customerValidationSchema}
-          onSubmit={handleAddCustomer}
-        >
-          {({ handleChange, values, touched, errors }) => (
-            <Form>
-              <DialogContent dividers>
-                <Grid container rowSpacing={1} columnSpacing={3}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="name"
-                      label="Name"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.name}
-                      onChange={handleChange}
-                      error={touched.name && Boolean(errors.name)}
-                      helperText={touched.name && errors.name}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="mobile"
-                      label="Mobile"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.mobile}
-                      onChange={handleChange}
-                      error={touched.mobile && Boolean(errors.mobile)}
-                      helperText={touched.mobile && errors.mobile}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="alternate_mobile"
-                      label="Alternate Mobile"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.alternate_mobile}
-                      onChange={handleChange}
-                      error={
-                        touched.alternate_mobile &&
-                        Boolean(errors.alternate_mobile)
-                      }
-                      helperText={
-                        touched.alternate_mobile && errors.alternate_mobile
-                      }
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="email"
-                      label="E-mail"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.email}
-                      onChange={handleChange}
-                      error={touched.email && Boolean(errors.email)}
-                      helperText={touched.email && errors.email}
-                    />
-                  </Grid>
-                  <Grid size={12}>
-                    <TextField
-                      name="address"
-                      label="Address"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.address}
-                      onChange={handleChange}
-                      error={touched.address && Boolean(errors.address)}
-                      helperText={touched.address && errors.address}
-                    />
-                  </Grid>
-                  <Grid size={12}>
-                    <TextField
-                      name="state_id"
-                      label="State"
-                      select
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.state_id}
-                      onChange={handleChange}
-                      error={touched.state_id && Boolean(errors.state_id)}
-                      helperText={touched.state_id && errors.state_id}
-                    >
-                      {states.map((s) => (
-                        <MenuItem key={s.id} value={s.id}>
-                          {s.name}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="city"
-                      label="City"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.city}
-                      onChange={handleChange}
-                      error={touched.city && Boolean(errors.city)}
-                      helperText={touched.city && errors.city}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <TextField
-                      name="zip_code"
-                      label="Zip Code"
-                      fullWidth
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.zip_code}
-                      onChange={handleChange}
-                      error={touched.zip_code && Boolean(errors.zip_code)}
-                      helperText={touched.zip_code && errors.zip_code}
-                    />
-                  </Grid>
-                  <Grid size={12}>
-                    <TextField
-                      name="note"
-                      label="Note"
-                      fullWidth
-                      multiline
-                      rows={3}
-                      margin="dense"
-                      variant="outlined"
-                      size="small"
-                      value={values.note}
-                      onChange={handleChange}
-                    />
-                  </Grid>
-                </Grid>
-              </DialogContent>
-              <DialogActions>
-                <Button
-                  onClick={() => setOpenAddCustomer(false)}
-                  variant="outlined"
-                  color="error"
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" variant="contained" color="primary">
-                  Submit
-                </Button>
-              </DialogActions>
-            </Form>
-          )}
-        </Formik>
-      </BootstrapDialog>
+        title="Add Customer"
+        initialValues={getInitialCustomerValues()}
+        onSubmit={handleAddCustomer}
+        states={states}
+      />
 
       {/* Add Product Dialog */}
       <ProductFormDialog
@@ -1773,9 +1472,7 @@ const theme = useTheme();
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => setDeleteDialog({ open: false, itemId: null })}
-          >
+          <Button onClick={() => setDeleteDialog({ open: false, itemId: null })}>
             Cancel
           </Button>
           <Button color="error" onClick={confirmDeleteItem} variant="contained">

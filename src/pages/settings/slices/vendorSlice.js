@@ -44,7 +44,7 @@ export const fetchVendors = createAsyncThunk(
 
 
 
-export const fetchActiveVendors = createAsyncThunk("vendor/fetchAll", async () => {
+export const fetchActiveVendors = createAsyncThunk("vendor/fetchActiveVendors", async () => {
   const res = await api.get("admin/vendor/get-data?status=1");
   return res.data.data;
 });
@@ -149,6 +149,19 @@ const vendorSlice = createSlice({
         state.error = action.payload || action.error.message;
         state.data = [];
         state.total = 0;
+      })
+
+      .addCase(fetchActiveVendors.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchActiveVendors.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload;
+      })
+      .addCase(fetchActiveVendors.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message;
       })
 
       .addCase(addVendor.pending, (state) => {

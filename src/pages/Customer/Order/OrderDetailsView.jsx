@@ -28,6 +28,8 @@ import {
   useTheme,
   useMediaQuery,
   Divider,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Table as ResponsiveTable, Thead, Tbody, Tr, Th, Td } from "react-super-responsive-table";
@@ -35,6 +37,7 @@ import { AiOutlineSetting, AiOutlineEye } from "react-icons/ai";
 import AddIcon from "@mui/icons-material/Add";
 import { BiSolidEditAlt } from "react-icons/bi";
 import { MdOutlineCheckCircle } from "react-icons/md";
+import { RiDeleteBinLine } from "react-icons/ri";
 import { useDispatch } from "react-redux";
 import {
   approveAllProduct,
@@ -68,6 +71,12 @@ const PRODUCTION_STATUS = {
   NOT_STARTED: 0,
   IN_PROGRESS: 1,
   COMPLETED: 2,
+};
+
+const PRODUCTION_STATUS_CONFIG = {
+  [PRODUCTION_STATUS.NOT_STARTED]: { label: "Not Started", color: "default" },
+  [PRODUCTION_STATUS.IN_PROGRESS]: { label: "In Progress", color: "info" },
+  [PRODUCTION_STATUS.COMPLETED]: { label: "Completed", color: "success" },
 };
 
 // Utility functions
@@ -117,12 +126,22 @@ const OrderDetailsView = () => {
   const [previousPOData, setPreviousPOData] = useState([]);
   const [editingItemId, setEditingItemId] = useState(null);
   const [editedProductionQty, setEditedProductionQty] = useState({});
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
 
   // Modal states
   const [openDelete, setOpenDelete] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [openStagesModal, setOpenStagesModal] = useState(false);
   const [selectedProductLogs, setSelectedProductLogs] = useState([]);
+
+  // Snackbar helpers
+  const showSnackbar = useCallback((message, severity = "info") => {
+    setSnackbar({ open: true, message, severity });
+  }, []);
+
+  const handleCloseSnackbar = useCallback(() => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  }, []);
 
   // Format items helper
   const formatItems = useCallback((productItems) => {
@@ -175,14 +194,16 @@ const OrderDetailsView = () => {
         return acc;
       }, {});
       setEditedProductionQty(initialQty);
+
+      showSnackbar("Order details loaded successfully", "success");
     } catch (error) {
       console.error("Error loading order details:", error);
-      alert("Failed to load order details. Please try again.");
-      navigate("/customer/orders");
+      showSnackbar("Failed to load order details", "error");
+      setTimeout(() => navigate("/customer/order"), 2000);
     } finally {
       setLoading(false);
     }
-  }, [orderId, dispatch, navigate, formatItems]);
+  }, [orderId, dispatch, navigate, formatItems, showSnackbar]);
 
   // Load order data on mount
   useEffect(() => {
@@ -190,9 +211,10 @@ const OrderDetailsView = () => {
   }, [loadOrderDetails]);
 
   // Handle production qty change
-  const handleProductionQtyChange = useCallback((itemId, value, maxQty, prevQty = 0) => {
+  const handleProductionQtyChange = useCallback((itemId, value, maxQty, prevQty = 0, completedQty = 0) => {
     let qty = Number(value);
-    const remainingQty = Math.max(0, maxQty - prevQty);
+    const totalUsedQty = prevQty + completedQty;
+    const remainingQty = Math.max(0, maxQty - totalUsedQty);
 
     if (isNaN(qty) || qty < 0) qty = 0;
     if (qty > remainingQty) qty = remainingQty;
@@ -209,16 +231,29 @@ const OrderDetailsView = () => {
   }, []);
 
   // Handle save edited item
-  const handleSaveEdit = useCallback((itemId) => {
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === itemId
-          ? { ...item, production_qty: editedProductionQty[itemId] }
-          : item
-      )
-    );
-    setEditingItemId(null);
-  }, [editedProductionQty]);
+  const handleSaveEdit = useCallback(async (itemId) => {
+    try {
+      const item = items.find((i) => i.id === itemId);
+      if (!item) {
+        showSnackbar("Item not found", "error");
+        return;
+      }
+
+      // Update local state
+      setItems((prevItems) =>
+        prevItems.map((item) =>
+          item.id === itemId
+            ? { ...item, production_qty: editedProductionQty[itemId] }
+            : item
+        )
+      );
+      setEditingItemId(null);
+      showSnackbar("Production quantity updated", "success");
+    } catch (error) {
+      console.error("Error saving edit:", error);
+      showSnackbar("Failed to save changes", "error");
+    }
+  }, [items, editedProductionQty, showSnackbar]);
 
   // Handle cancel edit
   const handleCancelEdit = useCallback((itemId) => {
@@ -242,7 +277,8 @@ const OrderDetailsView = () => {
     setItems((prevItems) => prevItems.filter((item) => item.id !== selectedItemId));
     setOpenDelete(false);
     setSelectedItemId(null);
-  }, [selectedItemId]);
+    showSnackbar("Item deleted successfully", "success");
+  }, [selectedItemId, showSnackbar]);
 
   // Handle approve all products
   const handleApproveAll = useCallback(async () => {
@@ -268,12 +304,13 @@ const OrderDetailsView = () => {
         })
       ).unwrap();
 
+      showSnackbar("Order approved successfully", "success");
       await loadOrderDetails();
     } catch (error) {
       console.error("Error approving order:", error);
-      alert("Failed to approve order. Please try again.");
+      showSnackbar("Failed to approve order. Please try again.", "error");
     }
-  }, [items, editedProductionQty, orderId, dispatch, loadOrderDetails]);
+  }, [items, editedProductionQty, orderId, dispatch, loadOrderDetails, showSnackbar]);
 
   // Handle approve single product
   const handleApproveSingle = useCallback(
@@ -282,6 +319,11 @@ const OrderDetailsView = () => {
         const item = items.find(
           (i) => i.product_id == productID && (i.group ?? "").trim() === (group ?? "").trim()
         );
+
+        if (!item) {
+          showSnackbar("Item not found", "error");
+          return;
+        }
 
         await dispatch(
           approveSingleProduct({
@@ -294,13 +336,14 @@ const OrderDetailsView = () => {
           })
         ).unwrap();
 
+        showSnackbar("Production started successfully", "success");
         await loadOrderDetails();
       } catch (error) {
         console.error("Error approving single product:", error);
-        alert("Failed to start production. Please try again.");
+        showSnackbar("Failed to start production. Please try again.", "error");
       }
     },
-    [items, editedProductionQty, dispatch, loadOrderDetails]
+    [items, editedProductionQty, dispatch, loadOrderDetails, showSnackbar]
   );
 
   // Handle view production stages
@@ -321,16 +364,23 @@ const OrderDetailsView = () => {
       setSelectedProductLogs(sortedLogs);
     } catch (error) {
       console.error("Error fetching production logs:", error);
+      showSnackbar("Failed to load production logs", "error");
       setSelectedProductLogs([]);
     } finally {
       setLoadingLogs(false);
     }
-  }, [dispatch]);
+  }, [dispatch, showSnackbar]);
 
   // Get status badge component
   const StatusBadge = useCallback(({ status }) => {
     const statusInfo = STATUS_CONFIG[status] || { label: "Unknown", color: "default" };
     return <Chip label={statusInfo.label} color={statusInfo.color} size="small" />;
+  }, []);
+
+  // Get production status badge
+  const ProductionStatusBadge = useCallback(({ status }) => {
+    const statusInfo = PRODUCTION_STATUS_CONFIG[status] || { label: "Unknown", color: "default" };
+    return <Chip label={statusInfo.label} color={statusInfo.color} size="small" variant="outlined" />;
   }, []);
 
   // Memoized calculations
@@ -352,23 +402,25 @@ const OrderDetailsView = () => {
         (p.group ?? "").trim() === (item.group ?? "").trim() && p.product_id == item.product_id
     );
 
-    // const prevMatch = previousPOData.find(
-    //   (p) =>
-    //     p.product_id == item.product_id && (p.group ?? "").trim() === (item.group ?? "").trim()
-    // );
-
+    // Find in-production match (status = 1)
     const prevMatch = previousPOData.find(
       (p) =>
         p.status === 1 &&
         p.product_id == item.product_id &&
         (p.group ?? "").trim() === (item.group ?? "").trim()
     );
-    const compeletedMatch = previousPOData.find(
+
+    // Find completed match (status = 2)
+    const completedMatch = previousPOData.find(
       (p) =>
         p.status === 2 &&
         p.product_id == item.product_id &&
         (p.group ?? "").trim() === (item.group ?? "").trim()
     );
+
+    const inProductionQty = prevMatch ? parseInt(prevMatch.total_qty || 0) : 0;
+    const completedQty = completedMatch ? parseInt(completedMatch.total_qty || 0) : 0;
+    const totalUsedQty = inProductionQty + completedQty;
 
     const isEditing = editingItemId === item.id;
 
@@ -377,9 +429,14 @@ const OrderDetailsView = () => {
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Chip label={`#${item.id}`} size="small" color="primary" />
-            <Typography variant="subtitle2" color="text.secondary">
-              {item.group}
-            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Typography variant="subtitle2" color="text.secondary">
+                {item.group}
+              </Typography>
+              {matchedProduct && (
+                <ProductionStatusBadge status={matchedProduct.status} />
+              )}
+            </Box>
           </Box>
 
           <Typography variant="h6" sx={{ mb: 1 }}>
@@ -403,52 +460,105 @@ const OrderDetailsView = () => {
               <Typography variant="caption" color="text.secondary">Original Qty</Typography>
               <Typography variant="body2" sx={{ fontWeight: 600 }}>{item.original_qty}</Typography>
             </Grid>
+            
             {previousPOData.length > 0 && (
+              <>
+                <Grid size={4}>
+                  <Typography variant="caption" color="text.secondary">In Production</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    {prevMatch ? (
+                      <Chip
+                        label={prevMatch.total_qty}
+                        color="info"
+                        size="small"
+                        variant="outlined"
+                      />
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">0</Typography>
+                    )}
+                  </Box>
+                </Grid>
+                <Grid size={4}>
+                  <Typography variant="caption" color="text.secondary">Completed</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    {completedMatch ? (
+                      <Chip
+                        label={completedMatch.total_qty}
+                        color="success"
+                        size="small"
+                        variant="outlined"
+                      />
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">0</Typography>
+                    )}
+                  </Box>
+                </Grid>
+                <Grid size={4}>
+                  <Typography variant="caption" color="text.secondary">Production Qty</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    {isEditing ? (
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={editedProductionQty[item.id] || 0}
+                        onChange={(e) =>
+                          handleProductionQtyChange(
+                            item.id,
+                            e.target.value,
+                            item.original_qty,
+                            inProductionQty,
+                            completedQty
+                          )
+                        }
+                        inputProps={{ min: 0 }}
+                        sx={{ width: "100%" }}
+                      />
+                    ) : (
+                      <Chip
+                        label={editedProductionQty[item.id] || item.production_qty}
+                        color="primary"
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                  </Box>
+                </Grid>
+              </>
+            )}
+            
+            {previousPOData.length === 0 && (
               <Grid size={6}>
-                <Typography variant="caption" color="text.secondary">Qty in Production</Typography>
+                <Typography variant="caption" color="text.secondary">Production Qty</Typography>
                 <Box sx={{ mt: 0.5 }}>
-                  {prevMatch ? (
+                  {isEditing ? (
+                    <TextField
+                      type="number"
+                      size="small"
+                      value={editedProductionQty[item.id] || 0}
+                      onChange={(e) =>
+                        handleProductionQtyChange(
+                          item.id,
+                          e.target.value,
+                          item.original_qty,
+                          0,
+                          0
+                        )
+                      }
+                      inputProps={{ min: 0 }}
+                      sx={{ width: "100%" }}
+                    />
+                  ) : (
                     <Chip
-                      label={prevMatch.total_qty}
-                      color="info"
+                      label={editedProductionQty[item.id] || item.production_qty}
+                      color="primary"
                       size="small"
                       variant="outlined"
                     />
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">0</Typography>
                   )}
                 </Box>
               </Grid>
             )}
-            <Grid size={6}>
-              <Typography variant="caption" color="text.secondary">Production Qty</Typography>
-              <Box sx={{ mt: 0.5 }}>
-                {isEditing ? (
-                  <TextField
-                    type="number"
-                    size="small"
-                    value={editedProductionQty[item.id] || 0}
-                    onChange={(e) =>
-                      handleProductionQtyChange(
-                        item.id,
-                        e.target.value,
-                        item.original_qty,
-                        prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
-                      )
-                    }
-                    inputProps={{ min: 0 }}
-                    sx={{ width: "100%" }}
-                  />
-                ) : (
-                  <Chip
-                    label={editedProductionQty[item.id] || item.production_qty}
-                    color="primary"
-                    size="small"
-                    variant="outlined"
-                  />
-                )}
-              </Box>
-            </Grid>
+            
             <Grid size={6}>
               <Typography variant="caption" color="text.secondary">Start Date</Typography>
               <Typography variant="body2">{item.start_date}</Typography>
@@ -495,7 +605,7 @@ const OrderDetailsView = () => {
                   </Button>
                 )}
 
-                {!isEditing && orderData.quotation_id && (
+                {!isEditing && orderData?.quotation_id && (
                   <Button
                     variant="outlined"
                     color="primary"
@@ -576,7 +686,7 @@ const OrderDetailsView = () => {
         <Typography variant="h6">No order data found</Typography>
         <Button
           component={Link}
-          to="/customer/orders"
+          to="/customer/order"
           variant="contained"
           sx={{ mt: 2 }}
         >
@@ -590,6 +700,18 @@ const OrderDetailsView = () => {
 
   return (
     <>
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
       {/* Header */}
       <Grid
         container
@@ -603,6 +725,13 @@ const OrderDetailsView = () => {
         </Grid>
         <Grid item>
           <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              component={Link}
+              to="/customer/order"
+            >
+              Back to Orders
+            </Button>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -622,7 +751,7 @@ const OrderDetailsView = () => {
             <CardContent>
               {/* Order Header */}
               <Box sx={{ mb: 3 }}>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} sx={{ mb: 2 }}>
                   <Typography variant="h6">
                     Order No:{" "}
                     <Box component="span" sx={{ fontWeight: 600 }}>
@@ -632,8 +761,8 @@ const OrderDetailsView = () => {
                   <StatusBadge status={orderData.status} />
                 </Stack>
 
-                <Grid container spacing={{ xs: 1, md: 3 }} sx={{ justifyContent: "center", textAlign: { xs: "left", md: "center" } }}>
-                  <Grid size={{ xs: 12, md: 3 }}>
+                <Grid container spacing={{ xs: 2, md: 3 }} sx={{ justifyContent: "flex-start", textAlign: { xs: "left", md: "center" } }}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Quotation ID
                     </Typography>
@@ -642,7 +771,7 @@ const OrderDetailsView = () => {
                     </Typography>
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Commencement Date
                     </Typography>
@@ -651,7 +780,7 @@ const OrderDetailsView = () => {
                     </Typography>
                   </Grid>
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Delivery Date
                     </Typography>
@@ -661,17 +790,15 @@ const OrderDetailsView = () => {
                   </Grid>
 
                   {orderData.priority && (
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Priority
                       </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        {orderData.priority}
-                      </Typography>
+                      <Chip label={orderData.priority} color="warning" size="small" />
                     </Grid>
                   )}
 
-                  <Grid size={{ xs: 12, md: 3 }}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Created Date
                     </Typography>
@@ -681,7 +808,7 @@ const OrderDetailsView = () => {
                   </Grid>
 
                   {orderData.remark && (
-                    <Grid size={{ xs: 12, md: 3 }}>
+                    <Grid size={{ xs: 12, md: 12 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Remarks
                       </Typography>
@@ -695,7 +822,7 @@ const OrderDetailsView = () => {
               {customer && (
                 <Box sx={{ mb: 3, p: 2, backgroundColor: "#f5f5f5", borderRadius: 1 }}>
                   <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                    From
+                    Customer Details
                   </Typography>
                   <Typography variant="body2">
                     <strong>{customer.name}</strong>
@@ -709,12 +836,17 @@ const OrderDetailsView = () => {
 
               {/* Action Buttons */}
               {orderData.status === ORDER_STATUS.PENDING && (
-                <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end", mb: 3 }}>
+                <Stack 
+                  direction={{ xs: 'column', sm: 'row' }} 
+                  spacing={2} 
+                  sx={{ justifyContent: "flex-end", mb: 3 }}
+                >
                   <Button
                     variant="contained"
                     color="success"
                     startIcon={<MdOutlineCheckCircle />}
                     onClick={handleApproveAll}
+                    fullWidth={isMobile}
                   >
                     {items.length > 1 ? "Approve All" : "Approve"}
                   </Button>
@@ -724,6 +856,7 @@ const OrderDetailsView = () => {
                     startIcon={<BiSolidEditAlt />}
                     component={Link}
                     to={`/customer/order/edit/${orderId}`}
+                    fullWidth={isMobile}
                   >
                     Edit Order
                   </Button>
@@ -733,7 +866,7 @@ const OrderDetailsView = () => {
               {/* Items Section */}
               <Box sx={{ mt: 3 }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Order Items
+                  Order Items ({items.length})
                 </Typography>
 
                 {items.length === 0 ? (
@@ -751,217 +884,237 @@ const OrderDetailsView = () => {
                       </Box>
                     ) : (
                       /* Desktop View - Table */
-                      <ResponsiveTable>
-                        <Thead>
-                          <Tr>
-                            <Th>#</Th>
-                            <Th>Group</Th>
-                            <Th>Product Name</Th>
-                            <Th>Model</Th>
-                            <Th>Unique Code</Th>
-                            <Th>Original Qty</Th>
-                            {previousPOData.length > 0 && <Th>Qty in Production</Th>}
-                            <Th>Production Qty</Th>
-                            {previousPOData.length > 0 && <Th>Completed Product</Th>}
-                            <Th>Size</Th>
-                            <Th>Document</Th>
-                            <Th>Start Date</Th>
-                            <Th>End Date</Th>
-                            <Th>Action</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {items.map((item) => {
-                            const matchedProduct = products.find(
-                              (p) =>
-                                (p.group ?? "").trim() === (item.group ?? "").trim() && p.product_id == item.product_id
-                            );
+                      <Box sx={{ overflowX: 'auto' }}>
+                        <ResponsiveTable>
+                          <Thead>
+                            <Tr>
+                              <Th>#</Th>
+                              <Th>Group</Th>
+                              <Th>Product Name</Th>
+                              <Th>Model</Th>
+                              <Th>Unique Code</Th>
+                              <Th>Original Qty</Th>
+                              {previousPOData.length > 0 && <Th>Qty in Production</Th>}
+                              <Th>Production Qty</Th>
+                              {previousPOData.length > 0 && <Th>Completed Product</Th>}
+                              <Th>Size</Th>
+                              <Th>Document</Th>
+                              <Th>Start Date</Th>
+                              <Th>End Date</Th>
+                              <Th>Status</Th>
+                              <Th>Action</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {items.map((item) => {
+                              const matchedProduct = products.find(
+                                (p) =>
+                                  (p.group ?? "").trim() === (item.group ?? "").trim() && p.product_id == item.product_id
+                              );
 
-                            // const prevMatch = previousPOData.find(
-                            //   (p) =>
-                            //     p.product_id == item.product_id && (p.group ?? "").trim() === (item.group ?? "").trim()
-                            // );
+                              // Find in-production match (status = 1)
+                              const prevMatch = previousPOData.find(
+                                (p) =>
+                                  p.status === 1 &&
+                                  p.product_id == item.product_id &&
+                                  (p.group ?? "").trim() === (item.group ?? "").trim()
+                              );
 
-                            const prevMatch = previousPOData.find(
-                              (p) =>
-                                p.status === 1 &&
-                                p.product_id == item.product_id &&
-                                (p.group ?? "").trim() === (item.group ?? "").trim()
-                            );
-                            const compeletedMatch = previousPOData.find(
-                              (p) =>
-                                p.status === 2 &&
-                                p.product_id == item.product_id &&
-                                (p.group ?? "").trim() === (item.group ?? "").trim()
-                            );
+                              // Find completed match (status = 2)
+                              const completedMatch = previousPOData.find(
+                                (p) =>
+                                  p.status === 2 &&
+                                  p.product_id == item.product_id &&
+                                  (p.group ?? "").trim() === (item.group ?? "").trim()
+                              );
 
-                            const isEditing = editingItemId === item.id;
+                              const inProductionQty = prevMatch ? parseInt(prevMatch.total_qty || 0) : 0;
+                              const completedQty = completedMatch ? parseInt(completedMatch.total_qty || 0) : 0;
+                              const totalUsedQty = inProductionQty + completedQty;
 
-                            return (
-                              <Tr key={item.id}>
-                                <Td>{item.id}</Td>
-                                <Td>{item.group}</Td>
-                                <Td>{item.name}</Td>
-                                <Td>{item.model}</Td>
-                                <Td>{item.unique_code}</Td>
-                                <Td>{item.original_qty}</Td>
-                                {previousPOData.length > 0 && (
+                              const isEditing = editingItemId === item.id;
+
+                              return (
+                                <Tr key={item.id}>
+                                  <Td>{item.id}</Td>
+                                  <Td>{item.group}</Td>
+                                  <Td>{item.name}</Td>
+                                  <Td>{item.model}</Td>
+                                  <Td>{item.unique_code}</Td>
+                                  <Td>{item.original_qty}</Td>
+                                  
+                                  {/* Qty in Production */}
+                                  {previousPOData.length > 0 && (
+                                    <Td style={{ textAlign: "center" }}>
+                                      {prevMatch ? (
+                                        <Chip
+                                          label={prevMatch.total_qty}
+                                          color="info"
+                                          size="small"
+                                          variant="outlined"
+                                        />
+                                      ) : (
+                                        <Typography variant="body2" color="text.secondary">
+                                          0
+                                        </Typography>
+                                      )}
+                                    </Td>
+                                  )}
+                                  
+                                  {/* Production Qty */}
                                   <Td style={{ textAlign: "center" }}>
-                                    {/* show in production product means status = 1 */}
-                                    {prevMatch ? (
+                                    {isEditing ? (
+                                      <TextField
+                                        type="number"
+                                        size="small"
+                                        value={editedProductionQty[item.id] || 0}
+                                        onChange={(e) =>
+                                          handleProductionQtyChange(
+                                            item.id,
+                                            e.target.value,
+                                            item.original_qty,
+                                            inProductionQty,
+                                            completedQty
+                                          )
+                                        }
+                                        inputProps={{ min: 0 }}
+                                        sx={{ width: "100px" }}
+                                      />
+                                    ) : (
                                       <Chip
-                                        label={prevMatch.total_qty}
-                                        color="info"
+                                        label={editedProductionQty[item.id] || item.production_qty}
+                                        color="primary"
                                         size="small"
                                         variant="outlined"
                                       />
-                                    ) : (
-                                      <Typography variant="body2" color="text.secondary">
-                                        0
-                                      </Typography>
                                     )}
                                   </Td>
-                                )}
-                                <Td style={{ textAlign: "center" }}>
-                                  {isEditing ? (
-                                    <TextField
-                                      type="number"
-                                      size="small"
-                                      value={editedProductionQty[item.id] || 0}
-                                      onChange={(e) =>
-                                        handleProductionQtyChange(
-                                          item.id,
-                                          e.target.value,
-                                          item.original_qty,
-                                          prevMatch ? parseInt(prevMatch.total_qty || 0) : 0
-                                        )
-                                      }
-                                      inputProps={{ min: 0 }}
-                                      sx={{ width: "100px" }}
-                                    />
-                                  ) : (
-                                    <Chip
-                                      label={editedProductionQty[item.id] || item.production_qty}
-                                      color="primary"
-                                      size="small"
-                                      variant="outlined"
-                                    />
+                                  
+                                  {/* Completed Product */}
+                                  {previousPOData.length > 0 && (
+                                    <Td style={{ textAlign: "center" }}>
+                                      {completedMatch ? (
+                                        <Chip
+                                          label={completedMatch.total_qty}
+                                          color="success"
+                                          size="small"
+                                          variant="outlined"
+                                        />
+                                      ) : (
+                                        <Typography variant="body2" color="text.secondary">
+                                          0
+                                        </Typography>
+                                      )}
+                                    </Td>
                                   )}
-                                </Td>
-                                {previousPOData.length > 0 && (
-                                  <Td style={{ textAlign: "center" }}>
-                                    {/* show completed product means status = 2 */}
-                                    {compeletedMatch ? (
-                                      <Chip
-                                        label={compeletedMatch.total_qty}
-                                        color="info"
-                                        size="small"
-                                        variant="outlined"
+                                  
+                                  <Td>{item.size}</Td>
+                                  <Td>
+                                    {item.document ? (
+                                      <ImagePreviewDialog
+                                        imageUrl={mediaUrl + item.document}
+                                        alt={item.name}
                                       />
                                     ) : (
                                       <Typography variant="body2" color="text.secondary">
-                                        0
+                                        No Document
                                       </Typography>
                                     )}
                                   </Td>
-                                )}
-                                <Td>{item.size}</Td>
-                                <Td>
-                                  {item.document ? (
-                                    <ImagePreviewDialog
-                                      imageUrl={mediaUrl + item.document}
-                                      alt={item.name}
-                                    />
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">
-                                      No Document
-                                    </Typography>
-                                  )}
-                                </Td>
-                                <Td>{item.start_date}</Td>
-                                <Td>{item.end_date}</Td>
-                                <Td>
-                                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                                    {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.NOT_STARTED && (
-                                      <>
-                                        {items.length > 1 && (
-                                          <Tooltip title="Start Production">
-                                            <IconButton
-                                              color="warning"
-                                              size="small"
-                                              onClick={() =>
-                                                handleApproveSingle(
-                                                  matchedProduct.po_id,
-                                                  matchedProduct.group,
-                                                  matchedProduct.product_id
-                                                )
-                                              }
-                                            >
-                                              <AiOutlineSetting size={16} />
-                                            </IconButton>
-                                          </Tooltip>
-                                        )}
-
-                                        {!isEditing && orderData.quotation_id && (
-                                          <Tooltip title="Edit Production Qty">
-                                            <IconButton
-                                              color="primary"
-                                              size="small"
-                                              onClick={() => handleEditClick(item.id)}
-                                            >
-                                              <BiSolidEditAlt size={16} />
-                                            </IconButton>
-                                          </Tooltip>
-                                        )}
-
-                                        {isEditing && (
-                                          <>
-                                            <Button
-                                              size="small"
-                                              variant="contained"
-                                              color="success"
-                                              onClick={() => handleSaveEdit(item.id)}
-                                            >
-                                              Save
-                                            </Button>
-                                            <Button
-                                              size="small"
-                                              variant="outlined"
-                                              onClick={() => handleCancelEdit(item.id)}
-                                            >
-                                              Cancel
-                                            </Button>
-                                          </>
-                                        )}
-                                      </>
+                                  <Td>{item.start_date}</Td>
+                                  <Td>{item.end_date}</Td>
+                                  <Td>
+                                    {matchedProduct ? (
+                                      <ProductionStatusBadge status={matchedProduct.status} />
+                                    ) : (
+                                      <Typography variant="caption" color="text.secondary">
+                                        N/A
+                                      </Typography>
                                     )}
+                                  </Td>
+                                  <Td>
+                                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                      {matchedProduct && matchedProduct.status === PRODUCTION_STATUS.NOT_STARTED && (
+                                        <>
+                                          {items.length > 1 && (
+                                            <Tooltip title="Start Production">
+                                              <IconButton
+                                                color="warning"
+                                                size="small"
+                                                onClick={() =>
+                                                  handleApproveSingle(
+                                                    matchedProduct.po_id,
+                                                    matchedProduct.group,
+                                                    matchedProduct.product_id
+                                                  )
+                                                }
+                                              >
+                                                <AiOutlineSetting size={16} />
+                                              </IconButton>
+                                            </Tooltip>
+                                          )}
 
-                                    {matchedProduct &&
-                                      (matchedProduct.status === PRODUCTION_STATUS.IN_PROGRESS ||
-                                        matchedProduct.status === PRODUCTION_STATUS.COMPLETED) && (
-                                        <Tooltip title="View Production Stages">
-                                          <IconButton
-                                            color="info"
-                                            size="small"
-                                            onClick={() => handleViewStages(matchedProduct.id)}
-                                          >
-                                            <AiOutlineEye size={18} />
-                                          </IconButton>
-                                        </Tooltip>
+                                          {!isEditing && orderData.quotation_id && (
+                                            <Tooltip title="Edit Production Qty">
+                                              <IconButton
+                                                color="primary"
+                                                size="small"
+                                                onClick={() => handleEditClick(item.id)}
+                                              >
+                                                <BiSolidEditAlt size={16} />
+                                              </IconButton>
+                                            </Tooltip>
+                                          )}
+
+                                          {isEditing && (
+                                            <>
+                                              <Button
+                                                size="small"
+                                                variant="contained"
+                                                color="success"
+                                                onClick={() => handleSaveEdit(item.id)}
+                                              >
+                                                Save
+                                              </Button>
+                                              <Button
+                                                size="small"
+                                                variant="outlined"
+                                                onClick={() => handleCancelEdit(item.id)}
+                                              >
+                                                Cancel
+                                              </Button>
+                                            </>
+                                          )}
+                                        </>
                                       )}
 
-                                    {!matchedProduct && (
-                                      <Typography variant="caption" color="text.secondary">
-                                        —
-                                      </Typography>
-                                    )}
-                                  </Box>
-                                </Td>
-                              </Tr>
-                            );
-                          })}
-                        </Tbody>
-                      </ResponsiveTable>
+                                      {matchedProduct &&
+                                        (matchedProduct.status === PRODUCTION_STATUS.IN_PROGRESS ||
+                                          matchedProduct.status === PRODUCTION_STATUS.COMPLETED) && (
+                                          <Tooltip title="View Production Stages">
+                                            <IconButton
+                                              color="info"
+                                              size="small"
+                                              onClick={() => handleViewStages(matchedProduct.id)}
+                                            >
+                                              <AiOutlineEye size={18} />
+                                            </IconButton>
+                                          </Tooltip>
+                                        )}
+
+                                      {!matchedProduct && (
+                                        <Typography variant="caption" color="text.secondary">
+                                          —
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  </Td>
+                                </Tr>
+                              );
+                            })}
+                          </Tbody>
+                        </ResponsiveTable>
+                      </Box>
                     )}
                   </>
                 )}
@@ -976,34 +1129,34 @@ const OrderDetailsView = () => {
                     backgroundColor: "#f9f9f9",
                     borderRadius: 1,
                     display: "flex",
-                    justifyContent: "flex-end",
+                    justifyContent: { xs: "center", md: "flex-end" },
                   }}
                 >
                   <Grid
                     container
-                    spacing={1}
+                    spacing={2}
                     sx={{
-                      width: "600px",
+                      width: { xs: "100%", md: "600px" },
                       maxWidth: 1000,
                       justifyContent: "center",
-                      textAlign: { xs: "left", sm: "center" }
+                      textAlign: "center"
                     }}
                   >
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Total Items
                       </Typography>
                       <Typography variant="h6">{summary.totalItems}</Typography>
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Total Original Qty
                       </Typography>
                       <Typography variant="h6">{summary.totalOriginalQty}</Typography>
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Total Production Qty
                       </Typography>

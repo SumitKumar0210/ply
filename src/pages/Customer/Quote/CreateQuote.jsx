@@ -170,7 +170,7 @@ const CreateQuote = () => {
     try {
       const res = await dispatch(addCustomer(values));
       if (res.error) return;
-      resetForm();
+      // resetForm();
       setOpenAddCustomer(false);
       await dispatch(fetchActiveCustomers());
     } catch (error) {
@@ -363,7 +363,7 @@ const CreateQuote = () => {
     }
   };
 
-  const isLoading = customersLoading || productsLoading || gstsLoading;
+  const isLoading =  productsLoading || gstsLoading;
 
   if (isLoading) {
     return (

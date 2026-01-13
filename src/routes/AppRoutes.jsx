@@ -119,7 +119,6 @@ const AppRoutes = () => {
           path="/discarded-product"
           element={<SecurePage permission="discarded_product.read"><DiscardedProduct /></SecurePage>}
         />
-
         <Route
           path="bill/package-list/:id"
           element={<SecurePage><PackageList permission="dispatch_product.package_list"/></SecurePage>}

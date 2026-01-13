@@ -83,6 +83,7 @@ const CreatePurchaseOrder = () => {
   const [previousVendorId, setPreviousVendorId] = useState(null);
 
   const { data: vendors = [], loading: vendorLoading } = useSelector((state) => state.vendor);
+
   const { data: materials = [] } = useSelector((state) => state.material);
   const { activeData: gst = [] } = useSelector((state) => state.taxSlab);
 

@@ -203,13 +203,12 @@ const Users = () => {
   const [globalFilter, setGlobalFilter] = useState("");
 
   const {
-    data: tableDatas = [],
+    data: tableData = [],
     loading,
     error,
     totalRows = 0
   } = useSelector((state) => state.user);
 
-  const tableData = tableDatas.data || [];
   const { data: states = [] } = useSelector((state) => state.state);
   const { data: userTypes = [] } = useSelector((state) => state.role);
 
@@ -266,8 +265,8 @@ const Users = () => {
   }, []);
 
   const handleSnackbarClose = useCallback(() => {
-    setSnackbar({ ...snackbar, open: false });
-  }, [snackbar]);
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  }, []);
 
   //  Add user
   const handleAdd = useCallback(async (values, { resetForm, setSubmitting }) => {
@@ -276,7 +275,7 @@ const Users = () => {
       await dispatch(addUser(values)).unwrap();
       resetForm();
       setOpen(false);
-      setSnackbar({ open: true, message: "User added successfully", severity: "success" });
+      // setSnackbar({ open: true, message: "User added successfully", severity: "success" });
 
       // Refresh data after add
       const params = {
@@ -287,7 +286,7 @@ const Users = () => {
       await dispatch(fetchUsersWithSearch(params)).unwrap();
     } catch (error) {
       console.error("Add user failed:", error);
-      setSnackbar({ open: true, message: error || "Failed to add user", severity: "error" });
+      // setSnackbar({ open: true, message: error || "Failed to add user", severity: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -302,7 +301,7 @@ const Users = () => {
     try {
       await dispatch(deleteUser(deleteDialog.id)).unwrap();
       setDeleteDialog({ open: false, id: null, name: "", loading: false });
-      setSnackbar({ open: true, message: "User deleted successfully", severity: "success" });
+      // setSnackbar({ open: true, message: "User deleted successfully", severity: "success" });
 
       // Refresh data after delete
       const params = {
@@ -313,7 +312,7 @@ const Users = () => {
       await dispatch(fetchUsersWithSearch(params)).unwrap();
     } catch (error) {
       console.error("Delete failed:", error);
-      setSnackbar({ open: true, message: error || "Failed to delete user", severity: "error" });
+      // setSnackbar({ open: true, message: error || "Failed to delete user", severity: "error" });
       setDeleteDialog((prev) => ({ ...prev, loading: false }));
     }
   }, [dispatch, deleteDialog.id, pagination.pageIndex, pagination.pageSize, globalFilter]);
@@ -329,7 +328,7 @@ const Users = () => {
       await dispatch(updateUser({ id: editData.id, ...values })).unwrap();
       resetForm();
       handleEditClose();
-      setSnackbar({ open: true, message: "User updated successfully", severity: "success" });
+      // setSnackbar({ open: true, message: "User updated successfully", severity: "success" });
 
       // Refresh data after update
       const params = {
@@ -340,7 +339,7 @@ const Users = () => {
       await dispatch(fetchUsersWithSearch(params)).unwrap();
     } catch (error) {
       console.error("Update failed:", error);
-      setSnackbar({ open: true, message: error || "Failed to update user", severity: "error" });
+      // setSnackbar({ open: true, message: error || "Failed to update user", severity: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -351,7 +350,7 @@ const Users = () => {
     const newStatus = checked ? 1 : 0;
     try {
       await dispatch(statusUpdate({ ...row, status: newStatus })).unwrap();
-      setSnackbar({ open: true, message: "Status updated successfully", severity: "success" });
+      // setSnackbar({ open: true, message: "Status updated successfully", severity: "success" });
 
       // Refresh data
       const params = {
@@ -362,7 +361,7 @@ const Users = () => {
       await dispatch(fetchUsersWithSearch(params)).unwrap();
     } catch (error) {
       console.error("Status update failed:", error);
-      setSnackbar({ open: true, message: error || "Failed to update status", severity: "error" });
+      // setSnackbar({ open: true, message: error || "Failed to update status", severity: "error" });
     }
   }, [dispatch, pagination.pageIndex, pagination.pageSize, globalFilter]);
 
@@ -1101,11 +1100,12 @@ const Users = () => {
             state_id: editData?.state_id || "",
             city: editData?.city || "",
             address: editData?.address || "",
-            user_type_id: editData?.user_type_id || "",
+            user_type_id: editData?.roles[0]?.id || "",
             zip_code: editData?.zip_code || "",
             password: "",
             image: null,
           }}
+
           validationSchema={editValidationSchema}
           enableReinitialize
           onSubmit={handleEditSubmit}
@@ -1182,8 +1182,9 @@ const Users = () => {
                       <MenuItem value="">
                         <em>Select User Type</em>
                       </MenuItem>
+
                       {userTypes.map((option) => (
-                        <MenuItem key={option.id} value={option.name}>
+                        <MenuItem key={option.id} value={option.id}>
                           {option.name}
                         </MenuItem>
                       ))}
@@ -1381,7 +1382,7 @@ const Users = () => {
       </Dialog>
 
       {/* Snackbar for notifications */}
-      <Snackbar
+      {/* <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleSnackbarClose}
@@ -1390,7 +1391,7 @@ const Users = () => {
         <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
-      </Snackbar>
+      </Snackbar> */}
     </>
   );
 };
