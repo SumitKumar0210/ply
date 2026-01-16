@@ -709,6 +709,7 @@ const EditPurchaseOrder = () => {
                                                       <Tr>
                                                         <Th>Material Name</Th>
                                                         <Th>Qty</Th>
+                                                        <Th>Item Code</Th>
                                                         <Th>Size</Th>
                                                         <Th>UOM</Th>
                                                         <Th>Rate</Th>
@@ -733,6 +734,7 @@ const EditPurchaseOrder = () => {
                                                                 sx={{ width: "80px" }}
                                                               />
                                                             </Td>
+                                                            <Td>{item.hsn_code}</Td>
                                                             <Td>{item.size}</Td>
                                                             <Td>{item.uom}</Td>
                                                             <Td>₹{item.rate.toLocaleString("en-IN")}</Td>

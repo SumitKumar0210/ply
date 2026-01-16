@@ -77,6 +77,8 @@ const InvoiceDetail = () => {
     );
   }
 
+  console.log("Parsed Items:", items);
+
   return (
     <>
       <Grid
@@ -185,6 +187,11 @@ const InvoiceDetail = () => {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2" color="text.secondary">Quantity:</Typography>
                           <Typography variant="body2" fontWeight="500">{item.qty || 0}</Typography>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Item Code:</Typography>
+                          <Typography variant="body2" fontWeight="500">{item.has_code || 0}</Typography>
                         </Box>
                         
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>

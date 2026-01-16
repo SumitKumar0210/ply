@@ -164,7 +164,7 @@ const ViewPurchaseOrder = () => {
                           items.map((item) => (
                             <Tr key={item.id || Math.random()}>
                               <Td>{item.name}</Td>
-                              <Td>{item.code || "N/A"}</Td>
+                              <Td>{item.hsn_code || "N/A"}</Td>
                               <Td>{item.qty}</Td>
                               <Td>{item.size}</Td>
                               <Td>{item.uom}</Td>

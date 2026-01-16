@@ -177,6 +177,7 @@ const GenerateBill = () => {
             product_id,
             name: product.name,
             model: product.model,
+            hsn_code: product.hsn_code,
             unique_code: generateCode(product.model),
             qty: parseInt(quantity, 10),
             size: product.size,
@@ -623,7 +624,8 @@ const GenerateBill = () => {
                                             <Thead>
                                                 <Tr>
                                                     <Th>Item Name</Th>
-                                                    <Th>Item Code</Th>
+                                                    <Th>Model Code</Th>
+                                                    <Th>HSN Code</Th>
                                                     <Th>Qty</Th>
                                                     <Th>Size</Th>
                                                     <Th>Unit Price (₹)</Th>
@@ -637,6 +639,7 @@ const GenerateBill = () => {
                                                     <Tr key={item.id}>
                                                         <Td>{item.name}</Td>
                                                         <Td>{item.model}</Td>
+                                                        <Td>{item.hsn_code}</Td>
                                                         <Td>
                                                             <TextField
                                                                 type="number"

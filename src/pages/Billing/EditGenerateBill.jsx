@@ -288,6 +288,7 @@ const EditBill = () => {
       product_id,
       name: product.name,
       model: product.model,
+      hsn_code: product.hsn_code,
       unique_code: `${product.model}@${Math.floor(
         1000 + Math.random() * 9000
       )}`,
@@ -884,7 +885,8 @@ const EditBill = () => {
                       <Thead>
                         <Tr>
                           <Th>Item Name</Th>
-                          <Th>Item Code</Th>
+                          <Th>Model Code</Th>
+                          <Th>HSN Code</Th>
                           <Th>Qty</Th>
                           <Th>Size</Th>
                           <Th>Unit Price (₹)</Th>
@@ -898,6 +900,7 @@ const EditBill = () => {
                           <Tr key={item.id}>
                             <Td>{item.name}</Td>
                             <Td>{item.model}</Td>
+                            <Td>{item.hsn_code}</Td>
                             <Td>
                               <TextField
                                 type="number"
