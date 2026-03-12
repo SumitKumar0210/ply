@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout";
 import ProtectedRoute from "./ProtectedRoute";
 import SecurePage from "./SecurePage";
+import JobCardPrint from "../components/JobCard/JobCardPrint";
 
 // lazy load pages to reduce initial bundle & memory usage
 const Login = lazy(() => import("../pages/auth/Login"));
@@ -70,6 +71,7 @@ const Calendar = lazy(() => import("../pages/Users/Calendar/Calendar"));
 const Attendance = lazy(() => import("../pages/Users/Attendance/Attendance"));
 const MaterialInventory = lazy(() => import("../pages/Vendor/Material/Inventory"));
 
+const Profile = lazy(() => import("../pages/Profile/Profile"));
 const Logs = lazy(() => import("../pages/Logs/Log"));
 
 const Error404 = lazy(() => import("../pages/error/404"));
@@ -208,7 +210,9 @@ const AppRoutes = () => {
         {/* Permission */}
         <Route path="/permissions" element={<SecurePage permission="roles.assign"><Permissions /></SecurePage>} />
         <Route path="/settings/:id/fetch-permissions" element={<SecurePage permission="roles.assign"><PermissionGroupManager /></SecurePage>} />
-
+        {/* profile */}
+        <Route path="/profile" element={<SecurePage><Profile /></SecurePage>} />
+        <Route path="/job-card" element={<SecurePage><JobCardPrint /></SecurePage>} />
         {/* Error pages */}
         <Route path="/403" element={<Error403 />} />
         <Route path="*" element={<Error404 />} />

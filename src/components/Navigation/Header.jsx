@@ -151,14 +151,14 @@ const Header = ({ mobileOpen, onToggleSidebar }) => {
 
           <Divider />
 
-          <MenuItem onClick={() => navigate("#")} sx={{ gap: 0.75 }}>
+          <MenuItem onClick={() => navigate("/profile")} sx={{ gap: 0.75 }}>
             <ListItemIcon sx={{ color: "primary.main", minWidth: 32 }}>
               <PersonAdd fontSize="small" />
             </ListItemIcon>
             Profile
           </MenuItem>
 
-          <MenuItem onClick={() => navigate("#")} sx={{ gap: 0.75 }}>
+          <MenuItem onClick={() => navigate("/profile")} sx={{ gap: 0.75 }}>
             <ListItemIcon sx={{ color: "warning.main", minWidth: 32 }}>
               <TbLockPassword fontSize="22" />
             </ListItemIcon>
