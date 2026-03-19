@@ -148,7 +148,7 @@ export default function Production() {
         disableGutters
         sx={{
           maxWidth: "100% !important",
-          overflowX: "hidden",
+          // overflowX: "hidden",
           marginBottom: 3,
         }}
       >
@@ -224,6 +224,8 @@ export default function Production() {
               flex: 1,
               height: isMobile ? "auto !important" : "100%",
               boxSizing: "border-box",
+              overflow: "hidden",    // ✅ KEY — makes this the scroll container boundary
+              minWidth: 0,           // ✅ prevents flex child from overflowing
             }}
           >
             {activeBatch ? (
@@ -235,7 +237,7 @@ export default function Production() {
                   border: "none",
                 }}
               >
-                <CardContent sx={{ p: 1 }}>
+                <CardContent sx={{ p: 1, height: "100%", overflow: "hidden" }}>
                   {/* Batch Info - Enhanced with hover effect */}
                   <Box
                     sx={{
@@ -279,12 +281,10 @@ export default function Production() {
                       flexWrap: "nowrap", // ❗ forces single row
                       gap: 2,
                       overflowX: "auto",
-                      pb: 2,
-
+                      pb: 0,
                       scrollBehavior: "smooth",
-
                       "&::-webkit-scrollbar": {
-                        height: 8,
+                        height: 4,
                       },
                       "&::-webkit-scrollbar-track": {
                         backgroundColor: "rgba(0,0,0,0.05)",

@@ -16,8 +16,6 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
-import CloseIcon from "@mui/icons-material/Close";
-import { styled } from "@mui/material/styles";
 import {
   MaterialReactTable,
   MRT_ToolbarInternalButtons,
@@ -28,8 +26,7 @@ import { BiSolidEditAlt } from "react-icons/bi";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { FiPrinter } from "react-icons/fi";
 import { BsCloudDownload } from "react-icons/bs";
-import { Formik, Form } from "formik";
-import * as Yup from "yup";
+import { RiDraggable } from "react-icons/ri";
 import { debounce } from "lodash";
 import CustomSwitch from "../../../components/CustomSwitch/CustomSwitch";
 import {
@@ -81,9 +78,18 @@ const Department = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // ── Drag-and-drop state ──────────────────────────────────────────────────
+  const [draggingRow, setDraggingRow] = useState(null);
+  const [localData, setLocalData] = useState([]);
+
   const { data: tableData = [], loading } = useSelector(
     (state) => state.department
   );
+
+  // Keep localData in sync whenever Redux data changes
+  useEffect(() => {
+    setLocalData([...tableData]);
+  }, [tableData]);
 
   useEffect(() => {
     dispatch(fetchDepartments());
@@ -117,6 +123,25 @@ const Department = () => {
   useEffect(() => {
     return () => debouncedSequenceUpdate.cancel();
   }, [debouncedSequenceUpdate]);
+
+  // ── Row-order change handler ─────────────────────────────────────────────
+  // Receives the already-reordered array and persists it.
+  const handleRowOrderChange = useCallback(
+    (newData) => {
+      setLocalData(newData);
+      // Persist new sequences (1-based) for every row
+      newData.forEach((row, index) => {
+        dispatch(sequenceUpdate({ id: row.id, sequence: index + 1 }));
+      });
+      // Mirror sequence values in local text-field state
+      const updated = {};
+      newData.forEach((row, index) => {
+        updated[row.id] = index + 1;
+      });
+      setSequenceValues(updated);
+    },
+    [dispatch]
+  );
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -162,6 +187,7 @@ const Department = () => {
     setDeleteData(null);
     setOpenDelete(false);
   };
+
   const canUpdate = useMemo(() => hasPermission("departments.update"), [hasPermission]);
 
   const columns = useMemo(() => {
@@ -177,7 +203,6 @@ const Department = () => {
         header: "Color",
         Cell: ({ cell, row }) => {
           if (loading) return <Skeleton variant="text" width="60%" />;
-
           return (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               <Box
@@ -199,7 +224,6 @@ const Department = () => {
         header: "Sequence",
         Cell: ({ row }) => {
           if (loading) return <Skeleton variant="text" width={80} />;
-
           return (
             <TextField
               type="number"
@@ -226,7 +250,6 @@ const Department = () => {
         enableColumnFilter: false,
         Cell: ({ row }) => {
           if (loading) return <Skeleton variant="circular" width={40} height={20} />;
-
           return (
             <CustomSwitch
               checked={!!row.original.status}
@@ -271,7 +294,6 @@ const Department = () => {
                   </IconButton>
                 </Tooltip>
               )}
-
               {hasPermission("departments.delete") && !isProtectedSequence && (
                 <Tooltip title="Delete">
                   <IconButton color="error" onClick={() => handleDelete(row.original)}>
@@ -293,19 +315,15 @@ const Department = () => {
     handleSequenceChange,
     hasPermission,
     hasAnyPermission,
-    handleEditOpen,
-    handleDelete,
     canUpdate,
-    statusUpdate,
   ]);
-
 
   const getRowId = (row) => row.id;
 
   const downloadCSV = () => {
-    if (!tableData.length) return;
+    if (!localData.length) return;
     const headers = columns.filter((c) => c.accessorKey).map((c) => c.header);
-    const rows = tableData.map((r) =>
+    const rows = localData.map((r) =>
       columns
         .filter((c) => c.accessorKey)
         .map((c) => `"${r[c.accessorKey] ?? ""}"`)
@@ -346,15 +364,46 @@ const Department = () => {
           >
             <MaterialReactTable
               columns={columns}
-              data={tableData}
+              data={localData}               // ← use localData (optimistic)
               getRowId={getRowId}
+
+              // ── Drag-and-drop row ordering ─────────────────────────────
+              enableRowOrdering={canUpdate}
+              enableSorting={false}
+              onDraggingRowChange={setDraggingRow}
+             icons={{
+                DragHandleIcon: () => <RiDraggable size={18} />,
+              }}
+              muiRowDragHandleProps={{
+                sx: {
+                  opacity: 0.8,
+                  "&:hover": { opacity: 1 },
+                  cursor: "grab",
+                  "&:active": { cursor: "grabbing" },
+                },
+              }}
+              muiTableBodyRowProps={({ row, table }) => ({
+                onDragEnd: () => {
+                  const { draggingRow: dragRow, hoveredRow } = table.getState();
+                  if (!hoveredRow || !dragRow || dragRow.id === hoveredRow.id) return;
+                  const newData = [...localData];
+                  newData.splice(
+                    hoveredRow.index,
+                    0,
+                    newData.splice(dragRow.index, 1)[0]
+                  );
+                  handleRowOrderChange(newData);
+                },
+              })}
+              // ────────────────────────────────────────────────────────────
+
               state={{
                 isLoading: loading,
                 showLoadingOverlay: loading,
+                draggingRow,
               }}
               enableTopToolbar
               enableColumnFilters
-              enableSorting
               enablePagination
               enableGlobalFilter
               enableBottomToolbar
@@ -389,7 +438,11 @@ const Department = () => {
                       </IconButton>
                     </Tooltip>
                     {hasPermission("departments.create") && (
-                      <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleOpen}
+                      >
                         Add Department
                       </Button>
                     )}
@@ -419,7 +472,7 @@ const Department = () => {
         onSubmit={(values, { resetForm }) => handleEditSubmit(values, resetForm)}
         initialValues={{
           name: editData?.name || "",
-          color: editData?.color || ""
+          color: editData?.color || "",
         }}
         title="Edit Department"
         submitButtonText={isSaving ? "Saving..." : "Save Changes"}
@@ -427,7 +480,10 @@ const Department = () => {
       />
 
       {/* Delete Modal */}
-      <Dialog open={openDelete} onClose={() => !isDeleting && setOpenDelete(false)}>
+      <Dialog
+        open={openDelete}
+        onClose={() => !isDeleting && setOpenDelete(false)}
+      >
         <DialogTitle>{"Delete this department?"}</DialogTitle>
         <DialogContent style={{ width: "300px" }}>
           <DialogContentText>This action cannot be undone</DialogContentText>
@@ -442,7 +498,11 @@ const Department = () => {
             color="error"
             autoFocus
             disabled={isDeleting}
-            startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : null}
+            startIcon={
+              isDeleting ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : null
+            }
           >
             {isDeleting ? "Deleting..." : "Delete"}
           </Button>
